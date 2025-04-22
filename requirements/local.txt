@@ -1,0 +1,43 @@
+-r base.txt
+
+#🐞 Debugging
+
+django-debug-toolbar==5.1.0  # A configurable set of panels that display various debug information about the current request/response.
+# https://github.com/jazzband/django-debug-toolbar
+
+# django-silk # Silky smooth profiling for the Django Framework.
+# https://github.com/jazzband/django-silk
+
+#🧪 Testing
+
+#factory-boy==3.3.0  # A test fixtures replacement based on thoughtbot's factory_bot for Python.
+# https://github.com/FactoryBoy/factory_boy
+
+#Faker==37.1.0  # A Python package that generates fake data for you.
+# https://github.com/joke2k/faker
+
+#coverage==7.8.0  # Code coverage measurement for Python.
+# https://github.com/nedbat/coveragepy
+
+#🛠️ Development Tools
+
+django-extensions # Collection of custom extensions for Django, including management commands.
+# https://github.com/django-extensions/django-extensions
+
+ipython  # A rich toolkit to help you make the most out of using Python interactively.
+# https://github.com/ipython/ipython
+
+watchdog  # Python API and shell utilities to monitor file system events.
+# https://github.com/gorakhargosh/watchdog
+
+black # Uncompromising Python code formatter.
+# https://github.com/psf/black
+
+isort  # Sorts imports alphabetically and automatically separates them into sections.
+# https://github.com/PyCQA/isort
+
+pytest # Framework for writing small tests in Python.
+# https://github.com/pytest-dev/pytest
+
+pytest-django # Django plugin for pytest.
+# https://github.com/pytest-dev/pytest-django

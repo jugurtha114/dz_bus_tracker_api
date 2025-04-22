@@ -1,0 +1,35 @@
+-r base.txt
+
+#🚀 Production
+#🔌 WSGI/ASGI Servers
+
+gunicorn==23.0.0  # A Python WSGI HTTP Server for UNIX.
+# https://github.com/benoitc/gunicorn
+
+uvicorn[standard]==0.34.1  # A lightning-fast ASGI server implementation, using uvloop and httptools.
+# https://github.com/encode/uvicorn
+
+#🔒 Security
+
+django-defender==0.9.8  # A simple, super fast Django reusable app that blocks people from brute forcing login attempts.
+# https://github.com/jazzband/django-defender
+
+django-csp==4.0  # Django Content Security Policy support.
+# https://github.com/mozilla/django-csp
+
+django-permissions-policy==4.24.0  # Set the Permissions-Policy HTTP header on your Django app.
+# https://github.com/adamchainz/django-permissions-policy
+
+whitenoise==6.9.0  # Radically simplified static file serving for WSGI applications.
+# https://github.com/evansd/whitenoise
+
+#📊 Monitoring & Performance
+
+#scout-apm==3.3.0  # Scout Application Performance Monitoring Agent.
+# https://github.com/scoutapp/scout_apm_python
+
+django-prometheus==2.3.1  # Django exporter for Prometheus monitoring.
+# https://github.com/korfuri/django-prometheus
+
+#elastic-apm==6.19.0  # Elastic APM Python Agent for monitoring applications.
+# https://github.com/elastic/apm-agent-python

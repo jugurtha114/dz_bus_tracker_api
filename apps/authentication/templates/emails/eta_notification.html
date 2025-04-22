@@ -1,0 +1,26 @@
+{% extends "emails/base.html" %}
+
+{% block title %}Bus Arriving Soon - DZ Bus Tracker{% endblock %}
+
+{% block header %}Bus Arriving Soon{% endblock %}
+
+{% block content %}
+<p>Hello {{ user.get_full_name }},</p>
+
+<div class="info-box">
+    <p><strong>Your bus is arriving soon!</strong></p>
+    <p>Bus <strong>{{ eta.bus.matricule }}</strong> on line <strong>{{ eta.line.name }}</strong> will arrive at <strong>{{ eta.stop.name }}</strong> in approximately <strong>{{ minutes_remaining }} minutes</strong>.</p>
+    
+    <p style="margin-top: 15px;"><strong>Estimated arrival time:</strong> {{ eta.estimated_arrival_time|date:"g:i a" }}</p>
+    
+    {% if eta.delay_minutes > 0 %}
+    <p style="color: #ef4444;"><strong>Note:</strong> This bus is running approximately {{ eta.delay_minutes }} minutes late.</p>
+    {% endif %}
+</div>
+
+<div style="text-align: center;">
+    <a href="{{ track_url }}" class="button">Track in Real-Time</a>
+</div>
+
+<p style="font-size: 12px; color: #666;">This is an automated notification based on your notification preferences. You can adjust your notification settings in the app.</p>
+{% endblock %}

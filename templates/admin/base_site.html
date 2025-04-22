@@ -1,0 +1,141 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block title %}{{ title }} | {{ site_title|default:_('DZ Bus Tracker Admin') }}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        <img src="{% static 'img/logo.png' %}" alt="DZ Bus Tracker Logo" height="40" style="margin-right: 10px;">
+        {{ site_header|default:_('DZ Bus Tracker Administration') }}
+    </a>
+</h1>
+{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #3b82f6;
+            --accent: #1e40af;
+            --primary-fg: #fff;
+            --body-bg: #f8fafc;
+            --body-fg: #1e293b;
+            --body-quiet-color: #64748b;
+            --body-loud-color: #0f172a;
+            --link-fg: #2563eb;
+            --link-hover-color: #1d4ed8;
+            --link-selected-fg: #1e40af;
+            --header-color: #fff;
+            --header-branding-color: #fff;
+            --header-bg: #2563eb;
+            --header-link-color: #f8fafc;
+            --breadcrumbs-fg: #64748b;
+            --breadcrumbs-link-fg: #3b82f6;
+            --breadcrumbs-bg: #fff;
+            --selected-bg: #dbeafe;
+            --selected-row: #bfdbfe;
+            --message-success-bg: #ecfdf5;
+            --message-warning-bg: #fffbeb;
+            --message-error-bg: #fef2f2;
+            --darkened-bg: #f1f5f9;
+            --button-bg: #2563eb;
+            --button-hover-bg: #1d4ed8;
+            --default-button-bg: #f1f5f9;
+            --default-button-hover-bg: #e2e8f0;
+            --close-button-bg: #ef4444;
+            --close-button-hover-bg: #dc2626;
+            --border-color: #e2e8f0;
+        }
+        
+        #header {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .module h2, .module caption, .inline-group h2 {
+            background: var(--primary);
+        }
+        
+        div.breadcrumbs {
+            background: var(--breadcrumbs-bg);
+            color: var(--breadcrumbs-fg);
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        div.breadcrumbs a {
+            color: var(--breadcrumbs-link-fg);
+        }
+        
+        div.breadcrumbs a:hover {
+            color: var(--link-hover-color);
+        }
+        
+        .button, input[type=submit], input[type=button], .submit-row input, a.button {
+            border-radius: 4px;
+        }
+        
+        .button.default, input[type=submit].default, .submit-row input.default {
+            background: var(--button-bg);
+        }
+        
+        .button.default:hover, input[type=submit].default:hover, .submit-row input.default:hover {
+            background: var(--button-hover-bg);
+        }
+        
+        .object-tools a {
+            border-radius: 4px;
+        }
+        
+        .dashboard #content {
+            width: 100%;
+        }
+        
+        .app-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .app-list > .app {
+            flex: 1 1 300px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin: 0;
+            padding: 15px;
+        }
+        
+        .app-list > .app > h3 {
+            background: none;
+            color: var(--body-loud-color);
+            font-size: 16px;
+            padding: 0 0 10px 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .app-list > .app table {
+            width: 100%;
+        }
+        
+        #recent-actions-module {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        #recent-actions-module h2 {
+            background: none;
+            color: var(--body-loud-color);
+            font-size: 16px;
+            padding: 0 0 10px 0;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+    </style>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

@@ -1,0 +1,127 @@
+#✅ Django & Core
+
+Django==5.1.8  # High-level Python web framework for rapid development and clean design.
+# https://github.com/django/django
+
+djangorestframework==3.16.0  # Toolkit for building Web APIs in Django.
+# https://github.com/encode/django-rest-framework
+
+django-environ~=0.12.0
+# https://github.com/joke2k/django-environ
+
+django-cors-headers # Adds Cross-Origin Resource Sharing (CORS) headers to Django responses.
+# https://github.com/adamchainz/django-cors-headers
+
+django-filter  # Enables dynamic filtering of querysets in Django REST Framework.
+# https://github.com/carltongibson/django-filter
+
+django-extensions  # Collection of custom extensions for Django, including management commands.
+# https://github.com/django-extensions/django-extensions
+
+#🔐 API & Authentication
+
+djangorestframework-simplejwt==5.5.0  # JSON Web Token authentication plugin for Django REST Framework.
+# https://github.com/jazzband/djangorestframework-simplejwt
+
+dj-rest-auth==7.0.1  # Provides REST API endpoints for Django authentication.
+# https://github.com/iMerica/dj-rest-auth
+
+drf-spectacular~=0.28.0
+# https://github.com/tfranzel/drf-spectacular
+
+django-oauth-toolkit # OAuth2 provider for Django applications.
+# https://github.com/jazzband/django-oauth-toolkit
+
+#🗃️ Database
+
+psycopg[binary]>=3.2.6  # PostgreSQL database adapter for Python.
+# https://github.com/psycopg/psycopg
+
+dj-database-url # Parses database URLs and returns Django database configurations.
+# https://github.com/jazzband/dj-database-url
+
+#⚙️ Caching & Tasks
+
+redis==5.2.1 # Python client for Redis key-value store.
+# https://github.com/redis/redis-py
+
+celery~=5.5.1
+# https://github.com/celery/celery
+
+django-celery-beat # Scheduler for periodic tasks using Django's database.
+# https://github.com/celery/django-celery-beat
+
+django-celery-results  # Stores Celery task results using Django's ORM.
+# https://github.com/celery/django-celery-results
+
+#☁️ Storage
+
+django-storages # Collection of storage backends for Django.
+# https://github.com/jschneier/django-storages
+
+pillow # Python Imaging Library for image processing.
+# https://github.com/python-pillow/Pillow
+
+#🚀 Performance
+
+orjson~=3.10.16
+# https://github.com/ijl/orjson
+
+ormsgpack~=1.9.1
+# https://github.com/aviramha/ormsgpack
+
+django-redis==5.4.0  # Full-featured Redis cache backend for Django.
+# https://github.com/jazzband/django-redis
+
+django-cacheops # ORM cache with automatic invalidation and dog-pile effect protection.
+# https://github.com/Suor/django-cacheops
+
+#🌍 Internationalization
+
+django-modeltranslation==0.18.11  # Translates Django models using a translation framework.
+# https://github.com/deschler/django-modeltranslation
+
+#🗺️ Geo-spatial
+
+geopy~=2.4.1
+# https://github.com/geopy/geopy
+
+folium==0.14.0  # Python library for interactive maps.
+# https://github.com/python-visualization/folium
+
+#🔔 Notifications
+
+firebase-admin==6.4.0  # Firebase Admin SDK for Python.
+# https://github.com/firebase/firebase-admin-python
+
+twilio==8.12.0  # Twilio API client for Python.
+# https://github.com/twilio/twilio-python
+
+#📈 Monitoring & Logging
+
+sentry-sdk~=2.26.1
+# https://github.com/getsentry/sentry-python
+
+django-prometheus # Django exporter for Prometheus monitoring.
+# https://github.com/korfuri/django-prometheus
+
+#djangorestframework-api-tracking==1.4.0  # Tracks API usage for Django REST Framework.
+# https://github.com/aschn/drf-api-tracking
+
+flower==2.0.1 # Web interface for Celery.
+# https://github.com/flower-celery/flower
+
+channels~=4.2.2
+# https://github.com/aaugustin/channel
+
+GDAL==3.8.4 # Geospatial Data Abstraction Library.
+# https://github.com/OSGeo/gdal
+
+argon2-cffi==21.3.0  # Argon2 password hashing algorithm.
+# https://github.com/hynek/argon2_cffi
+
+
+django-phonenumber-field~=8.1.0
+# https://github.com/stefanfoulis/django-phonenumber-field
+django-debug-toolbar~=5.1.0
+kombu~=5.5.2

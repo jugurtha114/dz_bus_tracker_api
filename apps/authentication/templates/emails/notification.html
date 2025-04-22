@@ -1,0 +1,25 @@
+{% extends "emails/base.html" %}
+
+{% block title %}{{ title }} - DZ Bus Tracker{% endblock %}
+
+{% block header %}{{ title }}{% endblock %}
+
+{% block content %}
+<p>Hello {{ notification.user.get_full_name }},</p>
+
+<div class="info-box">
+    <p>{{ message }}</p>
+</div>
+
+{% if notification.is_action_required and notification.action_url %}
+<div style="text-align: center;">
+    <a href="{{ notification.action_url }}" class="button">View Details</a>
+</div>
+{% endif %}
+
+<p>You can view all your notifications in the DZ Bus Tracker app.</p>
+
+{% if notification.expiration_date %}
+<p style="font-size: 12px; color: #666;">This notification will expire on {{ notification.expiration_date|date:"F j, Y, g:i a" }}.</p>
+{% endif %}
+{% endblock %}
