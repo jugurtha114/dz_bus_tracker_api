@@ -1,110 +1,87 @@
-from rest_framework.views import exception_handler
-from rest_framework.exceptions import APIException
+"""
+Custom exceptions for DZ Bus Tracker.
+"""
 from rest_framework import status
+from rest_framework.exceptions import APIException
 from django.utils.translation import gettext_lazy as _
 
 
-class BaseAPIException(APIException):
-    """Base exception for custom API exceptions."""
+class ApplicationError(APIException):
+    """
+    Base exception for application errors.
+    """
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+    default_detail = _("An unexpected error occurred.")
+    default_code = "application_error"
+
+
+class ValidationError(ApplicationError):
+    """
+    Exception for validation errors.
+    """
     status_code = status.HTTP_400_BAD_REQUEST
-    default_detail = _('A server error occurred.')
-    default_code = 'error'
+    default_detail = _("Invalid data provided.")
+    default_code = "validation_error"
 
 
-class ValidationError(BaseAPIException):
-    """Exception raised for validation errors."""
-    status_code = status.HTTP_400_BAD_REQUEST
-    default_detail = _('Invalid input.')
-    default_code = 'invalid'
-
-
-class PermissionDenied(BaseAPIException):
-    """Exception raised for permission errors."""
-    status_code = status.HTTP_403_FORBIDDEN
-    default_detail = _('You do not have permission to perform this action.')
-    default_code = 'permission_denied'
-
-
-class ObjectNotFound(BaseAPIException):
-    """Exception raised for not found errors."""
+class ResourceNotFoundError(ApplicationError):
+    """
+    Exception for resource not found errors.
+    """
     status_code = status.HTTP_404_NOT_FOUND
-    default_detail = _('Object not found.')
-    default_code = 'not_found'
+    default_detail = _("Requested resource not found.")
+    default_code = "resource_not_found"
 
 
-class ServiceUnavailable(BaseAPIException):
-    """Exception raised for service unavailability."""
-    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-    default_detail = _('Service temporarily unavailable.')
-    default_code = 'service_unavailable'
-
-
-class InvalidCredentials(BaseAPIException):
-    """Exception raised for invalid credentials."""
+class AuthenticationError(ApplicationError):
+    """
+    Exception for authentication errors.
+    """
     status_code = status.HTTP_401_UNAUTHORIZED
-    default_detail = _('Invalid credentials.')
-    default_code = 'invalid_credentials'
+    default_detail = _("Authentication failed.")
+    default_code = "authentication_error"
 
 
-class InvalidVerificationStatus(BaseAPIException):
-    """Exception raised for invalid verification status."""
-    status_code = status.HTTP_400_BAD_REQUEST
-    default_detail = _('Invalid verification status.')
-    default_code = 'invalid_verification_status'
+class PermissionDeniedError(ApplicationError):
+    """
+    Exception for permission denied errors.
+    """
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = _("Permission denied.")
+    default_code = "permission_denied"
 
 
-class InvalidTrackingSession(BaseAPIException):
-    """Exception raised for invalid tracking session."""
-    status_code = status.HTTP_400_BAD_REQUEST
-    default_detail = _('Invalid tracking session.')
-    default_code = 'invalid_tracking_session'
+class ServiceUnavailableError(ApplicationError):
+    """
+    Exception for service unavailable errors.
+    """
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = _("Service unavailable.")
+    default_code = "service_unavailable"
 
 
-class InvalidLocationData(BaseAPIException):
-    """Exception raised for invalid location data."""
-    status_code = status.HTTP_400_BAD_REQUEST
-    default_detail = _('Invalid location data.')
-    default_code = 'invalid_location_data'
-
-
-class RateLimitExceeded(BaseAPIException):
-    """Exception raised for rate limit exceeded."""
+class RateLimitExceededError(ApplicationError):
+    """
+    Exception for rate limit exceeded errors.
+    """
     status_code = status.HTTP_429_TOO_MANY_REQUESTS
-    default_detail = _('Rate limit exceeded.')
-    default_code = 'rate_limit_exceeded'
+    default_detail = _("Rate limit exceeded.")
+    default_code = "rate_limit_exceeded"
 
 
-def custom_exception_handler(exc, context):
+class DriverNotApprovedError(ApplicationError):
     """
-    Custom exception handler for API views.
-    
-    Args:
-        exc: The exception
-        context: The exception context
-        
-    Returns:
-        Response object
+    Exception for driver not approved errors.
     """
-    # Call REST framework's default exception handler first
-    response = exception_handler(exc, context)
-    
-    # If response is None, create a default one
-    if response is None:
-        return response
-    
-    # Add more detail to the response
-    if hasattr(exc, 'default_code'):
-        code = exc.default_code
-    elif hasattr(exc, 'code'):
-        code = exc.code
-    else:
-        code = 'error'
-    
-    response.data = {
-        'status': 'error',
-        'code': code,
-        'message': str(exc),
-        'details': response.data if isinstance(response.data, dict) else {'detail': response.data},
-    }
-    
-    return response
+    status_code = status.HTTP_403_FORBIDDEN
+    default_detail = _("Driver not approved.")
+    default_code = "driver_not_approved"
+
+
+class BusTrackingError(ApplicationError):
+    """
+    Exception for bus tracking errors.
+    """
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = _("Bus tracking error.")
+    default_code = "bus_tracking_error"

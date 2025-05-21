@@ -1,279 +1,327 @@
-from django.utils import timezone
+"""
+Service functions for the drivers app.
+"""
+import logging
 from django.db import transaction
-from django.core.cache import cache
+from django.db.models import Avg, F
+from django.utils import timezone
 
-from apps.core.exceptions import ValidationError, ObjectNotFound
-from apps.notifications.services import send_notification
-from .models import Driver, DriverApplication, DriverRating
+from apps.accounts.selectors import get_user_by_id
+from apps.core.constants import DRIVER_STATUS_APPROVED, DRIVER_STATUS_REJECTED
+from apps.core.exceptions import ValidationError
+from apps.core.services import BaseService, create_object, update_object
+from apps.core.utils.cache import cache_driver_rating
 
+from .models import Driver, DriverRating
+from .selectors import get_driver_by_id
 
-def create_driver(user, data):
-    with transaction.atomic():
-        # Create the driver
-        driver = Driver.objects.create(
-            user=user,
-            id_number=data.get('id_number'),
-            id_photo=data.get('id_photo'),
-            license_number=data.get('license_number'),
-            license_photo=data.get('license_photo'),
-            experience_years=data.get('experience_years', 0),
-            date_of_birth=data.get('date_of_birth'),
-            address=data.get('address', ''),
-            emergency_contact=data.get('emergency_contact', ''),
-            notes=data.get('notes', ''),
-            metadata=data.get('metadata', {}),
-        )
-        
-        # Create initial application
-        DriverApplication.objects.create(
-            driver=driver,
-            status='pending',
-            notes=data.get('application_notes', ''),
-            metadata=data.get('application_metadata', {}),
-        )
-        
-        # Notify admin of new driver application
-        notify_admins_new_driver(driver)
-        
-        # Update user type
-        user.user_type = 'driver'
-        user.save(update_fields=['user_type'])
-        
-        return driver
+logger = logging.getLogger(__name__)
 
 
-def update_driver(driver_id, data):
-    try:
-        driver = Driver.objects.get(id=driver_id)
-    except Driver.DoesNotExist:
-        raise ObjectNotFound("Driver not found")
-    
-    # Update fields
-    for field, value in data.items():
-        if hasattr(driver, field):
-            setattr(driver, field, value)
-    
-    driver.save()
-    
-    # Invalidate cache
-    cache_key = f'driver:{driver_id}'
-    cache.delete(cache_key)
-    
-    return driver
+class DriverService(BaseService):
+    """
+    Service for driver-related operations.
+    """
 
+    @classmethod
+    @transaction.atomic
+    def create_driver(cls, user_id, phone_number, id_card_number, id_card_photo,
+                      driver_license_number, driver_license_photo, **kwargs):
+        """
+        Create a new driver.
 
-def verify_driver(application_id, admin_user, status, notes='', rejection_reason=''):
-    try:
-        application = DriverApplication.objects.get(id=application_id)
-    except DriverApplication.DoesNotExist:
-        raise ObjectNotFound("Driver application not found")
-    
-    # Validate status
-    if status not in ['approved', 'rejected']:
-        raise ValidationError("Invalid status")
-    
-    # If rejecting, rejection reason is required
-    if status == 'rejected' and not rejection_reason:
-        raise ValidationError("Rejection reason is required when rejecting an application")
-    
-    # Update the application
-    application.status = status
-    application.reviewed_by = admin_user
-    application.reviewed_at = timezone.now()
-    application.notes = notes
-    application.rejection_reason = rejection_reason
-    application.save()
-    
-    # Notify driver
-    notify_driver_verification(application.driver, status, rejection_reason)
-    
-    return application
+        Args:
+            user_id: ID of the user
+            phone_number: Phone number
+            id_card_number: ID card number
+            id_card_photo: ID card photo
+            driver_license_number: Driver license number
+            driver_license_photo: Driver license photo
+            **kwargs: Additional driver data
 
+        Returns:
+            Created driver
+        """
+        try:
+            # Get user
+            user = get_user_by_id(user_id)
 
-def create_driver_rating(passenger, driver_id, rating_data):
-    try:
-        driver = Driver.objects.get(id=driver_id)
-    except Driver.DoesNotExist:
-        raise ObjectNotFound("Driver not found")
-    
-    # Check if user has already rated this driver for this trip
-    trip = rating_data.get('trip')
-    if trip and DriverRating.objects.filter(
-        driver=driver,
-        passenger=passenger,
-        trip=trip
-    ).exists():
-        raise ValidationError("You have already rated this driver for this trip")
-    
-    # Create the rating
-    rating = DriverRating.objects.create(
-        driver=driver,
-        passenger=passenger,
-        rating=rating_data.get('rating'),
-        comment=rating_data.get('comment', ''),
-        trip=trip,
-        is_anonymous=rating_data.get('is_anonymous', False),
-    )
-    
-    # Notify driver of new rating
-    notify_driver_new_rating(driver, rating)
-    
-    return rating
+            # Validate inputs
+            if not phone_number:
+                raise ValidationError("Phone number is required.")
 
+            if not id_card_number:
+                raise ValidationError("ID card number is required.")
 
-def deactivate_driver(driver_id, reason=''):
-    try:
-        driver = Driver.objects.get(id=driver_id)
-    except Driver.DoesNotExist:
-        raise ObjectNotFound("Driver not found")
-    
-    # Check if driver has active tracking sessions
-    if driver.has_active_tracking:
-        active_session = driver.active_tracking_session
-        if active_session:
-            from apps.tracking.services import end_tracking_session
-            end_tracking_session(active_session.id)
-    
-    # Deactivate driver
-    driver.is_active = False
-    driver.save()
-    
-    # Deactivate user account
-    driver.user.is_active = False
-    driver.user.save()
-    
-    return driver
+            if not id_card_photo:
+                raise ValidationError("ID card photo is required.")
 
+            if not driver_license_number:
+                raise ValidationError("Driver license number is required.")
 
-def reactivate_driver(driver_id):
-    try:
-        driver = Driver.objects.get(id=driver_id)
-    except Driver.DoesNotExist:
-        raise ObjectNotFound("Driver not found")
-    
-    # Reactivate driver
-    driver.is_active = True
-    driver.save()
-    
-    # Reactivate user account
-    driver.user.is_active = True
-    driver.user.save()
-    
-    return driver
+            if not driver_license_photo:
+                raise ValidationError("Driver license photo is required.")
 
-
-def notify_admins_new_driver(driver):
-    from apps.authentication.selectors import get_active_admins
-    
-    admin_users = get_active_admins()
-    
-    for admin in admin_users:
-        send_notification(
-            user=admin,
-            notification_type='system',
-            title='New Driver Application',
-            message=f'A new driver has applied: {driver.full_name} ({driver.id_number})',
-            data={
-                'driver_id': str(driver.id),
-                'action': 'verify_driver'
+            # Create driver
+            driver_data = {
+                "user": user,
+                "phone_number": phone_number,
+                "id_card_number": id_card_number,
+                "id_card_photo": id_card_photo,
+                "driver_license_number": driver_license_number,
+                "driver_license_photo": driver_license_photo,
+                **kwargs
             }
-        )
+
+            driver = create_object(Driver, driver_data)
+
+            # Update user type
+            user.user_type = "driver"
+            user.save(update_fields=["user_type"])
+
+            logger.info(f"Created new driver: {driver.user.email}")
+            return driver
+
+        except Exception as e:
+            logger.error(f"Error creating driver: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def update_driver(cls, driver_id, **data):
+        """
+        Update a driver.
+
+        Args:
+            driver_id: ID of the driver to update
+            **data: Driver data to update
+
+        Returns:
+            Updated driver
+        """
+        driver = get_driver_by_id(driver_id)
+
+        # Don't allow updating these fields directly
+        data.pop("user", None)
+        data.pop("rating", None)
+        data.pop("total_ratings", None)
+
+        try:
+            update_object(driver, data)
+            logger.info(f"Updated driver: {driver.user.email}")
+            return driver
+
+        except Exception as e:
+            logger.error(f"Error updating driver: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def approve_driver(cls, driver_id):
+        """
+        Approve a driver.
+
+        Args:
+            driver_id: ID of the driver to approve
+
+        Returns:
+            Approved driver
+        """
+        driver = get_driver_by_id(driver_id)
+
+        try:
+            driver.status = DRIVER_STATUS_APPROVED
+            driver.status_changed_at = timezone.now()
+            driver.rejection_reason = ""
+            driver.save(update_fields=["status", "status_changed_at", "rejection_reason"])
+
+            logger.info(f"Approved driver: {driver.user.email}")
+
+            # Queue notification
+            from apps.notifications.services import NotificationService
+            NotificationService.create_notification(
+                user_id=driver.user_id,
+                notification_type="driver_approved",
+                title="Driver Application Approved",
+                message="Congratulations! Your driver application has been approved.",
+            )
+
+            return driver
+
+        except Exception as e:
+            logger.error(f"Error approving driver: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def reject_driver(cls, driver_id, rejection_reason):
+        """
+        Reject a driver.
+
+        Args:
+            driver_id: ID of the driver to reject
+            rejection_reason: Reason for rejection
+
+        Returns:
+            Rejected driver
+        """
+        driver = get_driver_by_id(driver_id)
+
+        try:
+            driver.status = DRIVER_STATUS_REJECTED
+            driver.status_changed_at = timezone.now()
+            driver.rejection_reason = rejection_reason
+            driver.save(update_fields=["status", "status_changed_at", "rejection_reason"])
+
+            logger.info(f"Rejected driver: {driver.user.email}")
+
+            # Queue notification
+            from apps.notifications.services import NotificationService
+            NotificationService.create_notification(
+                user_id=driver.user_id,
+                notification_type="driver_rejected",
+                title="Driver Application Rejected",
+                message=f"Unfortunately, your driver application has been rejected. Reason: {rejection_reason}",
+            )
+
+            return driver
+
+        except Exception as e:
+            logger.error(f"Error rejecting driver: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def deactivate_driver(cls, driver_id):
+        """
+        Deactivate a driver.
+
+        Args:
+            driver_id: ID of the driver to deactivate
+
+        Returns:
+            Deactivated driver
+        """
+        driver = get_driver_by_id(driver_id)
+
+        try:
+            driver.is_active = False
+            driver.save(update_fields=["is_active"])
+
+            logger.info(f"Deactivated driver: {driver.user.email}")
+            return driver
+
+        except Exception as e:
+            logger.error(f"Error deactivating driver: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def update_availability(cls, driver_id, is_available):
+        """
+        Update a driver's availability.
+
+        Args:
+            driver_id: ID of the driver to update
+            is_available: Whether the driver is available
+
+        Returns:
+            Updated driver
+        """
+        driver = get_driver_by_id(driver_id)
+
+        try:
+            driver.is_available = is_available
+            driver.save(update_fields=["is_available"])
+
+            logger.info(f"Updated availability for driver: {driver.user.email}")
+            return driver
+
+        except Exception as e:
+            logger.error(f"Error updating driver availability: {e}")
+            raise ValidationError(str(e))
 
 
-def notify_driver_verification(driver, status, rejection_reason=''):
-    if status == 'approved':
-        send_notification(
-            user=driver.user,
-            notification_type='verification',
-            title='Driver Application Approved',
-            message='Your driver application has been approved. You can now add buses and start tracking.',
-            data={
-                'status': status
+class DriverRatingService(BaseService):
+    """
+    Service for driver rating-related operations.
+    """
+
+    @classmethod
+    @transaction.atomic
+    def rate_driver(cls, driver_id, user_id, rating, comment=""):
+        """
+        Rate a driver.
+
+        Args:
+            driver_id: ID of the driver to rate
+            user_id: ID of the user rating the driver
+            rating: Rating (1-5)
+            comment: Optional comment
+
+        Returns:
+            Created DriverRating
+        """
+        try:
+            # Get driver and user
+            driver = get_driver_by_id(driver_id)
+            user = get_user_by_id(user_id)
+
+            # Validate rating
+            if rating < 1 or rating > 5:
+                raise ValidationError("Rating must be between 1 and 5.")
+
+            # Create rating
+            rating_data = {
+                "driver": driver,
+                "user": user,
+                "rating": rating,
+                "comment": comment,
             }
-        )
-    else:
-        send_notification(
-            user=driver.user,
-            notification_type='verification',
-            title='Driver Application Rejected',
-            message=f'Your driver application has been rejected: {rejection_reason}',
-            data={
-                'status': status,
-                'reason': rejection_reason
-            }
-        )
 
+            driver_rating = create_object(DriverRating, rating_data)
 
-def notify_driver_new_rating(driver, rating):
-    if not rating.is_anonymous:
-        passenger_name = rating.passenger.get_full_name()
-    else:
-        passenger_name = "Anonymous"
-    
-    send_notification(
-        user=driver.user,
-        notification_type='system',
-        title='New Rating Received',
-        message=f'You received a {rating.rating}-star rating from {passenger_name}',
-        data={
-            'rating_id': str(rating.id),
-            'rating': rating.rating
-        }
-    )
+            # Update driver's average rating
+            cls.update_driver_rating(driver_id)
 
+            logger.info(f"Rated driver {driver.user.email}: {rating} stars")
+            return driver_rating
 
-def get_driver_stats(driver_id):
-    try:
-        driver = Driver.objects.get(id=driver_id)
-    except Driver.DoesNotExist:
-        raise ObjectNotFound("Driver not found")
-    
-    from django.db.models import Sum, Avg, Count
-    from django.utils import timezone
-    from datetime import timedelta
-    
-    # Get all tracking sessions
-    from apps.tracking.models import TrackingSession
-    sessions = TrackingSession.objects.filter(driver=driver)
-    
-    # Total trips
-    total_trips = sessions.count()
-    
-    # Total distance
-    total_distance = sessions.aggregate(Sum('total_distance'))['total_distance__sum'] or 0
-    
-    # Active since
-    active_since = driver.created_at
-    
-    # Bus count
-    from apps.buses.models import Bus
-    bus_count = Bus.objects.filter(driver=driver).count()
-    
-    # Verified bus count
-    verified_bus_count = Bus.objects.filter(driver=driver, is_verified=True).count()
-    
-    # Average rating
-    average_rating = DriverRating.objects.filter(driver=driver).aggregate(
-        Avg('rating')
-    )['rating__avg'] or 0
-    
-    # Total ratings
-    total_ratings = DriverRating.objects.filter(driver=driver).count()
-    
-    # Completed trips last month
-    last_month = timezone.now() - timedelta(days=30)
-    completed_trips_last_month = sessions.filter(
-        end_time__gte=last_month,
-        status='completed'
-    ).count()
-    
-    return {
-        'total_trips': total_trips,
-        'total_distance': total_distance,
-        'active_since': active_since,
-        'bus_count': bus_count,
-        'verified_bus_count': verified_bus_count,
-        'average_rating': average_rating,
-        'total_ratings': total_ratings,
-        'completed_trips_last_month': completed_trips_last_month
-    }
+        except Exception as e:
+            logger.error(f"Error rating driver: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def update_driver_rating(cls, driver_id):
+        """
+        Update a driver's average rating.
+
+        Args:
+            driver_id: ID of the driver to update rating for
+
+        Returns:
+            Updated driver
+        """
+        driver = get_driver_by_id(driver_id)
+
+        try:
+            # Calculate new average rating
+            ratings = DriverRating.objects.filter(driver_id=driver_id)
+            total_ratings = ratings.count()
+
+            if total_ratings > 0:
+                avg_rating = ratings.aggregate(Avg('rating'))['rating__avg']
+                driver.rating = avg_rating
+                driver.total_ratings = total_ratings
+                driver.save(update_fields=["rating", "total_ratings"])
+
+                # Update cache
+                cache_driver_rating(driver_id, float(avg_rating))
+
+            logger.info(f"Updated rating for driver: {driver.user.email}")
+            return driver
+
+        except Exception as e:
+            logger.error(f"Error updating driver rating: {e}")
+            raise ValidationError(str(e))

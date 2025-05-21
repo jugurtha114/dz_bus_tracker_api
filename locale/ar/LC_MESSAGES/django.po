@@ -1,0 +1,305 @@
+# Arabic translations for DZ Bus Tracker.
+# Copyright (C) 2023 DZ Bus Tracker
+# This file is distributed under the same license as the DZ Bus Tracker package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: DZ Bus Tracker 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-01 12:00+0100\n"
+"PO-Revision-Date: 2024-01-01 12:00+0100\n"
+"Last-Translator: \n"
+"Language-Team: Arabic\n"
+"Language: ar\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=6; plural=n==0 ? 0 : n==1 ? 1 : n==2 ? 2 : n%100>=3 && n%100<=10 ? 3 : n%100>=11 && n%100<=99 ? 4 : 5;\n"
+
+#: apps/accounts/models.py:24
+msgid "email address"
+msgstr "عنوان البريد الإلكتروني"
+
+#: apps/accounts/models.py:26
+msgid "A user with that email already exists."
+msgstr "يوجد مستخدم بهذا البريد الإلكتروني بالفعل."
+
+#: apps/accounts/models.py:28
+msgid "first name"
+msgstr "الاسم الأول"
+
+#: apps/accounts/models.py:29
+msgid "last name"
+msgstr "اسم العائلة"
+
+#: apps/accounts/models.py:31
+msgid "phone number"
+msgstr "رقم الهاتف"
+
+#: apps/accounts/models.py:35
+msgid "active"
+msgstr "نشط"
+
+#: apps/accounts/models.py:37
+msgid ""
+"Designates whether this user should be treated as active. "
+"Unselect this instead of deleting accounts."
+msgstr ""
+"يشير إلى ما إذا كان يجب اعتبار هذا المستخدم نشطًا. "
+"قم بإلغاء تحديد هذا بدلاً من حذف الحسابات."
+
+#: apps/accounts/models.py:41
+msgid "staff status"
+msgstr "حالة الموظف"
+
+#: apps/accounts/models.py:43
+msgid "Designates whether the user can log into this admin site."
+msgstr "يشير إلى ما إذا كان المستخدم يمكنه تسجيل الدخول إلى موقع المسؤول هذا."
+
+#: apps/accounts/models.py:45
+msgid "date joined"
+msgstr "تاريخ الانضمام"
+
+#: apps/accounts/models.py:47
+msgid "user type"
+msgstr "نوع المستخدم"
+
+#: apps/accounts/models.py:57
+msgid "user"
+msgstr "المستخدم"
+
+#: apps/accounts/models.py:58
+msgid "users"
+msgstr "المستخدمون"
+
+#: apps/accounts/models.py:88
+msgid "avatar"
+msgstr "الصورة الشخصية"
+
+#: apps/accounts/models.py:92
+msgid "bio"
+msgstr "نبذة"
+
+#: apps/accounts/models.py:94
+msgid "language"
+msgstr "اللغة"
+
+#: apps/accounts/models.py:99
+msgid "push notifications enabled"
+msgstr "إشعارات الدفع مفعلة"
+
+#: apps/accounts/models.py:103
+msgid "email notifications enabled"
+msgstr "إشعارات البريد الإلكتروني مفعلة"
+
+#: apps/accounts/models.py:107
+msgid "SMS notifications enabled"
+msgstr "إشعارات الرسائل القصيرة مفعلة"
+
+#: apps/accounts/models.py:111
+msgid "profile"
+msgstr "الملف الشخصي"
+
+#: apps/accounts/models.py:112
+msgid "profiles"
+msgstr "الملفات الشخصية"
+
+#: apps/buses/models.py:16
+msgid "license plate"
+msgstr "لوحة الترخيص"
+
+#: apps/buses/models.py:21
+msgid "driver"
+msgstr "السائق"
+
+#: apps/buses/models.py:23
+msgid "model"
+msgstr "الطراز"
+
+#: apps/buses/models.py:24
+msgid "manufacturer"
+msgstr "الشركة المصنعة"
+
+#: apps/buses/models.py:25
+msgid "year"
+msgstr "السنة"
+
+#: apps/buses/models.py:27
+msgid "capacity"
+msgstr "السعة"
+
+#: apps/buses/models.py:28
+msgid "Maximum number of passengers"
+msgstr "الحد الأقصى لعدد الركاب"
+
+#: apps/buses/models.py:31
+msgid "status"
+msgstr "الحالة"
+
+#: apps/buses/models.py:36
+msgid "air conditioned"
+msgstr "مكيف الهواء"
+
+#: apps/buses/models.py:39
+msgid "photo"
+msgstr "صورة"
+
+#: apps/buses/models.py:44
+msgid "features"
+msgstr "الميزات"
+
+#: apps/buses/models.py:45
+msgid "Additional features of the bus"
+msgstr "ميزات إضافية للحافلة"
+
+#: apps/buses/models.py:47
+msgid "description"
+msgstr "الوصف"
+
+#: apps/buses/models.py:49
+msgid "approved"
+msgstr "معتمد"
+
+#: apps/buses/models.py:52
+msgid "bus"
+msgstr "حافلة"
+
+#: apps/buses/models.py:53
+msgid "buses"
+msgstr "حافلات"
+
+#: apps/buses/models.py:66
+msgid "bus location"
+msgstr "موقع الحافلة"
+
+#: apps/buses/models.py:67
+msgid "bus locations"
+msgstr "مواقع الحافلات"
+
+#: apps/core/constants.py:10
+msgid "French"
+msgstr "الفرنسية"
+
+#: apps/core/constants.py:11
+msgid "Arabic"
+msgstr "العربية"
+
+#: apps/core/constants.py:12
+msgid "English"
+msgstr "الإنجليزية"
+
+#: apps/core/constants.py:21
+msgid "Admin"
+msgstr "المسؤول"
+
+#: apps/core/constants.py:22
+msgid "Driver"
+msgstr "السائق"
+
+#: apps/core/constants.py:23
+msgid "Passenger"
+msgstr "الراكب"
+
+#: apps/drivers/models.py:31
+msgid "ID card number"
+msgstr "رقم بطاقة الهوية"
+
+#: apps/drivers/models.py:35
+msgid "ID card photo"
+msgstr "صورة بطاقة الهوية"
+
+#: apps/drivers/models.py:38
+msgid "driver license number"
+msgstr "رقم رخصة القيادة"
+
+#: apps/drivers/models.py:42
+msgid "driver license photo"
+msgstr "صورة رخصة القيادة"
+
+#: apps/drivers/models.py:49
+msgid "status changed at"
+msgstr "تغيرت الحالة في"
+
+#: apps/drivers/models.py:52
+msgid "rejection reason"
+msgstr "سبب الرفض"
+
+#: apps/drivers/models.py:55
+msgid "years of experience"
+msgstr "سنوات الخبرة"
+
+#: apps/drivers/models.py:59
+msgid "available"
+msgstr "متاح"
+
+#: apps/drivers/models.py:62
+msgid "rating"
+msgstr "التقييم"
+
+#: apps/drivers/models.py:68
+msgid "total ratings"
+msgstr "مجموع التقييمات"
+
+#: apps/lines/models.py:13
+msgid "name"
+msgstr "الاسم"
+
+#: apps/lines/models.py:15
+msgid "latitude"
+msgstr "خط العرض"
+
+#: apps/lines/models.py:20
+msgid "longitude"
+msgstr "خط الطول"
+
+#: apps/lines/models.py:25
+msgid "address"
+msgstr "العنوان"
+
+#: apps/notifications/models.py:29
+msgid "device token"
+msgstr "رمز الجهاز"
+
+#: apps/notifications/models.py:30
+msgid "device tokens"
+msgstr "رموز الأجهزة"
+
+#: apps/notifications/models.py:56
+msgid "notification type"
+msgstr "نوع الإشعار"
+
+#: apps/notifications/models.py:59
+msgid "title"
+msgstr "العنوان"
+
+#: apps/notifications/models.py:60
+msgid "message"
+msgstr "الرسالة"
+
+#: apps/notifications/models.py:65
+msgid "channel"
+msgstr "القناة"
+
+#: apps/notifications/models.py:69
+msgid "read"
+msgstr "مقروء"
+
+#: apps/notifications/models.py:70
+msgid "read at"
+msgstr "تمت القراءة في"
+
+#: apps/notifications/models.py:74
+msgid "data"
+msgstr "البيانات"
+
+#: apps/notifications/models.py:75
+msgid "Additional data for the notification"
+msgstr "بيانات إضافية للإشعار"
+
+#: apps/notifications/models.py:78
+msgid "notification"
+msgstr "إشعار"
+
+#: apps/notifications/models.py:79
+msgid "notifications"
+msgstr "إشعارات"

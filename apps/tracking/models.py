@@ -1,316 +1,417 @@
+"""
+Models for the tracking app.
+"""
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.utils import timezone
 
-from apps.core.base.models import BaseModel, TimeStampedModel, UUIDModel, GeoPointModel
-from apps.core.constants import TRACKING_STATUSES, TRACKING_STATUS_ACTIVE
+from apps.buses.models import Bus
+from apps.core.constants import (
+    BUS_TRACKING_STATUS_CHOICES,
+    BUS_TRACKING_STATUS_IDLE,
+)
+from apps.core.models import BaseModel
+from apps.drivers.models import Driver
+from apps.lines.models import Line, Stop
 
 
-class TrackingSession(BaseModel):
+class BusLine(BaseModel):
     """
-    Model for tracking sessions.
+    Model for bus-line assignments.
     """
-    driver = models.ForeignKey(
-        'drivers.Driver',
-        on_delete=models.CASCADE,
-        related_name='tracking_sessions',
-        verbose_name=_('driver'),
-    )
-    
     bus = models.ForeignKey(
-        'buses.Bus',
+        Bus,
         on_delete=models.CASCADE,
-        related_name='tracking_sessions',
-        verbose_name=_('bus'),
+        related_name="lines",
+        verbose_name=_("bus"),
     )
-    
     line = models.ForeignKey(
-        'lines.Line',
+        Line,
         on_delete=models.CASCADE,
-        related_name='tracking_sessions',
-        verbose_name=_('line'),
+        related_name="buses",
+        verbose_name=_("line"),
     )
-    
-    schedule = models.ForeignKey(
-        'schedules.Schedule',
-        on_delete=models.SET_NULL,
-        related_name='tracking_sessions',
-        verbose_name=_('schedule'),
-        null=True,
-        blank=True,
-    )
-    
-    start_time = models.DateTimeField(
-        _('start time'),
-        default=timezone.now,
-    )
-    
-    end_time = models.DateTimeField(
-        _('end time'),
-        null=True,
-        blank=True,
-    )
-    
-    status = models.CharField(
-        _('status'),
+    is_active = models.BooleanField(_("active"), default=True)
+    tracking_status = models.CharField(
+        _("tracking status"),
         max_length=20,
-        choices=TRACKING_STATUSES,
-        default=TRACKING_STATUS_ACTIVE,
+        choices=BUS_TRACKING_STATUS_CHOICES,
+        default=BUS_TRACKING_STATUS_IDLE,
     )
-    
-    last_update = models.DateTimeField(
-        _('last update'),
+    trip_id = models.UUIDField(
+        _("trip ID"),
+        null=True,
+        blank=True,
+        help_text=_("ID of the current trip"),
+    )
+    start_time = models.DateTimeField(
+        _("start time"),
         null=True,
         blank=True,
     )
-    
-    total_distance = models.FloatField(
-        _('total distance (meters)'),
-        default=0,
-    )
-    
-    metadata = models.JSONField(
-        _('metadata'),
-        default=dict,
+    end_time = models.DateTimeField(
+        _("end time"),
+        null=True,
         blank=True,
     )
-    
+
     class Meta:
-        verbose_name = _('tracking session')
-        verbose_name_plural = _('tracking sessions')
-        ordering = ['-start_time']
-        indexes = [
-            models.Index(fields=['driver']),
-            models.Index(fields=['bus']),
-            models.Index(fields=['line']),
-            models.Index(fields=['status']),
-            models.Index(fields=['start_time']),
-        ]
-    
+        verbose_name = _("bus line")
+        verbose_name_plural = _("bus lines")
+        ordering = ["-created_at"]
+        unique_together = [["bus", "line"]]
+
     def __str__(self):
-        return f"Session {self.id} - {self.bus} on {self.line}"
-    
-    @property
-    def duration(self):
-        """
-        Get the duration of the tracking session.
-        """
-        if self.end_time:
-            return self.end_time - self.start_time
-        
-        return timezone.now() - self.start_time
-    
-    @property
-    def is_active(self):
-        """
-        Check if the tracking session is active.
-        """
-        return self.status == TRACKING_STATUS_ACTIVE
-    
-    def end_session(self):
-        """
-        End the tracking session.
-        """
-        if not self.end_time:
-            self.end_time = timezone.now()
-            self.status = 'completed'
-            self.save(update_fields=['end_time', 'status'])
+        return f"{self.bus} on {self.line}"
 
 
-class LocationUpdate(TimeStampedModel, UUIDModel, GeoPointModel):
+class LocationUpdate(BaseModel):
     """
-    Model for location updates.
+    Model for bus location updates.
     """
-    session = models.ForeignKey(
-        'TrackingSession',
-        on_delete=models.CASCADE,
-        related_name='location_updates',
-        verbose_name=_('session'),
-    )
-    
-    timestamp = models.DateTimeField(
-        _('timestamp'),
-        default=timezone.now,
-        db_index=True,
-    )
-    
-    speed = models.FloatField(
-        _('speed (m/s)'),
-        null=True,
-        blank=True,
-    )
-    
-    heading = models.FloatField(
-        _('heading (degrees)'),
-        null=True,
-        blank=True,
-    )
-    
-    altitude = models.FloatField(
-        _('altitude (meters)'),
-        null=True,
-        blank=True,
-    )
-    
-    distance_from_last = models.FloatField(
-        _('distance from last update (meters)'),
-        null=True,
-        blank=True,
-    )
-    
-    metadata = models.JSONField(
-        _('metadata'),
-        default=dict,
-        blank=True,
-    )
-    
-    class Meta:
-        verbose_name = _('location update')
-        verbose_name_plural = _('location updates')
-        ordering = ['-timestamp']
-        indexes = [
-            models.Index(fields=['session', 'timestamp']),
-            models.Index(fields=['timestamp']),
-        ]
-    
-    def __str__(self):
-        return f"Location update at {self.timestamp}"
-    
-    def save(self, *args, **kwargs):
-        """
-        Override save method to update the tracking session.
-        """
-        # If this is a new object (no ID yet)
-        if not self.pk:
-            # Update the session's last_update
-            self.session.last_update = self.timestamp
-            self.session.save(update_fields=['last_update'])
-            
-            # Calculate distance from previous update if not provided
-            if self.distance_from_last is None:
-                previous_update = LocationUpdate.objects.filter(
-                    session=self.session
-                ).order_by('-timestamp').first()
-                
-                if previous_update:
-                    from utils.geo import calculate_distance
-                    self.distance_from_last = calculate_distance(
-                        previous_update.coordinates,
-                        self.coordinates
-                    )
-                    
-                    # Update session's total distance
-                    self.session.total_distance += self.distance_from_last
-                    self.session.save(update_fields=['total_distance'])
-        
-        super().save(*args, **kwargs)
-
-
-class TrackingLog(BaseModel):
-    """
-    Model for tracking logs.
-    """
-    session = models.ForeignKey(
-        'TrackingSession',
-        on_delete=models.CASCADE,
-        related_name='logs',
-        verbose_name=_('session'),
-    )
-    
-    event_type = models.CharField(
-        _('event type'),
-        max_length=50,
-    )
-    
-    timestamp = models.DateTimeField(
-        _('timestamp'),
-        default=timezone.now,
-    )
-    
-    message = models.TextField(
-        _('message'),
-        blank=True,
-    )
-    
-    data = models.JSONField(
-        _('data'),
-        default=dict,
-        blank=True,
-    )
-    
-    class Meta:
-        verbose_name = _('tracking log')
-        verbose_name_plural = _('tracking logs')
-        ordering = ['-timestamp']
-    
-    def __str__(self):
-        return f"{self.event_type} at {self.timestamp}"
-
-
-class OfflineLocationBatch(BaseModel):
-    """
-    Model for storing batched location updates that were collected offline.
-    """
-    driver = models.ForeignKey(
-        'drivers.Driver',
-        on_delete=models.CASCADE,
-        related_name='offline_batches',
-        verbose_name=_('driver'),
-    )
-    
     bus = models.ForeignKey(
-        'buses.Bus',
+        Bus,
         on_delete=models.CASCADE,
-        related_name='offline_batches',
-        verbose_name=_('bus'),
+        related_name="location_updates",
+        verbose_name=_("bus"),
     )
-    
-    line = models.ForeignKey(
-        'lines.Line',
-        on_delete=models.CASCADE,
-        related_name='offline_batches',
-        verbose_name=_('line'),
+    latitude = models.DecimalField(
+        _("latitude"),
+        max_digits=10,
+        decimal_places=7,
     )
-    
-    collected_at = models.DateTimeField(
-        _('collected at'),
-        default=timezone.now,
+    longitude = models.DecimalField(
+        _("longitude"),
+        max_digits=10,
+        decimal_places=7,
     )
-    
-    processed = models.BooleanField(
-        _('processed'),
-        default=False,
-    )
-    
-    processed_at = models.DateTimeField(
-        _('processed at'),
+    altitude = models.DecimalField(
+        _("altitude"),
+        max_digits=10,
+        decimal_places=2,
         null=True,
         blank=True,
     )
-    
-    data = models.JSONField(
-        _('location data'),
-        default=list,
+    speed = models.DecimalField(
+        _("speed"),
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Speed in km/h"),
     )
-    
+    heading = models.DecimalField(
+        _("heading"),
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Heading in degrees (0-360)"),
+    )
+    accuracy = models.DecimalField(
+        _("accuracy"),
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Accuracy in meters"),
+    )
+    trip_id = models.UUIDField(
+        _("trip ID"),
+        null=True,
+        blank=True,
+        help_text=_("ID of the current trip"),
+    )
+    nearest_stop = models.ForeignKey(
+        Stop,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="location_updates",
+        verbose_name=_("nearest stop"),
+    )
+    distance_to_stop = models.DecimalField(
+        _("distance to stop"),
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Distance to nearest stop in meters"),
+    )
+    line = models.ForeignKey(
+        Line,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="location_updates",
+        verbose_name=_("line"),
+    )
+
     class Meta:
-        verbose_name = _('offline location batch')
-        verbose_name_plural = _('offline location batches')
-        ordering = ['-collected_at']
-    
+        verbose_name = _("location update")
+        verbose_name_plural = _("location updates")
+        ordering = ["-created_at"]
+        get_latest_by = "created_at"
+        indexes = [
+            models.Index(fields=["bus", "-created_at"]),
+            models.Index(fields=["line", "-created_at"]),
+            models.Index(fields=["trip_id"]),
+        ]
+
     def __str__(self):
-        return f"Batch {self.id} - {self.driver} at {self.collected_at}"
-    
-    def process(self):
-        """
-        Process the batch by creating location updates.
-        """
-        from .services import process_offline_batch
-        processed = process_offline_batch(self)
-        
-        if processed:
-            self.processed = True
-            self.processed_at = timezone.now()
-            self.save(update_fields=['processed', 'processed_at'])
-        
-        return processed
+        return f"{self.bus} at {self.created_at}"
+
+
+class PassengerCount(BaseModel):
+    """
+    Model for passenger count updates.
+    """
+    bus = models.ForeignKey(
+        Bus,
+        on_delete=models.CASCADE,
+        related_name="passenger_counts",
+        verbose_name=_("bus"),
+    )
+    count = models.PositiveSmallIntegerField(_("count"))
+    capacity = models.PositiveSmallIntegerField(
+        _("capacity"),
+        help_text=_("Total capacity of the bus"),
+    )
+    occupancy_rate = models.DecimalField(
+        _("occupancy rate"),
+        max_digits=5,
+        decimal_places=2,
+        help_text=_("Occupancy rate (0-1)"),
+        validators=[MinValueValidator(0), MaxValueValidator(1)],
+    )
+    trip_id = models.UUIDField(
+        _("trip ID"),
+        null=True,
+        blank=True,
+        help_text=_("ID of the current trip"),
+    )
+    stop = models.ForeignKey(
+        Stop,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="passenger_counts",
+        verbose_name=_("stop"),
+        help_text=_("Stop where the count was recorded"),
+    )
+    line = models.ForeignKey(
+        Line,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="passenger_counts",
+        verbose_name=_("line"),
+    )
+
+    class Meta:
+        verbose_name = _("passenger count")
+        verbose_name_plural = _("passenger counts")
+        ordering = ["-created_at"]
+        get_latest_by = "created_at"
+        indexes = [
+            models.Index(fields=["bus", "-created_at"]),
+            models.Index(fields=["line", "-created_at"]),
+            models.Index(fields=["trip_id"]),
+        ]
+
+    def __str__(self):
+        return f"{self.bus}: {self.count} passengers at {self.created_at}"
+
+
+class WaitingPassengers(BaseModel):
+    """
+    Model for waiting passengers at a stop.
+    """
+    stop = models.ForeignKey(
+        Stop,
+        on_delete=models.CASCADE,
+        related_name="waiting_passengers",
+        verbose_name=_("stop"),
+    )
+    line = models.ForeignKey(
+        Line,
+        on_delete=models.CASCADE,
+        related_name="waiting_passengers",
+        verbose_name=_("line"),
+        null=True,
+        blank=True,
+    )
+    count = models.PositiveSmallIntegerField(_("count"))
+    reported_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reported_waiting",
+        verbose_name=_("reported by"),
+    )
+
+    class Meta:
+        verbose_name = _("waiting passengers")
+        verbose_name_plural = _("waiting passengers")
+        ordering = ["-created_at"]
+        get_latest_by = "created_at"
+
+    def __str__(self):
+        return f"{self.stop}: {self.count} waiting at {self.created_at}"
+
+
+class Trip(BaseModel):
+    """
+    Model for bus trips.
+    """
+    bus = models.ForeignKey(
+        Bus,
+        on_delete=models.CASCADE,
+        related_name="trips",
+        verbose_name=_("bus"),
+    )
+    driver = models.ForeignKey(
+        Driver,
+        on_delete=models.CASCADE,
+        related_name="trips",
+        verbose_name=_("driver"),
+    )
+    line = models.ForeignKey(
+        Line,
+        on_delete=models.CASCADE,
+        related_name="trips",
+        verbose_name=_("line"),
+    )
+    start_time = models.DateTimeField(_("start time"))
+    end_time = models.DateTimeField(
+        _("end time"),
+        null=True,
+        blank=True,
+    )
+    start_stop = models.ForeignKey(
+        Stop,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="trip_starts",
+        verbose_name=_("start stop"),
+    )
+    end_stop = models.ForeignKey(
+        Stop,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="trip_ends",
+        verbose_name=_("end stop"),
+    )
+    is_completed = models.BooleanField(_("completed"), default=False)
+    distance = models.DecimalField(
+        _("distance"),
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Distance traveled in km"),
+    )
+    average_speed = models.DecimalField(
+        _("average speed"),
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Average speed in km/h"),
+    )
+    max_passengers = models.PositiveSmallIntegerField(
+        _("max passengers"),
+        default=0,
+        help_text=_("Maximum number of passengers during the trip"),
+    )
+    total_stops = models.PositiveSmallIntegerField(
+        _("total stops"),
+        default=0,
+        help_text=_("Total number of stops made"),
+    )
+    notes = models.TextField(_("notes"), blank=True)
+
+    class Meta:
+        verbose_name = _("trip")
+        verbose_name_plural = _("trips")
+        ordering = ["-start_time"]
+        indexes = [
+            models.Index(fields=["bus", "-start_time"]),
+            models.Index(fields=["driver", "-start_time"]),
+            models.Index(fields=["line", "-start_time"]),
+        ]
+
+    def __str__(self):
+        return f"{self.bus} on {self.line} at {self.start_time}"
+
+
+class Anomaly(BaseModel):
+    """
+    Model for tracking anomalies.
+    """
+    bus = models.ForeignKey(
+        Bus,
+        on_delete=models.CASCADE,
+        related_name="anomalies",
+        verbose_name=_("bus"),
+    )
+    trip = models.ForeignKey(
+        Trip,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="anomalies",
+        verbose_name=_("trip"),
+    )
+    type = models.CharField(
+        _("type"),
+        max_length=50,
+        choices=[
+            ("speed", _("Speed anomaly")),
+            ("route", _("Route deviation")),
+            ("schedule", _("Schedule deviation")),
+            ("passengers", _("Unusual passenger count")),
+            ("gap", _("Service gap")),
+            ("bunching", _("Bus bunching")),
+            ("other", _("Other")),
+        ],
+    )
+    description = models.TextField(_("description"))
+    severity = models.CharField(
+        _("severity"),
+        max_length=20,
+        choices=[
+            ("low", _("Low")),
+            ("medium", _("Medium")),
+            ("high", _("High")),
+        ],
+        default="medium",
+    )
+    location_latitude = models.DecimalField(
+        _("latitude"),
+        max_digits=10,
+        decimal_places=7,
+        null=True,
+        blank=True,
+    )
+    location_longitude = models.DecimalField(
+        _("longitude"),
+        max_digits=10,
+        decimal_places=7,
+        null=True,
+        blank=True,
+    )
+    resolved = models.BooleanField(_("resolved"), default=False)
+    resolved_at = models.DateTimeField(_("resolved at"), null=True, blank=True)
+    resolution_notes = models.TextField(_("resolution notes"), blank=True)
+
+    class Meta:
+        verbose_name = _("anomaly")
+        verbose_name_plural = _("anomalies")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.type} anomaly for {self.bus} at {self.created_at}"

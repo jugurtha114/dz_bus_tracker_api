@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Black">
-    <option name="sdkName" value="Python 3.12 (dz_bus_tracker)" />
-  </component>
-  <component name="PythonCompatibilityInspectionAdvertiser">
-    <option name="version" value="3" />
+    <option name="sdkName" value="Python 3.12 (dz_bus_tracker_v2)" />
   </component>
 </project>

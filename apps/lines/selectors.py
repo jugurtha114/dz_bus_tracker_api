@@ -1,228 +1,353 @@
-from django.db.models import Q, Count, Prefetch
-from django.core.cache import cache
+"""
+Selector functions for the lines app.
+"""
+from django.db.models import Count, F, Q
+import logging
 
-from apps.core.constants import CACHE_KEY_LINE_STOPS
-from utils.cache import cached_result
-from .models import Line, Stop, LineStop, LineBus, Favorite
+from apps.core.selectors import get_object_or_404
+from apps.core.utils.geo import calculate_distance
+
+from .models import Line, LineStop, Schedule, Stop
+
+logger = logging.getLogger(__name__)
 
 
-@cached_result('line', timeout=60)
 def get_line_by_id(line_id):
-    try:
-        return Line.objects.select_related(
-            'start_location', 'end_location'
-        ).prefetch_related(
-            'line_stops', 'line_buses'
-        ).get(id=line_id)
-    except Line.DoesNotExist:
-        return None
+    """
+    Get a line by ID.
+
+    Args:
+        line_id: ID of the line
+
+    Returns:
+        Line object
+    """
+    return get_object_or_404(Line, id=line_id)
 
 
-def get_line_by_name(name):
-    try:
-        return Line.objects.select_related(
-            'start_location', 'end_location'
-        ).get(name=name)
-    except Line.DoesNotExist:
-        return None
+def get_line_by_code(code):
+    """
+    Get a line by code.
 
+    Args:
+        code: Code of the line
 
-def get_active_lines():
-    return Line.objects.filter(
-        is_active=True
-    ).select_related(
-        'start_location', 'end_location'
-    ).annotate(
-        stops_count=Count('line_stops', distinct=True),
-        active_buses_count=Count(
-            'tracking_sessions',
-            filter=Q(tracking_sessions__status='active', tracking_sessions__is_active=True),
-            distinct=True
-        )
-    )
-
-
-def get_lines_with_active_buses():
-    from apps.tracking.models import TrackingSession
-    
-    # Get lines that have active tracking sessions
-    active_sessions = TrackingSession.objects.filter(
-        status='active',
-        is_active=True
-    ).values_list('line_id', flat=True)
-    
-    return Line.objects.filter(
-        id__in=active_sessions,
-        is_active=True
-    ).select_related(
-        'start_location', 'end_location'
-    ).annotate(
-        active_buses_count=Count(
-            'tracking_sessions',
-            filter=Q(tracking_sessions__status='active', tracking_sessions__is_active=True),
-            distinct=True
-        )
-    )
-
-
-@cached_result('line_stops', timeout=300)
-def get_line_stops(line_id):
-    return LineStop.objects.filter(
-        line_id=line_id,
-        is_active=True
-    ).select_related(
-        'stop'
-    ).order_by('order')
-
-
-def get_favorites_for_user(user):
-    return Favorite.objects.filter(
-        user=user,
-        is_active=True
-    ).select_related(
-        'line', 'line__start_location', 'line__end_location'
-    )
-
-
-def is_line_favorited(user, line_id):
-    return Favorite.objects.filter(
-        user=user,
-        line_id=line_id,
-        is_active=True
-    ).exists()
+    Returns:
+        Line object
+    """
+    return get_object_or_404(Line, code=code)
 
 
 def get_stop_by_id(stop_id):
+    """
+    Get a stop by ID.
+
+    Args:
+        stop_id: ID of the stop
+
+    Returns:
+        Stop object
+    """
+    return get_object_or_404(Stop, id=stop_id)
+
+
+def get_stops_by_line(line_id):
+    """
+    Get stops for a line in order.
+
+    Args:
+        line_id: ID of the line
+
+    Returns:
+        Queryset of stops
+    """
+    line_stops = LineStop.objects.filter(line_id=line_id).order_by('order')
+    return Stop.objects.filter(id__in=line_stops.values_list('stop_id', flat=True))
+
+
+def get_line_stop(line_id, stop_id):
+    """
+    Get a line-stop relationship.
+
+    Args:
+        line_id: ID of the line
+        stop_id: ID of the stop
+
+    Returns:
+        LineStop object
+    """
+    return get_object_or_404(LineStop, line_id=line_id, stop_id=stop_id)
+
+
+def get_lines_by_stop(stop_id):
+    """
+    Get lines that pass through a stop.
+
+    Args:
+        stop_id: ID of the stop
+
+    Returns:
+        Queryset of lines
+    """
+    line_ids = LineStop.objects.filter(stop_id=stop_id).values_list('line_id', flat=True)
+    return Line.objects.filter(id__in=line_ids, is_active=True)
+
+
+def get_active_lines():
+    """
+    Get all active lines.
+
+    Returns:
+        Queryset of active lines
+    """
+    return Line.objects.filter(is_active=True)
+
+
+def get_active_stops():
+    """
+    Get all active stops.
+
+    Returns:
+        Queryset of active stops
+    """
+    return Stop.objects.filter(is_active=True)
+
+
+def get_nearby_stops(latitude, longitude, radius_km=0.5):
+    """
+    Get stops near a location.
+
+    Args:
+        latitude: Latitude of the location
+        longitude: Longitude of the location
+        radius_km: Radius in kilometers
+
+    Returns:
+        Queryset of nearby stops
+    """
     try:
-        return Stop.objects.get(id=stop_id)
-    except Stop.DoesNotExist:
-        return None
+        # This is a simplified approach without spatial database
+        # In production, you would use PostGIS for better performance
 
+        # Convert latitude/longitude to float
+        lat = float(latitude)
+        lon = float(longitude)
 
-def get_stop_by_code(code):
-    try:
-        return Stop.objects.get(code=code)
-    except Stop.DoesNotExist:
-        return None
+        # Get all active stops
+        stops = Stop.objects.filter(is_active=True)
 
+        # Filter stops by distance (naive approach)
+        nearby_stops = []
+        for stop in stops:
+            distance = calculate_distance(
+                lat, lon, float(stop.latitude), float(stop.longitude)
+            )
+            if distance is not None and distance <= radius_km:
+                stop.distance = distance
+                nearby_stops.append(stop)
 
-def get_nearest_stops(latitude, longitude, radius=1000, limit=5):
-    from django.db.models.functions import ACos, Cos, Sin, Radians
-    from django.db.models.expressions import F, Value
-    
-    # Convert latitude and longitude to radians
-    lat_rad = float(latitude) * 3.14159 / 180
-    lon_rad = float(longitude) * 3.14159 / 180
-    
-    # Calculate distance using Haversine formula
-    stops = Stop.objects.annotate(
-        distance=6371000 * ACos(
-            Cos(Value(lat_rad)) * Cos(Radians(F('latitude'))) * Cos(Radians(F('longitude')) - Value(lon_rad)) +
-            Sin(Value(lat_rad)) * Sin(Radians(F('latitude')))
-        )
-    ).filter(
-        is_active=True,
-        distance__lte=radius
-    ).order_by('distance')[:limit]
-    
-    return stops
+        # Sort by distance
+        nearby_stops.sort(key=lambda x: x.distance)
 
+        return nearby_stops
 
-def get_lines_for_stop(stop_id):
-    return Line.objects.filter(
-        line_stops__stop_id=stop_id,
-        is_active=True
-    ).select_related(
-        'start_location', 'end_location'
-    ).annotate(
-        stops_count=Count('line_stops', distinct=True),
-        active_buses_count=Count(
-            'tracking_sessions',
-            filter=Q(tracking_sessions__status='active', tracking_sessions__is_active=True),
-            distinct=True
-        )
-    )
-
-
-def get_buses_for_line(line_id):
-    return LineBus.objects.filter(
-        line_id=line_id,
-        is_active=True
-    ).select_related('bus', 'bus__driver', 'bus__driver__user')
+    except Exception as e:
+        logger.error(f"Error getting nearby stops: {e}")
+        return []
 
 
 def search_lines(query):
+    """
+    Search for lines by name or code.
+
+    Args:
+        query: Search query
+
+    Returns:
+        Queryset of matching lines
+    """
     return Line.objects.filter(
         Q(name__icontains=query) |
-        Q(description__icontains=query) |
-        Q(start_location__name__icontains=query) |
-        Q(end_location__name__icontains=query)
-    ).distinct().select_related(
-        'start_location', 'end_location'
-    ).annotate(
-        stops_count=Count('line_stops', distinct=True),
-        active_buses_count=Count(
-            'tracking_sessions',
-            filter=Q(tracking_sessions__status='active', tracking_sessions__is_active=True),
-            distinct=True
-        )
-    )
+        Q(code__icontains=query) |
+        Q(description__icontains=query)
+    ).filter(is_active=True)
 
 
 def search_stops(query):
+    """
+    Search for stops by name or address.
+
+    Args:
+        query: Search query
+
+    Returns:
+        Queryset of matching stops
+    """
     return Stop.objects.filter(
         Q(name__icontains=query) |
-        Q(code__icontains=query) |
         Q(address__icontains=query)
-    ).distinct()
+    ).filter(is_active=True)
 
 
-def get_connected_lines(start_stop_id, end_stop_id):
+def get_line_schedule(line_id, day_of_week=None):
     """
-    Find lines that connect two stops directly
+    Get schedule for a line.
+
+    Args:
+        line_id: ID of the line
+        day_of_week: Optional day of week (0-6, where 0 is Monday)
+
+    Returns:
+        Queryset of schedules
     """
-    # Find lines that contain both stops
-    lines_with_start = set(LineStop.objects.filter(
-        stop_id=start_stop_id
-    ).values_list('line_id', flat=True))
-    
-    lines_with_end = set(LineStop.objects.filter(
-        stop_id=end_stop_id
-    ).values_list('line_id', flat=True))
-    
-    # Intersection gives lines that contain both stops
-    connecting_line_ids = lines_with_start.intersection(lines_with_end)
-    
-    return Line.objects.filter(
-        id__in=connecting_line_ids,
-        is_active=True
-    ).select_related(
-        'start_location', 'end_location'
-    )
+    queryset = Schedule.objects.filter(line_id=line_id, is_active=True)
+
+    if day_of_week is not None:
+        queryset = queryset.filter(day_of_week=day_of_week)
+
+    return queryset.order_by('day_of_week', 'start_time')
 
 
-def get_line_status(line_id):
+def get_next_stops(line_id, current_stop_id):
     """
-    Get the current status of a line, including active buses and next arrivals
+    Get next stops in a line after a given stop.
+
+    Args:
+        line_id: ID of the line
+        current_stop_id: ID of the current stop
+
+    Returns:
+        Queryset of next stops
     """
-    from apps.tracking.selectors import get_latest_locations_for_line
-    from apps.eta.selectors import get_next_arrivals_for_line
-    
     try:
-        line = Line.objects.get(id=line_id, is_active=True)
-    except Line.DoesNotExist:
+        # Get current stop order
+        current_order = LineStop.objects.get(
+            line_id=line_id,
+            stop_id=current_stop_id
+        ).order
+
+        # Get next stops
+        next_line_stops = LineStop.objects.filter(
+            line_id=line_id,
+            order__gt=current_order
+        ).order_by('order')
+
+        # Get stop IDs
+        stop_ids = next_line_stops.values_list('stop_id', flat=True)
+
+        return Stop.objects.filter(id__in=stop_ids)
+
+    except Exception as e:
+        logger.error(f"Error getting next stops: {e}")
+        return Stop.objects.none()
+
+
+def get_previous_stops(line_id, current_stop_id):
+    """
+    Get previous stops in a line before a given stop.
+
+    Args:
+        line_id: ID of the line
+        current_stop_id: ID of the current stop
+
+    Returns:
+        Queryset of previous stops
+    """
+    try:
+        # Get current stop order
+        current_order = LineStop.objects.get(
+            line_id=line_id,
+            stop_id=current_stop_id
+        ).order
+
+        # Get previous stops
+        prev_line_stops = LineStop.objects.filter(
+            line_id=line_id,
+            order__lt=current_order
+        ).order_by('-order')
+
+        # Get stop IDs
+        stop_ids = prev_line_stops.values_list('stop_id', flat=True)
+
+        return Stop.objects.filter(id__in=stop_ids)
+
+    except Exception as e:
+        logger.error(f"Error getting previous stops: {e}")
+        return Stop.objects.none()
+
+
+def get_busiest_stops(limit=10):
+    """
+    Get the busiest stops based on how many lines pass through them.
+
+    Args:
+        limit: Maximum number of stops to return
+
+    Returns:
+        Queryset of stops
+    """
+    stop_counts = LineStop.objects.values('stop_id').annotate(
+        line_count=Count('line_id')
+    ).order_by('-line_count')[:limit]
+
+    stop_ids = [item['stop_id'] for item in stop_counts]
+    stop_dict = {s.id: s for s in Stop.objects.filter(id__in=stop_ids)}
+
+    # Maintain order from the count query
+    result = []
+    for item in stop_counts:
+        stop = stop_dict.get(item['stop_id'])
+        if stop:
+            stop.line_count = item['line_count']
+            result.append(stop)
+
+    return result
+
+
+def get_stop_distance(line_id, from_stop_id, to_stop_id):
+    """
+    Get the distance between two stops on a line.
+
+    Args:
+        line_id: ID of the line
+        from_stop_id: ID of the starting stop
+        to_stop_id: ID of the ending stop
+
+    Returns:
+        Distance in meters
+    """
+    try:
+        # Get stop orders
+        from_order = LineStop.objects.get(
+            line_id=line_id,
+            stop_id=from_stop_id
+        ).order
+
+        to_order = LineStop.objects.get(
+            line_id=line_id,
+            stop_id=to_stop_id
+        ).order
+
+        # Ensure from_order < to_order
+        if from_order > to_order:
+            from_order, to_order = to_order, from_order
+
+        # Get line stops between from and to (inclusive)
+        line_stops = LineStop.objects.filter(
+            line_id=line_id,
+            order__gte=from_order,
+            order__lte=to_order
+        ).order_by('order')
+
+        # Calculate total distance
+        total_distance = 0
+        for i in range(1, len(line_stops)):
+            distance = line_stops[i].distance_from_previous
+            if distance:
+                total_distance += distance
+
+        return total_distance
+
+    except Exception as e:
+        logger.error(f"Error calculating stop distance: {e}")
         return None
-    
-    # Get active buses
-    active_buses = get_latest_locations_for_line(line_id)
-    
-    # Get next arrivals for stops
-    next_arrivals = get_next_arrivals_for_line(line_id)
-    
-    return {
-        'line_id': str(line.id),
-        'name': line.name,
-        'active_buses': len(active_buses),
-        'buses': active_buses,
-        'next_arrivals': next_arrivals
-    }

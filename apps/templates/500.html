@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Server Error" %} | DZ Bus Tracker{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <h1>{% trans "Server Error" %}</h1>
+    <p>{% trans "We're sorry, but something went wrong on our end." %}</p>
+    <p>{% trans "Our technical team has been notified of this issue and is working to fix it." %}</p>
+    <p>{% trans "Please try again later or contact support if the problem persists." %}</p>
+    <a href="/" class="button">{% trans "Return to Home" %}</a>
+</div>
+{% endblock %}

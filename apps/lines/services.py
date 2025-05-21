@@ -1,411 +1,533 @@
+"""
+Service functions for the lines app.
+"""
+import logging
 from django.db import transaction
-from django.core.cache import cache
 from django.utils import timezone
 
-from apps.core.exceptions import ValidationError, ObjectNotFound
-from apps.core.constants import CACHE_KEY_LINE_STOPS
-from utils.geo import calculate_distance
-from .models import Line, Stop, LineStop, LineBus, Favorite
+from apps.core.exceptions import ValidationError
+from apps.core.services import BaseService, create_object, update_object
+from apps.core.utils.geo import calculate_distance
+
+from .models import Line, LineStop, Schedule, Stop
+from .selectors import get_line_by_id, get_stop_by_id
+
+logger = logging.getLogger(__name__)
 
 
-def create_line(data, stops_data=None):
-    with transaction.atomic():
-        # Create the line
-        line = Line.objects.create(
-            name=data.get('name'),
-            description=data.get('description', ''),
-            color=data.get('color', '#3498db'),
-            start_location=data.get('start_location'),
-            end_location=data.get('end_location'),
-            path=data.get('path', {}),
-            estimated_duration=data.get('estimated_duration', 0),
-            distance=data.get('distance', 0),
-            metadata=data.get('metadata', {}),
-        )
-        
-        # Create line stops
-        if stops_data:
-            for i, stop_data in enumerate(stops_data):
-                stop_id = stop_data.get('id')
-                if not stop_id:
-                    continue
-                
+class StopService(BaseService):
+    """
+    Service for stop-related operations.
+    """
+
+    @classmethod
+    @transaction.atomic
+    def create_stop(cls, name, latitude, longitude, **kwargs):
+        """
+        Create a new stop.
+
+        Args:
+            name: Name of the stop
+            latitude: Latitude of the stop
+            longitude: Longitude of the stop
+            **kwargs: Additional stop data
+
+        Returns:
+            Created stop
+        """
+        try:
+            # Validate inputs
+            if not name:
+                raise ValidationError("Name is required.")
+
+            if not latitude:
+                raise ValidationError("Latitude is required.")
+
+            if not longitude:
+                raise ValidationError("Longitude is required.")
+
+            # Create stop
+            stop_data = {
+                "name": name,
+                "latitude": latitude,
+                "longitude": longitude,
+                **kwargs
+            }
+
+            stop = create_object(Stop, stop_data)
+
+            logger.info(f"Created new stop: {stop.name}")
+            return stop
+
+        except Exception as e:
+            logger.error(f"Error creating stop: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def update_stop(cls, stop_id, **data):
+        """
+        Update a stop.
+
+        Args:
+            stop_id: ID of the stop to update
+            **data: Stop data to update
+
+        Returns:
+            Updated stop
+        """
+        stop = get_stop_by_id(stop_id)
+
+        try:
+            update_object(stop, data)
+            logger.info(f"Updated stop: {stop.name}")
+            return stop
+
+        except Exception as e:
+            logger.error(f"Error updating stop: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def deactivate_stop(cls, stop_id):
+        """
+        Deactivate a stop.
+
+        Args:
+            stop_id: ID of the stop to deactivate
+
+        Returns:
+            Deactivated stop
+        """
+        stop = get_stop_by_id(stop_id)
+
+        try:
+            stop.is_active = False
+            stop.save(update_fields=["is_active", "updated_at"])
+
+            logger.info(f"Deactivated stop: {stop.name}")
+            return stop
+
+        except Exception as e:
+            logger.error(f"Error deactivating stop: {e}")
+            raise ValidationError(str(e))
+
+
+class LineService(BaseService):
+    """
+    Service for line-related operations.
+    """
+
+    @classmethod
+    @transaction.atomic
+    def create_line(cls, name, code, **kwargs):
+        """
+        Create a new line.
+
+        Args:
+            name: Name of the line
+            code: Code of the line
+            **kwargs: Additional line data
+
+        Returns:
+            Created line
+        """
+        try:
+            # Validate inputs
+            if not name:
+                raise ValidationError("Name is required.")
+
+            if not code:
+                raise ValidationError("Code is required.")
+
+            # Create line
+            line_data = {
+                "name": name,
+                "code": code,
+                **kwargs
+            }
+
+            line = create_object(Line, line_data)
+
+            logger.info(f"Created new line: {line.code} - {line.name}")
+            return line
+
+        except Exception as e:
+            logger.error(f"Error creating line: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def update_line(cls, line_id, **data):
+        """
+        Update a line.
+
+        Args:
+            line_id: ID of the line to update
+            **data: Line data to update
+
+        Returns:
+            Updated line
+        """
+        line = get_line_by_id(line_id)
+
+        # Don't allow updating code
+        data.pop("code", None)
+
+        try:
+            update_object(line, data)
+            logger.info(f"Updated line: {line.code} - {line.name}")
+            return line
+
+        except Exception as e:
+            logger.error(f"Error updating line: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def deactivate_line(cls, line_id):
+        """
+        Deactivate a line.
+
+        Args:
+            line_id: ID of the line to deactivate
+
+        Returns:
+            Deactivated line
+        """
+        line = get_line_by_id(line_id)
+
+        try:
+            line.is_active = False
+            line.save(update_fields=["is_active", "updated_at"])
+
+            logger.info(f"Deactivated line: {line.code} - {line.name}")
+            return line
+
+        except Exception as e:
+            logger.error(f"Error deactivating line: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def add_stop_to_line(cls, line_id, stop_id, order, **kwargs):
+        """
+        Add a stop to a line.
+
+        Args:
+            line_id: ID of the line
+            stop_id: ID of the stop
+            order: Order of the stop in the line
+            **kwargs: Additional line-stop data
+
+        Returns:
+            Created LineStop
+        """
+        try:
+            # Get line and stop
+            line = get_line_by_id(line_id)
+            stop = get_stop_by_id(stop_id)
+
+            # Check if already exists
+            if LineStop.objects.filter(line=line, stop=stop).exists():
+                raise ValidationError("This stop is already in this line.")
+
+            # Check if order is already taken
+            if LineStop.objects.filter(line=line, order=order).exists():
+                raise ValidationError("This order is already taken in this line.")
+
+            # Create line-stop relationship
+            line_stop_data = {
+                "line": line,
+                "stop": stop,
+                "order": order,
+                **kwargs
+            }
+
+            # Automatically calculate distance from previous
+            if order > 0 and "distance_from_previous" not in kwargs:
                 try:
-                    stop = Stop.objects.get(id=stop_id)
-                except Stop.DoesNotExist:
-                    continue
-                
-                LineStop.objects.create(
+                    prev_line_stop = LineStop.objects.get(line=line, order=order - 1)
+                    prev_stop = prev_line_stop.stop
+
+                    distance = calculate_distance(
+                        float(prev_stop.latitude),
+                        float(prev_stop.longitude),
+                        float(stop.latitude),
+                        float(stop.longitude)
+                    )
+
+                    if distance:
+                        # Convert to meters
+                        line_stop_data["distance_from_previous"] = distance * 1000
+                except LineStop.DoesNotExist:
+                    pass
+
+            line_stop = create_object(LineStop, line_stop_data)
+
+            logger.info(f"Added stop {stop.name} to line {line.code} at position {order}")
+            return line_stop
+
+        except Exception as e:
+            logger.error(f"Error adding stop to line: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def remove_stop_from_line(cls, line_id, stop_id):
+        """
+        Remove a stop from a line.
+
+        Args:
+            line_id: ID of the line
+            stop_id: ID of the stop
+
+        Returns:
+            True if successful
+        """
+        try:
+            # Get line and stop
+            line = get_line_by_id(line_id)
+            stop = get_stop_by_id(stop_id)
+
+            # Get line-stop relationship
+            line_stop = LineStop.objects.get(line=line, stop=stop)
+
+            # Get order
+            order = line_stop.order
+
+            # Delete line-stop relationship
+            line_stop.delete()
+
+            # Update subsequent orders
+            LineStop.objects.filter(
+                line=line,
+                order__gt=order
+            ).update(
+                order=F("order") - 1
+            )
+
+            logger.info(f"Removed stop {stop.name} from line {line.code}")
+            return True
+
+        except LineStop.DoesNotExist:
+            raise ValidationError("This stop is not in this line.")
+
+        except Exception as e:
+            logger.error(f"Error removing stop from line: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def update_line_stop_order(cls, line_id, stop_id, new_order):
+        """
+        Update the order of a stop in a line.
+
+        Args:
+            line_id: ID of the line
+            stop_id: ID of the stop
+            new_order: New order of the stop
+
+        Returns:
+            Updated LineStop
+        """
+        try:
+            # Get line and stop
+            line = get_line_by_id(line_id)
+            stop = get_stop_by_id(stop_id)
+
+            # Get line-stop relationship
+            line_stop = LineStop.objects.get(line=line, stop=stop)
+
+            # Get current order
+            current_order = line_stop.order
+
+            # If new order is the same as current order, do nothing
+            if new_order == current_order:
+                return line_stop
+
+            # Check if new order is valid
+            max_order = LineStop.objects.filter(line=line).count() - 1
+            if new_order < 0 or new_order > max_order:
+                raise ValidationError(f"Order must be between 0 and {max_order}.")
+
+            # Update orders
+            if new_order > current_order:
+                # Moving down, shift stops in between up
+                LineStop.objects.filter(
                     line=line,
-                    stop=stop,
-                    order=i,
-                    distance_from_start=stop_data.get('distance_from_start', 0),
-                    estimated_time_from_start=stop_data.get('estimated_time_from_start', 0)
+                    order__gt=current_order,
+                    order__lte=new_order
+                ).update(
+                    order=F("order") - 1
                 )
-        
-        # Always add start and end locations as stops if not already added
-        if not LineStop.objects.filter(line=line, stop=line.start_location).exists():
-            LineStop.objects.create(
-                line=line,
-                stop=line.start_location,
-                order=0,
-                distance_from_start=0,
-                estimated_time_from_start=0
+            else:
+                # Moving up, shift stops in between down
+                LineStop.objects.filter(
+                    line=line,
+                    order__gte=new_order,
+                    order__lt=current_order
+                ).update(
+                    order=F("order") + 1
+                )
+
+            # Update the stop order
+            line_stop.order = new_order
+            line_stop.save(update_fields=["order", "updated_at"])
+
+            logger.info(
+                f"Updated order of stop {stop.name} in line {line.code} "
+                f"from {current_order} to {new_order}"
             )
-        
-        if not LineStop.objects.filter(line=line, stop=line.end_location).exists():
-            last_order = LineStop.objects.filter(line=line).order_by('-order').first()
-            last_order = last_order.order + 1 if last_order else 1
-            
-            LineStop.objects.create(
-                line=line,
-                stop=line.end_location,
-                order=last_order,
-                distance_from_start=line.distance,
-                estimated_time_from_start=line.estimated_duration * 60  # Convert to seconds
-            )
-        
-        # Invalidate cache
-        cache_key = CACHE_KEY_LINE_STOPS.format(line.id)
-        cache.delete(cache_key)
-        
-        return line
+            return line_stop
+
+        except LineStop.DoesNotExist:
+            raise ValidationError("This stop is not in this line.")
+
+        except Exception as e:
+            logger.error(f"Error updating line stop order: {e}")
+            raise ValidationError(str(e))
 
 
-def update_line(line_id, data):
-    try:
-        line = Line.objects.get(id=line_id)
-    except Line.DoesNotExist:
-        raise ObjectNotFound("Line not found")
-    
-    # Update fields
-    for field, value in data.items():
-        if hasattr(line, field):
-            setattr(line, field, value)
-    
-    line.save()
-    
-    # Invalidate cache
-    cache_key = CACHE_KEY_LINE_STOPS.format(line.id)
-    cache.delete(cache_key)
-    
-    return line
-
-
-def add_stop_to_line(line_id, stop_id, order=None, distance_from_start=0, estimated_time_from_start=0):
-    try:
-        line = Line.objects.get(id=line_id)
-    except Line.DoesNotExist:
-        raise ObjectNotFound("Line not found")
-    
-    try:
-        stop = Stop.objects.get(id=stop_id)
-    except Stop.DoesNotExist:
-        raise ObjectNotFound("Stop not found")
-    
-    # Check if stop is already in line
-    if LineStop.objects.filter(line=line, stop=stop).exists():
-        raise ValidationError("Stop is already in this line")
-    
-    # If order not provided, add at end
-    if order is None:
-        last_stop = LineStop.objects.filter(line=line).order_by('-order').first()
-        order = last_stop.order + 1 if last_stop else 0
-    else:
-        # If order provided, shift other stops
-        LineStop.objects.filter(line=line, order__gte=order).update(
-            order=models.F('order') + 1
-        )
-    
-    # Create line stop
-    line_stop = LineStop.objects.create(
-        line=line,
-        stop=stop,
-        order=order,
-        distance_from_start=distance_from_start,
-        estimated_time_from_start=estimated_time_from_start
-    )
-    
-    # Invalidate cache
-    cache_key = CACHE_KEY_LINE_STOPS.format(line.id)
-    cache.delete(cache_key)
-    
-    return line_stop
-
-
-def remove_stop_from_line(line_id, stop_id):
-    try:
-        line_stop = LineStop.objects.get(line_id=line_id, stop_id=stop_id)
-    except LineStop.DoesNotExist:
-        raise ObjectNotFound("Stop not found in this line")
-    
-    # Cannot remove start or end location
-    if line_stop.stop_id == line_stop.line.start_location_id or line_stop.stop_id == line_stop.line.end_location_id:
-        raise ValidationError("Cannot remove start or end location from line")
-    
-    # Get the order for shifting
-    order = line_stop.order
-    
-    # Delete the line stop
-    line_stop.delete()
-    
-    # Shift other stops
-    LineStop.objects.filter(line_id=line_id, order__gt=order).update(
-        order=models.F('order') - 1
-    )
-    
-    # Invalidate cache
-    cache_key = CACHE_KEY_LINE_STOPS.format(line_id)
-    cache.delete(cache_key)
-    
-    return True
-
-
-def reorder_line_stops(line_id, stop_orders):
+class ScheduleService(BaseService):
     """
-    Reorder stops in a line
-    
-    Args:
-        line_id: ID of the line
-        stop_orders: Dictionary mapping stop IDs to new orders
+    Service for schedule-related operations.
     """
-    try:
-        line = Line.objects.get(id=line_id)
-    except Line.DoesNotExist:
-        raise ObjectNotFound("Line not found")
-    
-    # Validate that all stops exist
-    for stop_id in stop_orders.keys():
-        if not LineStop.objects.filter(line=line, stop_id=stop_id).exists():
-            raise ObjectNotFound(f"Stop with ID {stop_id} not found in this line")
-    
-    # Start and end locations must be first and last
-    start_location_id = str(line.start_location_id)
-    end_location_id = str(line.end_location_id)
-    
-    if start_location_id in stop_orders and stop_orders[start_location_id] != 0:
-        raise ValidationError("Start location must be the first stop")
-    
-    # Find the highest order
-    max_order = max(stop_orders.values())
-    
-    if end_location_id in stop_orders and stop_orders[end_location_id] != max_order:
-        raise ValidationError("End location must be the last stop")
-    
-    # Update orders
-    with transaction.atomic():
-        for stop_id, order in stop_orders.items():
-            LineStop.objects.filter(line=line, stop_id=stop_id).update(order=order)
-    
-    # Invalidate cache
-    cache_key = CACHE_KEY_LINE_STOPS.format(line_id)
-    cache.delete(cache_key)
-    
-    return True
 
+    @classmethod
+    @transaction.atomic
+    def create_schedule(cls, line_id, day_of_week, start_time, end_time, frequency_minutes, **kwargs):
+        """
+        Create a new schedule for a line.
 
-def create_stop(data):
-    # Create stop
-    stop = Stop.objects.create(
-        name=data.get('name'),
-        code=data.get('code', ''),
-        address=data.get('address', ''),
-        image=data.get('image'),
-        description=data.get('description', ''),
-        latitude=data.get('latitude'),
-        longitude=data.get('longitude'),
-        accuracy=data.get('accuracy'),
-        metadata=data.get('metadata', {}),
-    )
-    
-    return stop
+        Args:
+            line_id: ID of the line
+            day_of_week: Day of week (0-6, where 0 is Monday)
+            start_time: Start time
+            end_time: End time
+            frequency_minutes: Frequency in minutes
+            **kwargs: Additional schedule data
 
+        Returns:
+            Created schedule
+        """
+        try:
+            # Get line
+            line = get_line_by_id(line_id)
 
-def update_stop(stop_id, data):
-    try:
-        stop = Stop.objects.get(id=stop_id)
-    except Stop.DoesNotExist:
-        raise ObjectNotFound("Stop not found")
-    
-    # Update fields
-    for field, value in data.items():
-        if hasattr(stop, field):
-            setattr(stop, field, value)
-    
-    stop.save()
-    
-    # Invalidate caches for lines containing this stop
-    for line_stop in stop.line_stops.all():
-        cache_key = CACHE_KEY_LINE_STOPS.format(line_stop.line_id)
-        cache.delete(cache_key)
-    
-    return stop
+            # Validate inputs
+            if day_of_week < 0 or day_of_week > 6:
+                raise ValidationError("Day of week must be between 0 and 6.")
 
+            if start_time >= end_time:
+                raise ValidationError("Start time must be before end time.")
 
-def add_bus_to_line(line_id, bus_id, is_primary=False):
-    try:
-        line = Line.objects.get(id=line_id)
-    except Line.DoesNotExist:
-        raise ObjectNotFound("Line not found")
-    
-    try:
-        bus = Bus.objects.get(id=bus_id)
-    except Bus.DoesNotExist:
-        raise ObjectNotFound("Bus not found")
-    
-    # Check if bus is already in line
-    if LineBus.objects.filter(line=line, bus=bus).exists():
-        raise ValidationError("Bus is already in this line")
-    
-    # If setting as primary, unset any other primary buses on this line
-    if is_primary:
-        LineBus.objects.filter(line=line, is_primary=True).update(is_primary=False)
-    
-    # Create line bus
-    line_bus = LineBus.objects.create(
-        line=line,
-        bus=bus,
-        is_primary=is_primary
-    )
-    
-    return line_bus
+            if frequency_minutes <= 0:
+                raise ValidationError("Frequency must be greater than zero.")
 
+            # Check for overlap
+            if Schedule.objects.filter(
+                    line=line,
+                    day_of_week=day_of_week,
+                    start_time__lt=end_time,
+                    end_time__gt=start_time
+            ).exists():
+                raise ValidationError("This schedule overlaps with an existing schedule.")
 
-def remove_bus_from_line(line_id, bus_id):
-    try:
-        line_bus = LineBus.objects.get(line_id=line_id, bus_id=bus_id)
-    except LineBus.DoesNotExist:
-        raise ObjectNotFound("Bus not found in this line")
-    
-    # Delete the line bus
-    line_bus.delete()
-    
-    return True
+            # Create schedule
+            schedule_data = {
+                "line": line,
+                "day_of_week": day_of_week,
+                "start_time": start_time,
+                "end_time": end_time,
+                "frequency_minutes": frequency_minutes,
+                **kwargs
+            }
 
+            schedule = create_object(Schedule, schedule_data)
 
-def add_favorite(user, line_id, notification_threshold=5):
-    try:
-        line = Line.objects.get(id=line_id)
-    except Line.DoesNotExist:
-        raise ObjectNotFound("Line not found")
-    
-    # Check if already favorited
-    if Favorite.objects.filter(user=user, line=line).exists():
-        raise ValidationError("Line is already in favorites")
-    
-    # Create favorite
-    favorite = Favorite.objects.create(
-        user=user,
-        line=line,
-        notification_threshold=notification_threshold
-    )
-    
-    return favorite
+            logger.info(f"Created new schedule for line {line.code} on day {day_of_week}")
+            return schedule
 
+        except Exception as e:
+            logger.error(f"Error creating schedule: {e}")
+            raise ValidationError(str(e))
 
-def remove_favorite(user, line_id):
-    try:
-        favorite = Favorite.objects.get(user=user, line_id=line_id)
-    except Favorite.DoesNotExist:
-        raise ObjectNotFound("Line not found in favorites")
-    
-    # Delete the favorite
-    favorite.delete()
-    
-    return True
+    @classmethod
+    @transaction.atomic
+    def update_schedule(cls, schedule_id, **data):
+        """
+        Update a schedule.
 
+        Args:
+            schedule_id: ID of the schedule to update
+            **data: Schedule data to update
 
-def update_favorite_threshold(user, line_id, notification_threshold):
-    try:
-        favorite = Favorite.objects.get(user=user, line_id=line_id)
-    except Favorite.DoesNotExist:
-        raise ObjectNotFound("Line not found in favorites")
-    
-    # Update threshold
-    favorite.notification_threshold = notification_threshold
-    favorite.save()
-    
-    return favorite
+        Returns:
+            Updated schedule
+        """
+        try:
+            # Get schedule
+            schedule = Schedule.objects.get(id=schedule_id)
 
+            # Check for overlap if changing times or day
+            changes_time = "start_time" in data or "end_time" in data or "day_of_week" in data
 
-def calculate_line_path(line_id):
-    """
-    Calculate a GeoJSON path for a line based on its stops
-    """
-    try:
-        line = Line.objects.get(id=line_id)
-    except Line.DoesNotExist:
-        raise ObjectNotFound("Line not found")
-    
-    # Get stops in order
-    stops = line.get_ordered_stops()
-    
-    if len(stops) < 2:
-        raise ValidationError("Line must have at least two stops")
-    
-    # Create path
-    coordinates = [(float(stop.longitude), float(stop.latitude)) for stop in stops]
-    
-    path = {
-        "type": "LineString",
-        "coordinates": coordinates
-    }
-    
-    # Update line
-    line.path = path
-    line.save()
-    
-    return path
+            if changes_time:
+                day_of_week = data.get("day_of_week", schedule.day_of_week)
+                start_time = data.get("start_time", schedule.start_time)
+                end_time = data.get("end_time", schedule.end_time)
 
+                if start_time >= end_time:
+                    raise ValidationError("Start time must be before end time.")
 
-def calculate_line_distances(line_id):
-    """
-    Calculate distances and times between stops on a line
-    """
-    try:
-        line = Line.objects.get(id=line_id)
-    except Line.DoesNotExist:
-        raise ObjectNotFound("Line not found")
-    
-    # Get stops in order
-    line_stops = line.line_stops.all().order_by('order')
-    
-    if line_stops.count() < 2:
-        raise ValidationError("Line must have at least two stops")
-    
-    # Calculate distances
-    total_distance = 0
-    prev_stop = None
-    
-    for line_stop in line_stops:
-        if prev_stop:
-            distance = calculate_distance(
-                prev_stop.stop.coordinates,
-                line_stop.stop.coordinates
-            )
-            total_distance += distance
-            
-            # Update distance from start
-            line_stop.distance_from_start = total_distance
-            line_stop.save()
-        
-        prev_stop = line_stop
-    
-    # Update line distance
-    line.distance = total_distance
-    
-    # Estimate duration (assuming average speed of 20 km/h)
-    avg_speed = 20  # km/h
-    duration_minutes = (total_distance / 1000) / avg_speed * 60
-    line.estimated_duration = int(duration_minutes)
-    
-    line.save()
-    
-    # Calculate estimated times
-    for line_stop in line_stops:
-        # Calculate time in seconds
-        time_seconds = (line_stop.distance_from_start / total_distance) * line.estimated_duration * 60
-        line_stop.estimated_time_from_start = int(time_seconds)
-        line_stop.save()
-    
-    return line
+                # Check for overlap with other schedules
+                overlapping = Schedule.objects.filter(
+                    line=schedule.line,
+                    day_of_week=day_of_week,
+                    start_time__lt=end_time,
+                    end_time__gt=start_time
+                ).exclude(id=schedule.id)
+
+                if overlapping.exists():
+                    raise ValidationError("This schedule would overlap with an existing schedule.")
+
+            update_object(schedule, data)
+            logger.info(f"Updated schedule for line {schedule.line.code} on day {schedule.day_of_week}")
+            return schedule
+
+        except Schedule.DoesNotExist:
+            raise ValidationError("Schedule not found.")
+
+        except Exception as e:
+            logger.error(f"Error updating schedule: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def delete_schedule(cls, schedule_id):
+        """
+        Delete a schedule.
+
+        Args:
+            schedule_id: ID of the schedule to delete
+
+        Returns:
+            True if successful
+        """
+        try:
+            # Get schedule
+            schedule = Schedule.objects.get(id=schedule_id)
+
+            # Delete schedule
+            schedule.delete()
+
+            logger.info(f"Deleted schedule for line {schedule.line.code} on day {schedule.day_of_week}")
+            return True
+
+        except Schedule.DoesNotExist:
+            raise ValidationError("Schedule not found.")
+
+        except Exception as e:
+            logger.error(f"Error deleting schedule: {e}")
+            raise ValidationError(str(e))

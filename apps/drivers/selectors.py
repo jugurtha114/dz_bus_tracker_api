@@ -1,149 +1,212 @@
-from django.db.models import Q, Avg, Count, Prefetch
-from django.core.cache import cache
+"""
+Selector functions for the drivers app.
+"""
+from django.db.models import Avg, Count, F, Q
+import logging
 
-from utils.cache import cached_result
-from .models import Driver, DriverApplication, DriverRating
+from apps.core.constants import DRIVER_STATUS_APPROVED
+from apps.core.selectors import get_object_or_404
+from apps.core.utils.cache import get_cached_driver_rating
+
+from .models import Driver, DriverRating
+
+logger = logging.getLogger(__name__)
 
 
-@cached_result('driver', timeout=60)
 def get_driver_by_id(driver_id):
-    try:
-        return Driver.objects.select_related(
-            'user'
-        ).prefetch_related(
-            'ratings', 'buses'
-        ).get(id=driver_id)
-    except Driver.DoesNotExist:
-        return None
+    """
+    Get a driver by ID.
+
+    Args:
+        driver_id: ID of the driver
+
+    Returns:
+        Driver object
+    """
+    return get_object_or_404(Driver, id=driver_id)
 
 
-def get_driver_by_id_number(id_number):
-    try:
-        return Driver.objects.select_related('user').get(id_number=id_number)
-    except Driver.DoesNotExist:
-        return None
+def get_driver_by_user(user_id):
+    """
+    Get a driver by user ID.
+
+    Args:
+        user_id: ID of the user
+
+    Returns:
+        Driver object
+    """
+    return get_object_or_404(Driver, user_id=user_id)
 
 
-def get_driver_by_license(license_number):
-    try:
-        return Driver.objects.select_related('user').get(license_number=license_number)
-    except Driver.DoesNotExist:
-        return None
+def get_driver_by_id_card(id_card_number):
+    """
+    Get a driver by ID card number.
+
+    Args:
+        id_card_number: ID card number of the driver
+
+    Returns:
+        Driver object
+    """
+    return get_object_or_404(Driver, id_card_number=id_card_number)
 
 
-def get_driver_for_user(user):
-    try:
-        return Driver.objects.select_related('user').get(user=user)
-    except Driver.DoesNotExist:
-        return None
+def get_driver_ratings(driver_id, limit=None):
+    """
+    Get ratings for a driver.
 
+    Args:
+        driver_id: ID of the driver
+        limit: Maximum number of ratings to return
 
-def get_active_drivers():
-    return Driver.objects.filter(
-        is_active=True, 
-        is_verified=True
-    ).select_related('user')
+    Returns:
+        Queryset of DriverRating objects
+    """
+    queryset = DriverRating.objects.filter(driver_id=driver_id).order_by('-created_at')
 
+    if limit:
+        queryset = queryset[:limit]
 
-def get_drivers_by_verification_status(status):
-    # Get the latest application for each driver
-    latest_applications = DriverApplication.objects.filter(
-        status=status
-    ).values('driver').annotate(
-        latest_id=Count('id')
-    ).values('driver')
-    
-    # Get drivers with latest application having the specified status
-    return Driver.objects.filter(
-        id__in=latest_applications
-    ).select_related('user').prefetch_related(
-        Prefetch(
-            'applications',
-            queryset=DriverApplication.objects.filter(status=status).order_by('-created_at'),
-            to_attr='latest_applications'
-        )
-    )
-
-
-def get_drivers_with_buses():
-    return Driver.objects.filter(
-        buses__isnull=False
-    ).distinct().select_related('user').prefetch_related('buses')
-
-
-def get_drivers_with_verified_buses():
-    return Driver.objects.filter(
-        buses__is_verified=True
-    ).distinct().select_related('user').prefetch_related(
-        Prefetch(
-            'buses',
-            queryset=Bus.objects.filter(is_verified=True),
-            to_attr='verified_buses'
-        )
-    )
-
-
-def get_driver_ratings(driver_id, anonymous_only=False):
-    queryset = DriverRating.objects.filter(driver_id=driver_id)
-    
-    if anonymous_only:
-        queryset = queryset.filter(is_anonymous=True)
-    
-    return queryset.select_related('passenger')
+    return queryset
 
 
 def get_driver_average_rating(driver_id):
-    avg_rating = DriverRating.objects.filter(
-        driver_id=driver_id
-    ).aggregate(Avg('rating'))['rating__avg']
-    
-    return avg_rating or 0
+    """
+    Get the average rating for a driver.
+
+    Args:
+        driver_id: ID of the driver
+
+    Returns:
+        Average rating or None
+    """
+    # Check cache first
+    cached_rating = get_cached_driver_rating(driver_id)
+    if cached_rating is not None:
+        return cached_rating
+
+    # If not in cache, get from database
+    try:
+        driver = get_driver_by_id(driver_id)
+        if driver.total_ratings > 0:
+            return driver.rating
+        return None
+    except Exception as e:
+        logger.error(f"Error getting driver rating: {e}")
+        return None
 
 
-def get_top_rated_drivers(limit=10):
-    return Driver.objects.annotate(
-        avg_rating=Avg('ratings__rating'),
-        rating_count=Count('ratings')
-    ).filter(
+def get_approved_drivers():
+    """
+    Get all approved drivers.
+
+    Returns:
+        Queryset of approved drivers
+    """
+    return Driver.objects.filter(
+        status=DRIVER_STATUS_APPROVED,
         is_active=True,
-        is_verified=True,
-        rating_count__gt=0
-    ).order_by('-avg_rating', '-rating_count')[:limit]
+    )
 
 
-def filter_drivers(query=None, verification_status=None, is_active=None, has_buses=None):
-    queryset = Driver.objects.all()
-    
-    if query:
-        queryset = queryset.filter(
-            Q(user__first_name__icontains=query) | 
-            Q(user__last_name__icontains=query) | 
-            Q(id_number__icontains=query) |
-            Q(license_number__icontains=query)
+def get_top_drivers(limit=10):
+    """
+    Get top-rated drivers.
+
+    Args:
+        limit: Maximum number of drivers to return
+
+    Returns:
+        Queryset of top-rated drivers
+    """
+    return Driver.objects.filter(
+        status=DRIVER_STATUS_APPROVED,
+        is_active=True,
+        total_ratings__gt=0,
+    ).order_by('-rating')[:limit]
+
+
+def search_drivers(query):
+    """
+    Search for drivers by name, phone, or ID.
+
+    Args:
+        query: Search query
+
+    Returns:
+        Queryset of drivers
+    """
+    return Driver.objects.filter(
+        Q(user__first_name__icontains=query) |
+        Q(user__last_name__icontains=query) |
+        Q(user__email__icontains=query) |
+        Q(phone_number__icontains=query) |
+        Q(id_card_number__icontains=query)
+    ).filter(
+        status=DRIVER_STATUS_APPROVED,
+        is_active=True,
+    )
+
+
+def get_pending_drivers():
+    """
+    Get all pending drivers.
+
+    Returns:
+        Queryset of pending drivers
+    """
+    return Driver.objects.filter(
+        status="pending",
+        is_active=True,
+    )
+
+
+def get_driver_stats(driver_id):
+    """
+    Get statistics for a driver.
+
+    Args:
+        driver_id: ID of the driver
+
+    Returns:
+        Dictionary of driver statistics
+    """
+    from apps.buses.models import Bus
+    from apps.tracking.models import LocationUpdate
+
+    try:
+        driver = get_driver_by_id(driver_id)
+
+        # Get bus IDs for this driver
+        bus_ids = Bus.objects.filter(
+            driver_id=driver_id,
+            is_active=True,
+        ).values_list('id', flat=True)
+
+        # Get location updates for these buses
+        location_updates = LocationUpdate.objects.filter(
+            bus_id__in=bus_ids
         )
-    
-    if verification_status:
-        queryset = queryset.filter(is_verified=(verification_status.lower() == 'verified'))
-    
-    if is_active is not None:
-        queryset = queryset.filter(is_active=is_active)
-    
-    if has_buses is not None:
-        if has_buses:
-            queryset = queryset.filter(buses__isnull=False).distinct()
-        else:
-            queryset = queryset.filter(buses__isnull=True)
-    
-    return queryset.select_related('user')
 
+        # Calculate statistics
+        total_distance = location_updates.aggregate(
+            total_distance=Sum('distance')
+        ).get('total_distance') or 0
 
-def get_drivers_by_application_date(start_date=None, end_date=None):
-    queryset = Driver.objects.all()
-    
-    if start_date:
-        queryset = queryset.filter(created_at__gte=start_date)
-    
-    if end_date:
-        queryset = queryset.filter(created_at__lte=end_date)
-    
-    return queryset.select_related('user').order_by('-created_at')
+        total_trips = location_updates.values('trip_id').distinct().count()
+
+        return {
+            "driver_id": str(driver.id),
+            "name": driver.user.get_full_name(),
+            "rating": float(driver.rating) if driver.rating else 0,
+            "total_ratings": driver.total_ratings,
+            "years_of_experience": driver.years_of_experience,
+            "total_distance": float(total_distance),
+            "total_trips": total_trips,
+            "buses_count": len(bus_ids),
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting driver stats: {e}")
+        return {}

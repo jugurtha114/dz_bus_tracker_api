@@ -1,255 +1,383 @@
-from django.utils import timezone
+"""
+Service functions for the buses app.
+"""
+import logging
 from django.db import transaction
-from django.core.cache import cache
+from django.utils import timezone
 
-from apps.core.exceptions import ValidationError, ObjectNotFound
-from apps.notifications.services import send_notification
-from .models import Bus, BusPhoto, BusVerification, BusMaintenance
+from apps.core.constants import BUS_STATUS_ACTIVE, BUS_STATUS_INACTIVE
+from apps.core.exceptions import ValidationError
+from apps.core.services import BaseService, create_object, update_object
+from apps.core.utils.cache import cache_bus_location, cache_bus_passengers
+from apps.drivers.selectors import get_driver_by_id
+
+from .models import Bus, BusLocation
+from .selectors import get_bus_by_id, get_bus_location
+
+logger = logging.getLogger(__name__)
 
 
-def create_bus(driver, data, photos=None, photo_types=None):
-    with transaction.atomic():
-        # Create the bus
-        bus = Bus.objects.create(
-            driver=driver,
-            matricule=data.get('matricule'),
-            brand=data.get('brand'),
-            model=data.get('model'),
-            year=data.get('year'),
-            capacity=data.get('capacity', 0),
-            description=data.get('description', ''),
-            metadata=data.get('metadata', {}),
-        )
-        
-        # Create photos if provided
-        if photos and photo_types and len(photos) == len(photo_types):
-            for photo, photo_type in zip(photos, photo_types):
-                BusPhoto.objects.create(
-                    bus=bus,
-                    photo=photo,
-                    photo_type=photo_type
+class BusService(BaseService):
+    """
+    Service for bus-related operations.
+    """
+
+    @classmethod
+    @transaction.atomic
+    def create_bus(cls, driver_id, license_plate, model, manufacturer, year, capacity, **kwargs):
+        """
+        Create a new bus.
+
+        Args:
+            driver_id: ID of the driver
+            license_plate: License plate of the bus
+            model: Model of the bus
+            manufacturer: Manufacturer of the bus
+            year: Year of the bus
+            capacity: Capacity of the bus
+            **kwargs: Additional bus data
+
+        Returns:
+            Created bus
+        """
+        try:
+            # Get driver
+            driver = get_driver_by_id(driver_id)
+
+            # Normalize license plate
+            license_plate = license_plate.upper().strip()
+
+            # Validate inputs
+            if not license_plate:
+                raise ValidationError("License plate is required.")
+
+            if not model:
+                raise ValidationError("Model is required.")
+
+            if not manufacturer:
+                raise ValidationError("Manufacturer is required.")
+
+            if not year or year < 1900 or year > timezone.now().year:
+                raise ValidationError("Invalid year.")
+
+            if not capacity or capacity <= 0:
+                raise ValidationError("Capacity must be greater than zero.")
+
+            # Create bus
+            bus_data = {
+                "driver": driver,
+                "license_plate": license_plate,
+                "model": model,
+                "manufacturer": manufacturer,
+                "year": year,
+                "capacity": capacity,
+                **kwargs
+            }
+
+            bus = create_object(Bus, bus_data)
+
+            logger.info(f"Created new bus: {bus.license_plate} for driver {driver.user.email}")
+            return bus
+
+        except Exception as e:
+            logger.error(f"Error creating bus: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def update_bus(cls, bus_id, **data):
+        """
+        Update a bus.
+
+        Args:
+            bus_id: ID of the bus to update
+            **data: Bus data to update
+
+        Returns:
+            Updated bus
+        """
+        bus = get_bus_by_id(bus_id)
+
+        try:
+            # Don't allow updating license_plate
+            data.pop("license_plate", None)
+
+            update_object(bus, data)
+            logger.info(f"Updated bus: {bus.license_plate}")
+            return bus
+
+        except Exception as e:
+            logger.error(f"Error updating bus: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def activate_bus(cls, bus_id):
+        """
+        Activate a bus.
+
+        Args:
+            bus_id: ID of the bus to activate
+
+        Returns:
+            Activated bus
+        """
+        bus = get_bus_by_id(bus_id)
+
+        try:
+            bus.is_active = True
+            bus.status = BUS_STATUS_ACTIVE
+            bus.save(update_fields=["is_active", "status", "updated_at"])
+
+            logger.info(f"Activated bus: {bus.license_plate}")
+            return bus
+
+        except Exception as e:
+            logger.error(f"Error activating bus: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def deactivate_bus(cls, bus_id):
+        """
+        Deactivate a bus.
+
+        Args:
+            bus_id: ID of the bus to deactivate
+
+        Returns:
+            Deactivated bus
+        """
+        bus = get_bus_by_id(bus_id)
+
+        try:
+            bus.is_active = False
+            bus.status = BUS_STATUS_INACTIVE
+            bus.save(update_fields=["is_active", "status", "updated_at"])
+
+            logger.info(f"Deactivated bus: {bus.license_plate}")
+            return bus
+
+        except Exception as e:
+            logger.error(f"Error deactivating bus: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def approve_bus(cls, bus_id):
+        """
+        Approve a bus.
+
+        Args:
+            bus_id: ID of the bus to approve
+
+        Returns:
+            Approved bus
+        """
+        bus = get_bus_by_id(bus_id)
+
+        try:
+            bus.is_approved = True
+            bus.save(update_fields=["is_approved", "updated_at"])
+
+            logger.info(f"Approved bus: {bus.license_plate}")
+            return bus
+
+        except Exception as e:
+            logger.error(f"Error approving bus: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def unapprove_bus(cls, bus_id):
+        """
+        Unapprove a bus.
+
+        Args:
+            bus_id: ID of the bus to unapprove
+
+        Returns:
+            Unapproved bus
+        """
+        bus = get_bus_by_id(bus_id)
+
+        try:
+            bus.is_approved = False
+            bus.save(update_fields=["is_approved", "updated_at"])
+
+            logger.info(f"Unapproved bus: {bus.license_plate}")
+            return bus
+
+        except Exception as e:
+            logger.error(f"Error unapproving bus: {e}")
+            raise ValidationError(str(e))
+
+
+class BusLocationService(BaseService):
+    """
+    Service for bus location-related operations.
+    """
+
+    @classmethod
+    @transaction.atomic
+    def update_location(cls, bus_id, latitude, longitude, **kwargs):
+        """
+        Update the location of a bus.
+
+        Args:
+            bus_id: ID of the bus
+            latitude: Latitude
+            longitude: Longitude
+            **kwargs: Additional location data
+
+        Returns:
+            Updated BusLocation object
+        """
+        try:
+            # Get bus
+            bus = get_bus_by_id(bus_id)
+
+            # Validate inputs
+            if not latitude:
+                raise ValidationError("Latitude is required.")
+
+            if not longitude:
+                raise ValidationError("Longitude is required.")
+
+            # Create location update
+            location_data = {
+                "bus": bus,
+                "latitude": latitude,
+                "longitude": longitude,
+                **kwargs
+            }
+
+            location = create_object(BusLocation, location_data)
+
+            # Update cache
+            location_dict = {
+                "id": str(location.id),
+                "bus_id": str(bus.id),
+                "latitude": float(location.latitude),
+                "longitude": float(location.longitude),
+                "altitude": float(location.altitude) if location.altitude else None,
+                "speed": float(location.speed) if location.speed else None,
+                "heading": float(location.heading) if location.heading else None,
+                "accuracy": float(location.accuracy) if location.accuracy else None,
+                "passenger_count": location.passenger_count,
+                "is_tracking_active": location.is_tracking_active,
+                "timestamp": location.created_at.isoformat(),
+            }
+
+            cache_bus_location(bus.id, location_dict)
+
+            logger.info(f"Updated location for bus: {bus.license_plate}")
+            return location
+
+        except Exception as e:
+            logger.error(f"Error updating bus location: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def update_passenger_count(cls, bus_id, passenger_count):
+        """
+        Update the passenger count of a bus.
+
+        Args:
+            bus_id: ID of the bus
+            passenger_count: Number of passengers
+
+        Returns:
+            Updated BusLocation object
+        """
+        try:
+            # Get bus and latest location
+            bus = get_bus_by_id(bus_id)
+            location = get_bus_location(bus_id)
+
+            if location:
+                # Update existing location
+                location.passenger_count = passenger_count
+                location.save(update_fields=["passenger_count", "updated_at"])
+
+                # Update cache
+                cache_bus_passengers(bus.id, passenger_count)
+
+                logger.info(f"Updated passenger count for bus: {bus.license_plate}")
+                return location
+            else:
+                # No location exists, create one
+                return cls.update_location(
+                    bus_id=bus_id,
+                    latitude=0,  # Placeholder values
+                    longitude=0,
+                    passenger_count=passenger_count,
+                    is_tracking_active=False,
                 )
-        
-        # Create initial verification record
-        BusVerification.objects.create(
-            bus=bus,
-            status='pending'
-        )
-        
-        # Notify admin of new bus registration
-        notify_admins_new_bus(bus)
-        
-        return bus
 
+        except Exception as e:
+            logger.error(f"Error updating passenger count: {e}")
+            raise ValidationError(str(e))
 
-def update_bus(bus_id, data):
-    try:
-        bus = Bus.objects.get(id=bus_id)
-    except Bus.DoesNotExist:
-        raise ObjectNotFound("Bus not found")
-    
-    # Update fields
-    for field, value in data.items():
-        if hasattr(bus, field):
-            setattr(bus, field, value)
-    
-    bus.save()
-    
-    # Invalidate cache
-    cache_key = f'bus:{bus_id}'
-    cache.delete(cache_key)
-    
-    return bus
+    @classmethod
+    @transaction.atomic
+    def start_tracking(cls, bus_id):
+        """
+        Start tracking a bus.
 
+        Args:
+            bus_id: ID of the bus
 
-def add_bus_photo(bus_id, photo, photo_type, description=''):
-    try:
-        bus = Bus.objects.get(id=bus_id)
-    except Bus.DoesNotExist:
-        raise ObjectNotFound("Bus not found")
-    
-    # Create photo
-    bus_photo = BusPhoto.objects.create(
-        bus=bus,
-        photo=photo,
-        photo_type=photo_type,
-        description=description
-    )
-    
-    return bus_photo
+        Returns:
+            Updated BusLocation object or None
+        """
+        try:
+            # Get bus and latest location
+            bus = get_bus_by_id(bus_id)
+            location = get_bus_location(bus_id)
 
+            if location:
+                # Update existing location
+                location.is_tracking_active = True
+                location.save(update_fields=["is_tracking_active", "updated_at"])
 
-def verify_bus(bus_id, admin_user, status, notes='', rejection_reason=''):
-    try:
-        bus = Bus.objects.get(id=bus_id)
-    except Bus.DoesNotExist:
-        raise ObjectNotFound("Bus not found")
-    
-    # Validate status
-    if status not in ['approved', 'rejected']:
-        raise ValidationError("Invalid status")
-    
-    # If rejecting, rejection reason is required
-    if status == 'rejected' and not rejection_reason:
-        raise ValidationError("Rejection reason is required when rejecting a bus")
-    
-    # Create verification record
-    verification = BusVerification.objects.create(
-        bus=bus,
-        verified_by=admin_user,
-        status=status,
-        verification_date=timezone.now(),
-        rejection_reason=rejection_reason,
-        notes=notes
-    )
-    
-    # Update bus verification status
-    bus.is_verified = (status == 'approved')
-    bus.verification_date = timezone.now() if status == 'approved' else None
-    bus.save()
-    
-    # Notify driver
-    notify_driver_bus_verification(bus, status, rejection_reason)
-    
-    return verification
+                logger.info(f"Started tracking bus: {bus.license_plate}")
+                return location
 
+            return None
 
-def add_maintenance_record(bus_id, data):
-    try:
-        bus = Bus.objects.get(id=bus_id)
-    except Bus.DoesNotExist:
-        raise ObjectNotFound("Bus not found")
-    
-    # Create maintenance record
-    maintenance = BusMaintenance.objects.create(
-        bus=bus,
-        maintenance_type=data.get('maintenance_type'),
-        date=data.get('date'),
-        description=data.get('description'),
-        cost=data.get('cost'),
-        performed_by=data.get('performed_by', ''),
-        notes=data.get('notes', '')
-    )
-    
-    # Update bus last maintenance date if this is newer
-    if not bus.last_maintenance or maintenance.date > bus.last_maintenance:
-        bus.last_maintenance = maintenance.date
-        bus.save(update_fields=['last_maintenance'])
-    
-    return maintenance
+        except Exception as e:
+            logger.error(f"Error starting bus tracking: {e}")
+            raise ValidationError(str(e))
 
+    @classmethod
+    @transaction.atomic
+    def stop_tracking(cls, bus_id):
+        """
+        Stop tracking a bus.
 
-def deactivate_bus(bus_id, reason=''):
-    try:
-        bus = Bus.objects.get(id=bus_id)
-    except Bus.DoesNotExist:
-        raise ObjectNotFound("Bus not found")
-    
-    # Check if bus is currently tracking
-    if bus.is_tracking:
-        active_session = bus.current_tracking_session
-        if active_session:
-            from apps.tracking.services import end_tracking_session
-            end_tracking_session(active_session.id)
-    
-    # Deactivate bus
-    bus.is_active = False
-    bus.save()
-    
-    return bus
+        Args:
+            bus_id: ID of the bus
 
+        Returns:
+            Updated BusLocation object or None
+        """
+        try:
+            # Get bus and latest location
+            bus = get_bus_by_id(bus_id)
+            location = get_bus_location(bus_id)
 
-def reactivate_bus(bus_id):
-    try:
-        bus = Bus.objects.get(id=bus_id)
-    except Bus.DoesNotExist:
-        raise ObjectNotFound("Bus not found")
-    
-    # Reactivate bus
-    bus.is_active = True
-    bus.save()
-    
-    return bus
+            if location:
+                # Update existing location
+                location.is_tracking_active = False
+                location.save(update_fields=["is_tracking_active", "updated_at"])
 
+                logger.info(f"Stopped tracking bus: {bus.license_plate}")
+                return location
 
-def notify_admins_new_bus(bus):
-    from apps.authentication.selectors import get_active_admins
-    
-    admin_users = get_active_admins()
-    
-    for admin in admin_users:
-        send_notification(
-            user=admin,
-            notification_type='system',
-            title='New Bus Registration',
-            message=f'A new bus has been registered: {bus.matricule} by {bus.driver.user.get_full_name()}',
-            data={
-                'bus_id': str(bus.id),
-                'driver_id': str(bus.driver.id),
-                'action': 'verify_bus'
-            }
-        )
+            return None
 
-
-def notify_driver_bus_verification(bus, status, rejection_reason=''):
-    driver_user = bus.driver.user
-    
-    if status == 'approved':
-        send_notification(
-            user=driver_user,
-            notification_type='verification',
-            title='Bus Verified',
-            message=f'Your bus {bus.matricule} has been verified and approved.',
-            data={
-                'bus_id': str(bus.id),
-                'status': status
-            }
-        )
-    else:
-        send_notification(
-            user=driver_user,
-            notification_type='verification',
-            title='Bus Verification Failed',
-            message=f'Your bus {bus.matricule} verification has been rejected: {rejection_reason}',
-            data={
-                'bus_id': str(bus.id),
-                'status': status,
-                'reason': rejection_reason
-            }
-        )
-
-
-def get_bus_status(bus_id):
-    try:
-        bus = Bus.objects.select_related('driver__user').get(id=bus_id)
-    except Bus.DoesNotExist:
-        raise ObjectNotFound("Bus not found")
-    
-    # Check if bus is tracking
-    is_tracking = bus.is_tracking
-    active_session = bus.current_tracking_session if is_tracking else None
-    
-    # Get line if tracking
-    line_id = None
-    line_name = None
-    last_update = None
-    
-    if active_session:
-        line_id = active_session.line.id
-        line_name = active_session.line.name
-        last_update = active_session.last_update
-    
-    # Build status data
-    status_data = {
-        'bus_id': str(bus.id),
-        'matricule': bus.matricule,
-        'status': 'active' if bus.is_active else 'inactive',
-        'driver_id': str(bus.driver.id),
-        'driver_name': bus.driver.user.get_full_name(),
-        'line_id': str(line_id) if line_id else None,
-        'line_name': line_name,
-        'is_tracking': is_tracking,
-        'last_update': last_update
-    }
-    
-    return status_data
+        except Exception as e:
+            logger.error(f"Error stopping bus tracking: {e}")
+            raise ValidationError(str(e))

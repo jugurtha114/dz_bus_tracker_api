@@ -1,113 +1,63 @@
+"""
+Base settings for DZ Bus Tracker project.
+"""
 import os
 from datetime import timedelta
 from pathlib import Path
 
-import environ
+from environ import environ
 
 # Build paths inside the project
-ROOT_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 APPS_DIR = ROOT_DIR / "apps"
 
 # Environment variables
 env = environ.Env()
-if os.path.exists(ROOT_DIR / ".env"):
-    env.read_env(str(ROOT_DIR / ".env"))
+env.read_env(str(ROOT_DIR / ".env"))
 
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = env("SECRET_KEY", default="django-insecure-key-for-dev")
 
-# GENERAL
-DEBUG = env.bool("DJANGO_DEBUG", False)
-TIME_ZONE = "Africa/Algiers"
-LANGUAGE_CODE = "fr-fr"
-LANGUAGES = [
-    ("fr", "French"),
-    ("ar", "Arabic"),
-    ("en", "English"),
-]
-LANGUAGE_COOKIE_NAME = "dz_bus_tracker_language"
-SITE_ID = 1
-USE_I18N = True
-USE_L10N = True
-USE_TZ = True
-LOCALE_PATHS = [ROOT_DIR / "locale"]
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = env.bool("DEBUG", False)
 
-# DATABASES
-DATABASES = {
-    "default": env.db(
-        "DATABASE_URL", 
-        default="postgres://postgres:postgres@0.0.0.0:5432/dz_bus_tracker_db"
-    ),
-}
-DATABASES["default"]["ATOMIC_REQUESTS"] = True
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
-# URLS
-ROOT_URLCONF = "config.urls"
-WSGI_APPLICATION = "config.wsgi.application"
-ASGI_APPLICATION = "config.asgi.application"
-
-# APPS
+# Application definition
 DJANGO_APPS = [
+    "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
-    "django.contrib.sites",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django.contrib.admin",
     "django.contrib.gis",
 ]
 
 THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
-    "django_filters",
-    "corsheaders",
-    "drf_spectacular",
     "django_celery_beat",
-    "django_celery_results",
-    "modeltranslation",
+    "corsheaders",
+    "django_filters",
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
 ]
 
 LOCAL_APPS = [
-    "apps.core.apps.CoreConfig",
-    "apps.authentication.apps.AuthenticationConfig",
-    "apps.drivers.apps.DriversConfig",
+    "apps.accounts.apps.AccountsConfig",
+    "apps.api.apps.ApiConfig",
     "apps.buses.apps.BusesConfig",
+    "apps.core.apps.CoreConfig",
+    "apps.drivers.apps.DriversConfig",
     "apps.lines.apps.LinesConfig",
-    "apps.schedules.apps.SchedulesConfig",
-    "apps.tracking.apps.TrackingConfig",
-    "apps.passengers.apps.PassengersConfig",
     "apps.notifications.apps.NotificationsConfig",
-    "apps.eta.apps.ETAConfig",
-    "apps.analytics.apps.AnalyticsConfig",
-    "apps.feedback.apps.FeedbackConfig",
+    "apps.tracking.apps.TrackingConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
-# AUTHENTICATION
-AUTHENTICATION_BACKENDS = [
-    "django.contrib.auth.backends.ModelBackend",
-]
-
-AUTH_USER_MODEL = "authentication.User"
-
-# PASSWORDS
-PASSWORD_HASHERS = [
-    "django.contrib.auth.hashers.Argon2PasswordHasher",
-    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
-    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
-    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
-]
-
-AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
-]
-
-# MIDDLEWARE
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -118,22 +68,13 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.middleware.RequestLogMiddleware",
+    # Add the allauth middleware here
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
-# STATIC
-STATIC_ROOT = str(ROOT_DIR / "staticfiles")
-STATIC_URL = "/static/"
-STATICFILES_DIRS = [str(APPS_DIR / "static")]
-STATICFILES_FINDERS = [
-    "django.contrib.staticfiles.finders.FileSystemFinder",
-    "django.contrib.staticfiles.finders.AppDirectoriesFinder",
-]
+ROOT_URLCONF = "config.urls"
 
-# MEDIA
-MEDIA_ROOT = str(APPS_DIR / "media")
-MEDIA_URL = "/media/"
-
-# TEMPLATES
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -144,108 +85,108 @@ TEMPLATES = [
                 "django.template.context_processors.debug",
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
-                "django.template.context_processors.i18n",
-                "django.template.context_processors.media",
-                "django.template.context_processors.static",
-                "django.template.context_processors.tz",
                 "django.contrib.messages.context_processors.messages",
+                "django.template.context_processors.i18n",
             ],
         },
     },
 ]
 
-# SECURITY
-SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
-SECURE_BROWSER_XSS_FILTER = True
-X_FRAME_OPTIONS = "DENY"
+WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
-# EMAIL
-EMAIL_BACKEND = env(
-    "DJANGO_EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
-)
-EMAIL_TIMEOUT = 5
-
-# CACHING
-REDIS_URL = env.str("REDIS_URL", "redis://localhost:6379/0")
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": REDIS_URL,
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            "SERIALIZER": "django_redis.serializers.json.JSONSerializer",
-        },
-    }
+# Database
+DATABASES = {
+    "default": env.db("DATABASE_URL", default="postgres:///dz_bus_tracker"),
 }
+DATABASES["default"]["ATOMIC_REQUESTS"] = True
 
-# CELERY
-CELERY_BROKER_URL = REDIS_URL
-CELERY_RESULT_BACKEND = REDIS_URL
-CELERY_ACCEPT_CONTENT = ["json", "msgpack"]
-CELERY_TASK_SERIALIZER = "msgpack"
-CELERY_RESULT_SERIALIZER = "json"
-CELERY_TIMEZONE = TIME_ZONE
-CELERY_TASK_TIME_LIMIT = 5 * 60
-CELERY_TASK_SOFT_TIME_LIMIT = 60
-CELERY_TASK_ALWAYS_EAGER = False
-CELERY_TASK_EAGER_PROPAGATES = True
+# Password validation
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+    },
+]
 
-# REST FRAMEWORK
+# Custom user model
+AUTH_USER_MODEL = "accounts.User"
+
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+    "allauth.account.auth_backends.AuthenticationBackend",
+]
+
+# Internationalization
+LANGUAGE_CODE = env("DEFAULT_LANGUAGE", default="fr")
+TIME_ZONE = env("TIME_ZONE", default="Africa/Algiers")
+USE_I18N = True
+USE_TZ = True
+
+LANGUAGES = [
+    ("fr", "French"),
+    ("ar", "Arabic"),
+    ("en", "English"),
+]
+
+LOCALE_PATHS = [str(ROOT_DIR / "locale")]
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = "/static/"
+STATIC_ROOT = str(ROOT_DIR / "staticfiles")
+STATICFILES_DIRS = [str(ROOT_DIR / "static")]
+
+# Media files
+MEDIA_URL = "/media/"
+MEDIA_ROOT = str(ROOT_DIR / "media")
+
+# Default primary key field type
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
-    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    "DEFAULT_PAGINATION_CLASS": "apps.api.pagination.StandardResultsSetPagination",
     "PAGE_SIZE": 20,
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+    "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.URLPathVersioning",
+    "DEFAULT_VERSION": "v1",
+    "ALLOWED_VERSIONS": ["v1"],
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.AnonRateThrottle",
-        "rest_framework.throttling.UserRateThrottle",
+        "apps.api.throttling.BurstRateThrottle",
+        "apps.api.throttling.SustainedRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "100/hour", "user": "1000/hour"},
-    "DEFAULT_RENDERER_CLASSES": [
-        "utils.serialization.ORJSONRenderer",
-        "rest_framework.renderers.JSONRenderer",
-    ],
-    "DEFAULT_PARSER_CLASSES": [
-        "utils.serialization.ORJSONParser",
-        "rest_framework.parsers.JSONParser",
-        "rest_framework.parsers.FormParser",
-        "rest_framework.parsers.MultiPartParser",
-    ],
-    "DEFAULT_FILTER_BACKENDS": [
-        "django_filters.rest_framework.DjangoFilterBackend",
-        "rest_framework.filters.SearchFilter",
-        "rest_framework.filters.OrderingFilter",
-    ],
-    "EXCEPTION_HANDLER": "apps.core.exceptions.custom_exception_handler",
+    "DEFAULT_THROTTLE_RATES": {
+        "burst": "60/min",
+        "sustained": "1000/day",
+        "anon": "30/min",
+        "user": "60/min",
+        "location_updates": "100/min",
+    },
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-DEBUG_TOOLBAR_PANELS =[]
-
-# SPECTACULAR SETTINGS
-SPECTACULAR_SETTINGS = {
-    "TITLE": "DZ Bus Tracker API",
-    "DESCRIPTION": "API documentation for DZ Bus Tracker",
-    "VERSION": "1.0.0",
-    "SERVE_INCLUDE_SCHEMA": False,
-    "SCHEMA_PATH_PREFIX": r"/api/v[0-9]",
-    "COMPONENT_SPLIT_REQUEST": True,
-    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
-}
-
-# JWT SETTINGS
+# Simple JWT settings
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(seconds=env.int("ACCESS_TOKEN_LIFETIME", default=3600)),  # 1 hour
-    "REFRESH_TOKEN_LIFETIME": timedelta(seconds=env.int("REFRESH_TOKEN_LIFETIME", default=604800)),  # 7 days
-    "ROTATE_REFRESH_TOKENS": True,
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": True,
-    "UPDATE_LAST_LOGIN": True,
     "ALGORITHM": "HS256",
-    "SIGNING_KEY": env.str("JWT_SECRET_KEY", default=None),
+    "SIGNING_KEY": SECRET_KEY,
     "VERIFYING_KEY": None,
     "AUTH_HEADER_TYPES": ("Bearer",),
     "USER_ID_FIELD": "id",
@@ -255,39 +196,83 @@ SIMPLE_JWT = {
     "JTI_CLAIM": "jti",
 }
 
-# CORS SETTINGS
+# AllAuth settings
+ACCOUNT_UNIQUE_EMAIL = True
+# ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https" if not DEBUG else "http"
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None  # If your user model doesn't have a username field
+ACCOUNT_LOGOUT_ON_GET = True
+ACCOUNT_LOGIN_METHODS = {'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+
+
+
+# Celery settings
+CELERY_BROKER_URL = env("CELERY_BROKER_URL", default="redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = env("CELERY_RESULT_BACKEND", default="redis://localhost:6379/0")
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_ALWAYS_EAGER = env.bool("CELERY_TASK_ALWAYS_EAGER", default=False)
+CELERY_TASK_EAGER_PROPAGATES = True
+
+# Cache settings
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": env("REDIS_URL", default="redis://localhost:6379/1"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            "IGNORE_EXCEPTIONS": False,
+        },
+    }
+}
+
+# Email settings
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@dzbustracker.com")
+
+# Google Maps API settings
+GOOGLE_MAPS_API_KEY = env("GOOGLE_MAPS_API_KEY", default="")
+
+# Firebase settings for push notifications
+FIREBASE_CREDENTIALS_PATH = env("FIREBASE_CREDENTIALS_PATH", default="")
+
+# Twilio settings for SMS
+TWILIO_ACCOUNT_SID = env("TWILIO_ACCOUNT_SID", default="")
+TWILIO_AUTH_TOKEN = env("TWILIO_AUTH_TOKEN", default="")
+TWILIO_PHONE_NUMBER = env("TWILIO_PHONE_NUMBER", default="")
+
+# CORS settings
 CORS_ALLOWED_ORIGINS = env.list(
-    "CORS_ALLOWED_ORIGINS", default=["http://localhost:8000", "http://localhost:3000"]
+    "CORS_ALLOWED_ORIGINS",
+    default=["http://localhost:8000", "http://127.0.0.1:8000"],
 )
 CORS_ALLOW_CREDENTIALS = True
 
-# FIREBASE
-FIREBASE_CREDENTIALS = env.str("FIREBASE_CREDENTIALS", default=None)
+# Session settings
+SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+SESSION_CACHE_ALIAS = "default"
 
-# TWILIO
-TWILIO_ACCOUNT_SID = env.str("TWILIO_ACCOUNT_SID", default=None)
-TWILIO_AUTH_TOKEN = env.str("TWILIO_AUTH_TOKEN", default=None)
-TWILIO_FROM_NUMBER = env.str("TWILIO_FROM_NUMBER", default=None)
+# CSRF settings
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
 
-# GOOGLE MAPS
-GOOGLE_MAPS_API_KEY = env.str("GOOGLE_MAPS_API_KEY", default=None)
+# Security settings
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
 
-# SENTRY
-# SENTRY
-SENTRY_DSN = env.str("SENTRY_DSN", default=None)
-if SENTRY_DSN:
-    import sentry_sdk
-    from sentry_sdk.integrations.django import DjangoIntegration
-    from sentry_sdk.integrations.celery import CeleryIntegration
-
-    sentry_sdk.init(
-        dsn=SENTRY_DSN,
-        integrations=[DjangoIntegration(), CeleryIntegration()],
-        traces_sample_rate=0.1,
-        send_default_pii=True,
-    )
-
-# LOGGING
+# Logging
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -296,31 +281,43 @@ LOGGING = {
             "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
             "style": "{",
         },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
     },
     "handlers": {
         "console": {
-            "level": "DEBUG",
+            "level": "INFO",
             "class": "logging.StreamHandler",
             "formatter": "verbose",
-        }
+        },
+        "file": {
+            "level": "INFO",
+            "class": "logging.FileHandler",
+            "filename": str(ROOT_DIR / "logs/django.log"),
+            "formatter": "verbose",
+        },
     },
-    "root": {"level": "INFO", "handlers": ["console"]},
     "loggers": {
         "django": {
-            "handlers": ["console"],
+            "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": True,
         },
-        "django.db.backends": {
-            "level": "ERROR",
-            "handlers": ["console"],
-            "propagate": False,
+        "dz_bus_tracker": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": True,
         },
-        "apps": {"level": "DEBUG", "handlers": ["console"], "propagate": False},
     },
 }
 
+# DZ Bus Tracker specific settings
+BUS_LOCATION_UPDATE_INTERVAL = 15  # seconds
+BUS_LOCATION_HISTORY_RETENTION = 7  # days
+PASSENGER_COUNT_HISTORY_RETENTION = 30  # days
+DRIVER_APPROVAL_REQUIRED = True
 
-
-DEFAULT_FROM_EMAIL = "noreply@dzbustracker.com" # todo configure it later
-FRONTEND_URL = env.str("FRONTEND_URL", default="http://localhost:3000")
+# Admin URL (used in URLs configuration)
+ADMIN_URL = "admin/"

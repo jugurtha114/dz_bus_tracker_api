@@ -1,182 +1,297 @@
+"""
+Celery tasks for the tracking app.
+"""
 import logging
 from datetime import timedelta
-from django.utils import timezone
+
 from celery import shared_task
+from django.db.models import F
+from django.utils import timezone
 
-from .models import TrackingSession, LocationUpdate, OfflineLocationBatch
-from .selectors import get_unprocessed_offline_batches, get_active_tracking_sessions
-from .services import process_offline_batch, end_tracking_session, log_tracking_event
+from apps.core.utils.geo import calculate_distance
 
+from .models import (
+    Anomaly,
+    BusLine,
+    LocationUpdate,
+    PassengerCount,
+    Trip,
+    WaitingPassengers,
+)
+from .services import AnomalyService
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task
-def process_offline_batches():
+def process_location_updates():
     """
-    Process all unprocessed offline location batches.
+    Process location updates, calculating statistics and detecting anomalies.
     """
-    batches = get_unprocessed_offline_batches()
-    
-    processed_count = 0
-    for batch in batches:
-        try:
-            success = process_offline_batch(batch)
-            if success:
-                processed_count += 1
-        except Exception as e:
-            logger.error(f"Error processing offline batch {batch.id}: {str(e)}")
-    
-    return f"Processed {processed_count} offline batches."
+    try:
+        # Get active bus-line assignments
+        bus_lines = BusLine.objects.filter(
+            is_active=True,
+            tracking_status="active",
+        )
 
+        for bus_line in bus_lines:
+            # Get latest location updates
+            location_updates = LocationUpdate.objects.filter(
+                bus_id=bus_line.bus_id,
+                created_at__gte=timezone.now() - timedelta(minutes=60),
+            ).order_by("-created_at")[:2]
 
-@shared_task
-def cleanup_old_location_data(days=30):
-    """
-    Clean up old location data.
-    
-    Args:
-        days: Number of days to keep
-    """
-    cutoff_date = timezone.now() - timedelta(days=days)
-    
-    # Delete location updates older than cutoff date
-    result = LocationUpdate.objects.filter(
-        timestamp__lt=cutoff_date
-    ).delete()
-    
-    deleted_count = result[0] if result else 0
-    
-    return f"Deleted {deleted_count} old location updates."
+            if len(location_updates) < 2:
+                continue
 
+            # Calculate speed if not provided
+            current = location_updates[0]
+            previous = location_updates[1]
 
-@shared_task
-def close_inactive_sessions(inactive_minutes=60):
-    """
-    Close tracking sessions that have been inactive for a while.
-    
-    Args:
-        inactive_minutes: Minutes of inactivity before closing
-    """
-    cutoff_time = timezone.now() - timedelta(minutes=inactive_minutes)
-    
-    # Get active sessions with no recent updates
-    sessions = TrackingSession.objects.filter(
-        status='active',
-        is_active=True,
-        last_update__lt=cutoff_time
-    )
-    
-    closed_count = 0
-    for session in sessions:
-        try:
-            # Log the event
-            log_tracking_event(
-                session=session,
-                event_type='session_auto_closed',
-                message=f"Session automatically closed due to {inactive_minutes} minutes of inactivity",
+            if not current.speed:
+                time_diff = (current.created_at - previous.created_at).total_seconds() / 3600
+
+                if time_diff > 0:
+                    distance = calculate_distance(
+                        float(previous.latitude),
+                        float(previous.longitude),
+                        float(current.latitude),
+                        float(current.longitude)
+                    )
+
+                    if distance:
+                        speed = distance / time_diff
+                        current.speed = speed
+                        current.save(update_fields=["speed"])
+
+            # Detect anomalies
+            if current.speed and float(current.speed) > 100:  # Example threshold
+                AnomalyService.detect_speed_anomaly(
+                    bus_id=bus_line.bus_id,
+                    speed=float(current.speed),
+                    latitude=current.latitude,
+                    longitude=current.longitude,
+                )
+
+            # Detect route deviations
+            AnomalyService.detect_route_deviation(
+                bus_id=bus_line.bus_id,
+                latitude=current.latitude,
+                longitude=current.longitude,
+                line_id=bus_line.line_id,
             )
-            
-            # End the session
-            end_tracking_session(session.id)
-            closed_count += 1
-        except Exception as e:
-            logger.error(f"Error closing inactive session {session.id}: {str(e)}")
-    
-    return f"Closed {closed_count} inactive tracking sessions."
+
+        logger.info("Processed location updates")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error processing location updates: {e}")
+        return False
 
 
 @shared_task
-def check_tracking_gaps():
+def calculate_eta_for_stops():
     """
-    Check for gaps in tracking data for active sessions.
+    Calculate ETA for buses to stops.
     """
-    sessions = get_active_tracking_sessions()
-    
-    gap_threshold = timedelta(minutes=5)
-    current_time = timezone.now()
-    
-    gap_count = 0
-    for session in sessions:
-        if not session.last_update:
-            continue
-        
-        time_since_update = current_time - session.last_update
-        
-        if time_since_update > gap_threshold:
-            # Log the tracking gap
-            log_tracking_event(
-                session=session,
-                event_type='tracking_gap_detected',
-                message=f"No location updates for {time_since_update.total_seconds() // 60} minutes",
-                data={
-                    'minutes_since_update': time_since_update.total_seconds() // 60,
-                    'last_update': session.last_update.isoformat(),
-                }
+    try:
+        # Get active bus-line assignments
+        bus_lines = BusLine.objects.filter(
+            is_active=True,
+            tracking_status="active",
+        )
+
+        for bus_line in bus_lines:
+            # Get latest location update
+            try:
+                location = LocationUpdate.objects.filter(
+                    bus_id=bus_line.bus_id
+                ).latest("created_at")
+            except LocationUpdate.DoesNotExist:
+                continue
+
+            # Get stops for the line
+            from apps.lines.selectors import get_stops_by_line
+            stops = get_stops_by_line(bus_line.line_id)
+
+            # Calculate ETA for each stop
+            for stop in stops:
+                from apps.core.utils.geo import calculate_eta
+
+                eta = calculate_eta(
+                    float(location.latitude),
+                    float(location.longitude),
+                    float(stop.latitude),
+                    float(stop.longitude),
+                    float(location.speed) if location.speed else None
+                )
+
+                if eta:
+                    # Store ETA in cache
+                    from django.core.cache import cache
+
+                    cache_key = f"eta:{bus_line.bus_id}:{stop.id}"
+                    cache.set(cache_key, eta.isoformat(), 300)  # 5 minutes
+
+        logger.info("Calculated ETA for stops")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error calculating ETA for stops: {e}")
+        return False
+
+
+@shared_task
+def clean_old_location_data():
+    """
+    Clean old location data to prevent database bloat.
+    """
+    try:
+        # Get retention period from settings
+        from django.conf import settings
+
+        retention_days = getattr(
+            settings, "BUS_LOCATION_HISTORY_RETENTION", 7
+        )
+        cutoff_date = timezone.now() - timedelta(days=retention_days)
+
+        # Delete old location updates
+        count = LocationUpdate.objects.filter(
+            created_at__lt=cutoff_date
+        ).delete()[0]
+
+        logger.info(f"Cleaned {count} old location updates")
+
+        # Delete old passenger counts
+        passenger_retention_days = getattr(
+            settings, "PASSENGER_COUNT_HISTORY_RETENTION", 30
+        )
+        passenger_cutoff_date = timezone.now() - timedelta(days=passenger_retention_days)
+
+        count = PassengerCount.objects.filter(
+            created_at__lt=passenger_cutoff_date
+        ).delete()[0]
+
+        logger.info(f"Cleaned {count} old passenger counts")
+
+        # Delete old waiting passengers
+        count = WaitingPassengers.objects.filter(
+            created_at__lt=passenger_cutoff_date
+        ).delete()[0]
+
+        logger.info(f"Cleaned {count} old waiting passengers records")
+
+        return True
+
+    except Exception as e:
+        logger.error(f"Error cleaning old location data: {e}")
+        return False
+
+
+@shared_task
+def detect_anomalies():
+    """
+    Detect anomalies in bus tracking data.
+    """
+    try:
+        # Detect bus bunching (multiple buses close together on the same line)
+        from django.db import connection
+
+        # This is a simplified approach and would need to be optimized in production
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT l1.bus_id, l2.bus_id, l1.line_id, 
+                       l1.latitude, l1.longitude, l2.latitude, l2.longitude
+                FROM tracking_locationupdate l1
+                JOIN tracking_locationupdate l2 ON 
+                    l1.line_id = l2.line_id AND 
+                    l1.bus_id != l2.bus_id AND
+                    l1.created_at >= %s AND
+                    l2.created_at >= %s
+                WHERE l1.id > l2.id
+                ORDER BY l1.created_at DESC, l2.created_at DESC
+            """, [timezone.now() - timedelta(minutes=10), timezone.now() - timedelta(minutes=10)])
+
+            bunching_candidates = cursor.fetchall()
+
+        for row in bunching_candidates:
+            bus1_id, bus2_id, line_id, lat1, lon1, lat2, lon2 = row
+
+            distance = calculate_distance(
+                float(lat1), float(lon1),
+                float(lat2), float(lon2)
             )
-            gap_count += 1
-    
-    return f"Detected {gap_count} tracking gaps."
 
+            if distance and distance < 0.5:  # If buses are less than 500m apart
+                # Check if there's already an anomaly for this
+                if not Anomaly.objects.filter(
+                        bus_id=bus1_id,
+                        type="bunching",
+                        created_at__gte=timezone.now() - timedelta(minutes=30),
+                        resolved=False
+                ).exists():
+                    AnomalyService.create_anomaly(
+                        bus_id=bus1_id,
+                        anomaly_type="bunching",
+                        description=f"Bus bunching detected: {bus1_id} and {bus2_id} are {distance:.2f} km apart on line {line_id}",
+                        severity="medium",
+                        location_latitude=lat1,
+                        location_longitude=lon1,
+                    )
 
-@shared_task
-def calculate_trip_metrics():
-    """
-    Calculate metrics for all completed trips that haven't been processed.
-    """
-    from apps.analytics.services import create_trip_logs_for_completed_sessions
-    
-    processed_count = create_trip_logs_for_completed_sessions()
-    
-    return f"Processed metrics for {processed_count} completed trips."
+        # Detect service gaps (long time between buses)
+        lines = LocationUpdate.objects.values('line_id').distinct()
 
+        for line_data in lines:
+            line_id = line_data['line_id']
+            if not line_id:
+                continue
 
-@shared_task
-def sync_tracking_data_with_analytics():
-    """
-    Sync tracking data with analytics.
-    """
-    from apps.analytics.services import update_analytics_from_tracking
-    
-    updated_count = update_analytics_from_tracking()
-    
-    return f"Updated analytics for {updated_count} sessions."
-
-
-@shared_task
-def handle_stuck_sessions(hours=12):
-    """
-    Handle sessions that are stuck in active state for too long.
-    
-    Args:
-        hours: Maximum hours a session can be active
-    """
-    cutoff_time = timezone.now() - timedelta(hours=hours)
-    
-    # Get active sessions that started too long ago
-    sessions = TrackingSession.objects.filter(
-        status='active',
-        is_active=True,
-        start_time__lt=cutoff_time
-    )
-    
-    handled_count = 0
-    for session in sessions:
-        try:
-            # Log the event
-            log_tracking_event(
-                session=session,
-                event_type='session_stuck',
-                message=f"Session active for more than {hours} hours",
-                data={
-                    'hours_active': (timezone.now() - session.start_time).total_seconds() // 3600,
-                }
+            # Get the latest update for each bus on this line
+            latest_updates = LocationUpdate.objects.filter(
+                line_id=line_id
+            ).values('bus_id').annotate(
+                latest=models.Max('created_at')
             )
-            
-            # End the session
-            end_tracking_session(session.id)
-            handled_count += 1
-        except Exception as e:
-            logger.error(f"Error handling stuck session {session.id}: {str(e)}")
-    
-    return f"Handled {handled_count} stuck tracking sessions."
+
+            if len(latest_updates) < 2:
+                continue
+
+            # Sort by time
+            sorted_updates = sorted(latest_updates, key=lambda x: x['latest'])
+
+            # Check gaps between buses
+            for i in range(len(sorted_updates) - 1):
+                gap = (sorted_updates[i + 1]['latest'] - sorted_updates[i]['latest']).total_seconds() / 60
+
+                # If gap is more than 30 minutes, create anomaly
+                if gap > 30:
+                    if not Anomaly.objects.filter(
+                            bus_id=sorted_updates[i + 1]['bus_id'],
+                            type="gap",
+                            created_at__gte=timezone.now() - timedelta(minutes=30),
+                            resolved=False
+                    ).exists():
+                        # Get bus location
+                        location = LocationUpdate.objects.filter(
+                            bus_id=sorted_updates[i + 1]['bus_id'],
+                            created_at=sorted_updates[i + 1]['latest']
+                        ).first()
+
+                        if location:
+                            AnomalyService.create_anomaly(
+                                bus_id=sorted_updates[i + 1]['bus_id'],
+                                anomaly_type="gap",
+                                description=f"Service gap detected: {gap:.1f} minutes between buses on line {line_id}",
+                                severity="low",
+                                location_latitude=location.latitude,
+                                location_longitude=location.longitude,
+                            )
+
+        logger.info("Detected anomalies")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error detecting anomalies: {e}")
+        return False

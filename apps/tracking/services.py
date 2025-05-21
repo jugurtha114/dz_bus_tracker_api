@@ -1,440 +1,854 @@
-from datetime import datetime
-import json
-from django.utils import timezone
-from django.core.cache import cache
+"""
+Service functions for the tracking app.
+"""
+import logging
+import uuid
+from datetime import timedelta
+
 from django.db import transaction
+from django.db.models import Avg, Sum
+from django.utils import timezone
 
-from apps.core.constants import CACHE_KEY_LOCATION
-from utils.geo import calculate_distance
-from .models import TrackingSession, LocationUpdate, TrackingLog, OfflineLocationBatch
+from apps.buses.models import Bus
+from apps.buses.selectors import get_bus_by_id
+from apps.core.constants import BUS_TRACKING_STATUS_ACTIVE, BUS_TRACKING_STATUS_IDLE
+from apps.core.exceptions import ValidationError
+from apps.core.services import BaseService, create_object, update_object
+from apps.core.utils.cache import (
+    cache_bus_location,
+    cache_bus_passengers,
+    cache_line_buses,
+    cache_stop_waiting,
+)
+from apps.core.utils.geo import calculate_distance
+from apps.drivers.selectors import get_driver_by_id
+from apps.lines.models import Line, Stop
+from apps.lines.selectors import get_line_by_id, get_stop_by_id
+
+from .models import (
+    Anomaly,
+    BusLine,
+    LocationUpdate,
+    PassengerCount,
+    Trip,
+    WaitingPassengers,
+)
+from .selectors import (
+    get_active_trip,
+    get_bus_line,
+    get_latest_location_update,
+    get_trip_by_id,
+)
+
+logger = logging.getLogger(__name__)
 
 
-def start_tracking_session(driver, bus, line, schedule=None):
+class BusLineService(BaseService):
     """
-    Start a new tracking session.
-    
-    Args:
-        driver: Driver object
-        bus: Bus object
-        line: Line object
-        schedule: Optional Schedule object
-        
-    Returns:
-        Newly created TrackingSession
+    Service for bus-line assignments.
     """
-    # Create the tracking session
-    session = TrackingSession.objects.create(
-        driver=driver,
-        bus=bus,
-        line=line,
-        schedule=schedule,
-        status='active',
-        start_time=timezone.now(),
-    )
-    
-    # Log the event
-    log_tracking_event(
-        session=session,
-        event_type='session_started',
-        message=f"Tracking session started for {bus} on {line}",
-    )
-    
-    return session
+
+    @classmethod
+    @transaction.atomic
+    def assign_bus_to_line(cls, bus_id, line_id):
+        """
+        Assign a bus to a line.
+
+        Args:
+            bus_id: ID of the bus
+            line_id: ID of the line
+
+        Returns:
+            Created BusLine object
+        """
+        try:
+            # Get bus and line
+            bus = get_bus_by_id(bus_id)
+            line = get_line_by_id(line_id)
+
+            # Check if already assigned
+            if BusLine.objects.filter(bus=bus, line=line, is_active=True).exists():
+                raise ValidationError("Bus is already assigned to this line.")
+
+            # Create bus-line assignment
+            bus_line = create_object(BusLine, {
+                "bus": bus,
+                "line": line,
+                "is_active": True,
+                "tracking_status": BUS_TRACKING_STATUS_IDLE,
+            })
+
+            logger.info(f"Assigned bus {bus.license_plate} to line {line.code}")
+            return bus_line
+
+        except Exception as e:
+            logger.error(f"Error assigning bus to line: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def unassign_bus_from_line(cls, bus_id, line_id):
+        """
+        Unassign a bus from a line.
+
+        Args:
+            bus_id: ID of the bus
+            line_id: ID of the line
+
+        Returns:
+            Updated BusLine object
+        """
+        try:
+            # Get bus-line assignment
+            bus_line = get_bus_line(bus_id, line_id)
+
+            # Update assignment
+            bus_line.is_active = False
+            bus_line.tracking_status = BUS_TRACKING_STATUS_IDLE
+            bus_line.save(update_fields=["is_active", "tracking_status", "updated_at"])
+
+            logger.info(
+                f"Unassigned bus {bus_line.bus.license_plate} from line {bus_line.line.code}"
+            )
+            return bus_line
+
+        except Exception as e:
+            logger.error(f"Error unassigning bus from line: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def start_tracking(cls, bus_id, line_id):
+        """
+        Start tracking a bus on a line.
+
+        Args:
+            bus_id: ID of the bus
+            line_id: ID of the line
+
+        Returns:
+            Updated BusLine object and created Trip
+        """
+        try:
+            # Get bus-line assignment
+            bus_line = get_bus_line(bus_id, line_id)
+
+            # Check if already tracking
+            if bus_line.tracking_status == BUS_TRACKING_STATUS_ACTIVE:
+                raise ValidationError("Bus is already tracking on this line.")
+
+            # Get bus and line
+            bus = bus_line.bus
+            line = bus_line.line
+
+            # Get driver
+            driver = bus.driver
+
+            # Generate trip ID
+            trip_id = uuid.uuid4()
+
+            # Create trip
+            trip = create_object(Trip, {
+                "bus": bus,
+                "driver": driver,
+                "line": line,
+                "start_time": timezone.now(),
+                "is_completed": False,
+            })
+
+            # Update bus-line assignment
+            bus_line.tracking_status = BUS_TRACKING_STATUS_ACTIVE
+            bus_line.trip_id = trip_id
+            bus_line.start_time = trip.start_time
+            bus_line.end_time = None
+            bus_line.save(update_fields=[
+                "tracking_status",
+                "trip_id",
+                "start_time",
+                "end_time",
+                "updated_at",
+            ])
+
+            logger.info(
+                f"Started tracking bus {bus.license_plate} on line {line.code}"
+            )
+            return bus_line, trip
+
+        except Exception as e:
+            logger.error(f"Error starting tracking: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def stop_tracking(cls, bus_id, line_id):
+        """
+        Stop tracking a bus on a line.
+
+        Args:
+            bus_id: ID of the bus
+            line_id: ID of the line
+
+        Returns:
+            Updated BusLine object and updated Trip
+        """
+        try:
+            # Get bus-line assignment
+            bus_line = get_bus_line(bus_id, line_id)
+
+            # Check if tracking
+            if bus_line.tracking_status != BUS_TRACKING_STATUS_ACTIVE:
+                raise ValidationError("Bus is not tracking on this line.")
+
+            # Get active trip
+            trip = get_active_trip(bus_id)
+
+            if not trip:
+                raise ValidationError("No active trip found for this bus.")
+
+            # Calculate trip statistics
+            now = timezone.now()
+            duration = now - trip.start_time
+
+            # Get location updates for this trip
+            location_updates = LocationUpdate.objects.filter(trip_id=trip.id)
+
+            # Calculate distance
+            total_distance = 0
+            prev_update = None
+
+            for update in location_updates.order_by("created_at"):
+                if prev_update:
+                    distance = calculate_distance(
+                        float(prev_update.latitude),
+                        float(prev_update.longitude),
+                        float(update.latitude),
+                        float(update.longitude)
+                    )
+
+                    if distance:
+                        total_distance += distance
+
+                prev_update = update
+
+            # Calculate average speed
+            average_speed = None
+            if duration.total_seconds() > 0:
+                average_speed = total_distance / (duration.total_seconds() / 3600)
+
+            # Get maximum passengers
+            max_passengers = PassengerCount.objects.filter(
+                trip_id=trip.id
+            ).aggregate(
+                max=models.Max("count")
+            )["max"] or 0
+
+            # Count stops visited
+            total_stops = location_updates.values("nearest_stop").distinct().count()
+
+            # Update trip
+            trip.end_time = now
+            trip.is_completed = True
+            trip.distance = total_distance
+            trip.average_speed = average_speed
+            trip.max_passengers = max_passengers
+            trip.total_stops = total_stops
+            trip.save(update_fields=[
+                "end_time",
+                "is_completed",
+                "distance",
+                "average_speed",
+                "max_passengers",
+                "total_stops",
+                "updated_at",
+            ])
+
+            # Update bus-line assignment
+            bus_line.tracking_status = BUS_TRACKING_STATUS_IDLE
+            bus_line.end_time = now
+            bus_line.save(update_fields=["tracking_status", "end_time", "updated_at"])
+
+            logger.info(
+                f"Stopped tracking bus {bus_line.bus.license_plate} on line {bus_line.line.code}"
+            )
+            return bus_line, trip
+
+        except Exception as e:
+            logger.error(f"Error stopping tracking: {e}")
+            raise ValidationError(str(e))
 
 
-def end_tracking_session(session_id):
+class LocationUpdateService(BaseService):
     """
-    End a tracking session.
-    
-    Args:
-        session_id: ID of the session to end
-        
-    Returns:
-        Updated TrackingSession
+    Service for location updates.
     """
-    try:
-        session = TrackingSession.objects.get(id=session_id, status='active')
-    except TrackingSession.DoesNotExist:
-        return None
-    
-    # End the session
-    session.end_time = timezone.now()
-    session.status = 'completed'
-    session.save(update_fields=['end_time', 'status'])
-    
-    # Log the event
-    log_tracking_event(
-        session=session,
-        event_type='session_ended',
-        message=f"Tracking session ended for {session.bus} on {session.line}",
-        data={
-            'duration': (session.end_time - session.start_time).total_seconds(),
-            'total_distance': session.total_distance,
-        }
-    )
-    
-    # Generate trip metrics
-    from apps.analytics.services import create_trip_log
-    create_trip_log(session)
-    
-    # Update ETAs
-    from apps.eta.services import recalculate_etas_for_line
-    recalculate_etas_for_line(session.line.id)
-    
-    return session
 
+    @classmethod
+    @transaction.atomic
+    def record_location_update(cls, bus_id, latitude, longitude, **kwargs):
+        """
+        Record a location update for a bus.
 
-def pause_tracking_session(session_id):
-    """
-    Pause a tracking session.
-    
-    Args:
-        session_id: ID of the session to pause
-        
-    Returns:
-        Updated TrackingSession
-    """
-    try:
-        session = TrackingSession.objects.get(id=session_id, status='active')
-    except TrackingSession.DoesNotExist:
-        return None
-    
-    # Pause the session
-    session.status = 'paused'
-    session.save(update_fields=['status'])
-    
-    # Log the event
-    log_tracking_event(
-        session=session,
-        event_type='session_paused',
-        message=f"Tracking session paused for {session.bus} on {session.line}",
-    )
-    
-    return session
+        Args:
+            bus_id: ID of the bus
+            latitude: Latitude
+            longitude: Longitude
+            **kwargs: Additional location data
 
+        Returns:
+            Created LocationUpdate object
+        """
+        try:
+            # Get bus
+            bus = get_bus_by_id(bus_id)
 
-def resume_tracking_session(session_id):
-    """
-    Resume a paused tracking session.
-    
-    Args:
-        session_id: ID of the session to resume
-        
-    Returns:
-        Updated TrackingSession
-    """
-    try:
-        session = TrackingSession.objects.get(id=session_id, status='paused')
-    except TrackingSession.DoesNotExist:
-        return None
-    
-    # Resume the session
-    session.status = 'active'
-    session.save(update_fields=['status'])
-    
-    # Log the event
-    log_tracking_event(
-        session=session,
-        event_type='session_resumed',
-        message=f"Tracking session resumed for {session.bus} on {session.line}",
-    )
-    
-    return session
+            # Validate inputs
+            if not latitude:
+                raise ValidationError("Latitude is required.")
 
+            if not longitude:
+                raise ValidationError("Longitude is required.")
 
-def add_location_update(session_id, location_data):
-    """
-    Add a location update to a tracking session.
-    
-    Args:
-        session_id: ID of the session
-        location_data: Dictionary containing location data
-        
-    Returns:
-        Newly created LocationUpdate
-    """
-    try:
-        session = TrackingSession.objects.get(id=session_id)
-    except TrackingSession.DoesNotExist:
-        return None
-    
-    if session.status != 'active':
-        log_tracking_event(
-            session=session,
-            event_type='location_update_rejected',
-            message="Location update rejected: session not active",
-            data=location_data
-        )
-        return None
-    
-    # Create the location update
-    location_update = LocationUpdate.objects.create(
-        session=session,
-        latitude=location_data.get('latitude'),
-        longitude=location_data.get('longitude'),
-        accuracy=location_data.get('accuracy'),
-        speed=location_data.get('speed'),
-        heading=location_data.get('heading'),
-        altitude=location_data.get('altitude'),
-        timestamp=location_data.get('timestamp') or timezone.now(),
-        metadata=location_data.get('metadata', {}),
-    )
-    
-    # Cache the latest location
-    cache_key = CACHE_KEY_LOCATION.format(session.id)
-    cache.set(
-        cache_key,
-        {
-            'latitude': float(location_update.latitude),
-            'longitude': float(location_update.longitude),
-            'accuracy': location_update.accuracy,
-            'speed': location_update.speed,
-            'heading': location_update.heading,
-            'timestamp': location_update.timestamp.isoformat(),
-            'session_id': str(session.id),
-            'bus_id': str(session.bus.id),
-            'driver_id': str(session.driver.id),
-            'line_id': str(session.line.id),
-        },
-        timeout=3600  # 1 hour
-    )
-    
-    # Check if we need to recalculate ETAs
-    from apps.eta.services import should_recalculate_eta, recalculate_etas_for_line
-    if should_recalculate_eta(session.line.id, location_update):
-        recalculate_etas_for_line(session.line.id)
-    
-    return location_update
+            # Get active trip
+            trip = get_active_trip(bus_id)
 
+            # Get line
+            line = None
+            if trip:
+                line = trip.line
 
-@transaction.atomic
-def batch_location_updates(session_id, locations):
-    """
-    Add multiple location updates to a tracking session.
-    
-    Args:
-        session_id: ID of the session
-        locations: List of dictionaries containing location data
-        
-    Returns:
-        List of created LocationUpdate objects
-    """
-    try:
-        session = TrackingSession.objects.get(id=session_id)
-    except TrackingSession.DoesNotExist:
-        return []
-    
-    if session.status != 'active':
-        log_tracking_event(
-            session=session,
-            event_type='batch_location_update_rejected',
-            message="Batch location update rejected: session not active",
-            data={'count': len(locations)}
-        )
-        return []
-    
-    # Sort locations by timestamp
-    sorted_locations = sorted(
-        locations,
-        key=lambda x: x.get('timestamp') or timezone.now()
-    )
-    
-    created_updates = []
-    latest_update = None
-    
-    for location_data in sorted_locations:
-        # Convert timestamp if it's a string
-        if isinstance(location_data.get('timestamp'), str):
-            try:
-                location_data['timestamp'] = datetime.fromisoformat(
-                    location_data['timestamp'].replace('Z', '+00:00')
+            # Create location data
+            location_data = {
+                "bus": bus,
+                "latitude": latitude,
+                "longitude": longitude,
+                "trip_id": trip.id if trip else None,
+                "line": line,
+                **kwargs
+            }
+
+            # Find nearest stop if line is provided
+            if line:
+                from apps.lines.selectors import get_stops_by_line
+                stops = get_stops_by_line(line.id)
+
+                nearest_stop = None
+                min_distance = float("inf")
+
+                for stop in stops:
+                    distance = calculate_distance(
+                        float(latitude),
+                        float(longitude),
+                        float(stop.latitude),
+                        float(stop.longitude)
+                    )
+
+                    if distance and distance < min_distance:
+                        min_distance = distance
+                        nearest_stop = stop
+
+                if nearest_stop:
+                    location_data["nearest_stop"] = nearest_stop
+                    # Convert to meters
+                    location_data["distance_to_stop"] = min_distance * 1000
+
+            # Create location update
+            location = create_object(LocationUpdate, location_data)
+
+            # Update cache
+            location_dict = {
+                "id": str(location.id),
+                "bus_id": str(bus.id),
+                "latitude": float(location.latitude),
+                "longitude": float(location.longitude),
+                "altitude": float(location.altitude) if location.altitude else None,
+                "speed": float(location.speed) if location.speed else None,
+                "heading": float(location.heading) if location.heading else None,
+                "accuracy": float(location.accuracy) if location.accuracy else None,
+                "timestamp": location.created_at.isoformat(),
+                "line_id": str(line.id) if line else None,
+                "nearest_stop_id": str(location.nearest_stop_id) if location.nearest_stop_id else None,
+                "distance_to_stop": float(location.distance_to_stop) if location.distance_to_stop else None,
+            }
+
+            cache_bus_location(bus.id, location_dict)
+
+            # Update line buses cache if line exists
+            if line:
+                from .selectors import get_buses_on_line
+                buses_on_line = get_buses_on_line(line.id)
+                cache_line_buses(line.id, buses_on_line)
+
+            logger.info(f"Recorded location update for bus {bus.license_plate}")
+            return location
+
+        except Exception as e:
+            logger.error(f"Error recording location update: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    def find_nearest_stop(cls, latitude, longitude, line_id=None, radius_km=0.5):
+        """
+        Find the nearest stop to a location.
+
+        Args:
+            latitude: Latitude
+            longitude: Longitude
+            line_id: Optional line ID to filter stops
+            radius_km: Maximum radius in kilometers
+
+        Returns:
+            Nearest Stop object and distance in meters
+        """
+        try:
+            # Get stops
+            if line_id:
+                from apps.lines.selectors import get_stops_by_line
+                stops = get_stops_by_line(line_id)
+            else:
+                from apps.lines.selectors import get_active_stops
+                stops = get_active_stops()
+
+            nearest_stop = None
+            min_distance = float("inf")
+
+            for stop in stops:
+                distance = calculate_distance(
+                    float(latitude),
+                    float(longitude),
+                    float(stop.latitude),
+                    float(stop.longitude)
                 )
-            except (ValueError, AttributeError):
-                location_data['timestamp'] = timezone.now()
-        
-        # Create the location update
-        location_update = LocationUpdate.objects.create(
-            session=session,
-            latitude=location_data.get('latitude'),
-            longitude=location_data.get('longitude'),
-            accuracy=location_data.get('accuracy'),
-            speed=location_data.get('speed'),
-            heading=location_data.get('heading'),
-            altitude=location_data.get('altitude'),
-            timestamp=location_data.get('timestamp') or timezone.now(),
-            metadata=location_data.get('metadata', {}),
-        )
-        
-        created_updates.append(location_update)
-        latest_update = location_update
-    
-    # Cache the latest location
-    if latest_update:
-        cache_key = CACHE_KEY_LOCATION.format(session.id)
-        cache.set(
-            cache_key,
-            {
-                'latitude': float(latest_update.latitude),
-                'longitude': float(latest_update.longitude),
-                'accuracy': latest_update.accuracy,
-                'speed': latest_update.speed,
-                'heading': latest_update.heading,
-                'timestamp': latest_update.timestamp.isoformat(),
-                'session_id': str(session.id),
-                'bus_id': str(session.bus.id),
-                'driver_id': str(session.driver.id),
-                'line_id': str(session.line.id),
-            },
-            timeout=3600  # 1 hour
-        )
-    
-    # Log the event
-    log_tracking_event(
-        session=session,
-        event_type='batch_location_update',
-        message=f"Added {len(created_updates)} location updates in batch",
-        data={'count': len(created_updates)}
-    )
-    
-    # Check if we need to recalculate ETAs
-    from apps.eta.services import should_recalculate_eta, recalculate_etas_for_line
-    if latest_update and should_recalculate_eta(session.line.id, latest_update):
-        recalculate_etas_for_line(session.line.id)
-    
-    return created_updates
+
+                if distance and distance < min_distance and distance <= radius_km:
+                    min_distance = distance
+                    nearest_stop = stop
+
+            if nearest_stop:
+                # Convert to meters
+                return nearest_stop, min_distance * 1000
+
+            return None, None
+
+        except Exception as e:
+            logger.error(f"Error finding nearest stop: {e}")
+            return None, None
 
 
-def create_offline_batch(driver, bus, line, location_data):
+class PassengerCountService(BaseService):
     """
-    Create an offline location batch.
-    
-    Args:
-        driver: Driver object
-        bus: Bus object
-        line: Line object
-        location_data: List of dictionaries containing location data
-        
-    Returns:
-        Newly created OfflineLocationBatch
+    Service for passenger counts.
     """
-    batch = OfflineLocationBatch.objects.create(
-        driver=driver,
-        bus=bus,
-        line=line,
-        data=location_data,
-    )
-    
-    return batch
+
+    @classmethod
+    @transaction.atomic
+    def update_passenger_count(cls, bus_id, count, **kwargs):
+        """
+        Update the passenger count for a bus.
+
+        Args:
+            bus_id: ID of the bus
+            count: Number of passengers
+            **kwargs: Additional passenger count data
+
+        Returns:
+            Created PassengerCount object
+        """
+        try:
+            # Get bus
+            bus = get_bus_by_id(bus_id)
+
+            # Validate inputs
+            if count < 0:
+                raise ValidationError("Passenger count cannot be negative.")
+
+            # Get active trip
+            trip = get_active_trip(bus_id)
+
+            # Get line
+            line = None
+            if trip:
+                line = trip.line
+
+            # Calculate occupancy rate
+            occupancy_rate = min(count / bus.capacity, 1.0) if bus.capacity > 0 else 0
+
+            # Create passenger count data
+            passenger_data = {
+                "bus": bus,
+                "count": count,
+                "capacity": bus.capacity,
+                "occupancy_rate": occupancy_rate,
+                "trip_id": trip.id if trip else None,
+                "line": line,
+                **kwargs
+            }
+
+            # Create passenger count
+            passenger_count = create_object(PassengerCount, passenger_data)
+
+            # Update cache
+            cache_bus_passengers(bus.id, count)
+
+            logger.info(f"Updated passenger count for bus {bus.license_plate}: {count}")
+            return passenger_count
+
+        except Exception as e:
+            logger.error(f"Error updating passenger count: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def update_waiting_passengers(cls, stop_id, count, line_id=None, user_id=None):
+        """
+        Update the waiting passengers count at a stop.
+
+        Args:
+            stop_id: ID of the stop
+            count: Number of waiting passengers
+            line_id: Optional line ID
+            user_id: Optional ID of the user reporting the count
+
+        Returns:
+            Created WaitingPassengers object
+        """
+        try:
+            # Get stop
+            stop = get_stop_by_id(stop_id)
+
+            # Get line if provided
+            line = None
+            if line_id:
+                line = get_line_by_id(line_id)
+
+            # Validate inputs
+            if count < 0:
+                raise ValidationError("Waiting passengers count cannot be negative.")
+
+            # Create waiting passengers data
+            waiting_data = {
+                "stop": stop,
+                "count": count,
+                "line": line,
+            }
+
+            # Add reporting user if provided
+            if user_id:
+                from apps.accounts.selectors import get_user_by_id
+                waiting_data["reported_by"] = get_user_by_id(user_id)
+
+            # Create waiting passengers
+            waiting = create_object(WaitingPassengers, waiting_data)
+
+            # Update cache
+            cache_stop_waiting(stop.id, count)
+
+            logger.info(f"Updated waiting passengers for stop {stop.name}: {count}")
+            return waiting
+
+        except Exception as e:
+            logger.error(f"Error updating waiting passengers: {e}")
+            raise ValidationError(str(e))
 
 
-@transaction.atomic
-def process_offline_batch(batch):
+class TripService(BaseService):
     """
-    Process an offline location batch.
-    
-    Args:
-        batch: OfflineLocationBatch object
-        
-    Returns:
-        Boolean indicating success
+    Service for trips.
     """
-    if batch.processed:
-        return True
-    
-    # Find or create a tracking session
-    session = None
-    
-    # Check for an active session for this bus
-    active_session = TrackingSession.objects.filter(
-        bus=batch.bus,
-        status='active',
-    ).first()
-    
-    if active_session:
-        session = active_session
-    else:
-        # Create a new session
-        session = start_tracking_session(
-            driver=batch.driver,
-            bus=batch.bus,
-            line=batch.line,
-        )
-    
-    # Process the location data
-    batch_location_updates(session.id, batch.data)
-    
-    return True
+
+    @classmethod
+    @transaction.atomic
+    def create_trip(cls, bus_id, driver_id, line_id, **kwargs):
+        """
+        Create a new trip.
+
+        Args:
+            bus_id: ID of the bus
+            driver_id: ID of the driver
+            line_id: ID of the line
+            **kwargs: Additional trip data
+
+        Returns:
+            Created Trip object
+        """
+        try:
+            # Get bus, driver, and line
+            bus = get_bus_by_id(bus_id)
+            driver = get_driver_by_id(driver_id)
+            line = get_line_by_id(line_id)
+
+            # Create trip data
+            trip_data = {
+                "bus": bus,
+                "driver": driver,
+                "line": line,
+                "start_time": kwargs.get("start_time", timezone.now()),
+                "is_completed": False,
+                **kwargs
+            }
+
+            # Create trip
+            trip = create_object(Trip, trip_data)
+
+            logger.info(
+                f"Created trip for bus {bus.license_plate} "
+                f"with driver {driver.user.email} on line {line.code}"
+            )
+            return trip
+
+        except Exception as e:
+            logger.error(f"Error creating trip: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def end_trip(cls, trip_id, **kwargs):
+        """
+        End a trip.
+
+        Args:
+            trip_id: ID of the trip
+            **kwargs: Additional trip data
+
+        Returns:
+            Updated Trip object
+        """
+        try:
+            # Get trip
+            trip = get_trip_by_id(trip_id)
+
+            # Check if already completed
+            if trip.is_completed:
+                raise ValidationError("Trip is already completed.")
+
+            # Update trip data
+            trip_data = {
+                "end_time": kwargs.get("end_time", timezone.now()),
+                "is_completed": True,
+                **kwargs
+            }
+
+            # Calculate statistics if not provided
+            if "distance" not in trip_data:
+                location_updates = LocationUpdate.objects.filter(trip_id=trip.id)
+
+                total_distance = 0
+                prev_update = None
+
+                for update in location_updates.order_by("created_at"):
+                    if prev_update:
+                        distance = calculate_distance(
+                            float(prev_update.latitude),
+                            float(prev_update.longitude),
+                            float(update.latitude),
+                            float(update.longitude)
+                        )
+
+                        if distance:
+                            total_distance += distance
+
+                    prev_update = update
+
+                trip_data["distance"] = total_distance
+
+            if "average_speed" not in trip_data and trip_data.get("distance") and trip_data.get("end_time"):
+                duration = (trip_data["end_time"] - trip.start_time).total_seconds() / 3600
+                if duration > 0:
+                    trip_data["average_speed"] = trip_data["distance"] / duration
+
+            if "max_passengers" not in trip_data:
+                max_passengers = PassengerCount.objects.filter(
+                    trip_id=trip.id
+                ).aggregate(
+                    max=models.Max("count")
+                )["max"] or 0
+
+                trip_data["max_passengers"] = max_passengers
+
+            if "total_stops" not in trip_data:
+                total_stops = LocationUpdate.objects.filter(
+                    trip_id=trip.id
+                ).values("nearest_stop").distinct().count()
+
+                trip_data["total_stops"] = total_stops
+
+            # Update trip
+            update_object(trip, trip_data)
+
+            logger.info(f"Ended trip {trip.id}")
+            return trip
+
+        except Exception as e:
+            logger.error(f"Error ending trip: {e}")
+            raise ValidationError(str(e))
 
 
-def log_tracking_event(session, event_type, message="", data=None):
+class AnomalyService(BaseService):
     """
-    Log a tracking event.
-    
-    Args:
-        session: TrackingSession object
-        event_type: Type of event
-        message: Optional message
-        data: Optional data dictionary
-        
-    Returns:
-        Newly created TrackingLog
+    Service for anomalies.
     """
-    log = TrackingLog.objects.create(
-        session=session,
-        event_type=event_type,
-        message=message,
-        data=data or {},
-        timestamp=timezone.now(),
-    )
-    
-    return log
 
+    @classmethod
+    @transaction.atomic
+    def create_anomaly(cls, bus_id, anomaly_type, description, **kwargs):
+        """
+        Create a new anomaly.
 
-def get_current_location(session_id):
-    """
-    Get the current location of a tracking session.
-    
-    Args:
-        session_id: ID of the session
-        
-    Returns:
-        Dictionary containing location data, or None if not found
-    """
-    # Check cache first
-    cache_key = CACHE_KEY_LOCATION.format(session_id)
-    cached_location = cache.get(cache_key)
-    
-    if cached_location:
-        return cached_location
-    
-    # If not in cache, get from database
-    try:
-        session = TrackingSession.objects.get(id=session_id)
-        latest_update = LocationUpdate.objects.filter(
-            session=session
-        ).order_by('-timestamp').first()
-        
-        if not latest_update:
+        Args:
+            bus_id: ID of the bus
+            anomaly_type: Type of anomaly
+            description: Description of the anomaly
+            **kwargs: Additional anomaly data
+
+        Returns:
+            Created Anomaly object
+        """
+        try:
+            # Get bus
+            bus = get_bus_by_id(bus_id)
+
+            # Get active trip
+            trip = get_active_trip(bus_id)
+
+            # Validate inputs
+            if not anomaly_type:
+                raise ValidationError("Anomaly type is required.")
+
+            if not description:
+                raise ValidationError("Description is required.")
+
+            # Create anomaly data
+            anomaly_data = {
+                "bus": bus,
+                "trip": trip,
+                "type": anomaly_type,
+                "description": description,
+                **kwargs
+            }
+
+            # Create anomaly
+            anomaly = create_object(Anomaly, anomaly_data)
+
+            logger.info(f"Created {anomaly_type} anomaly for bus {bus.license_plate}")
+            return anomaly
+
+        except Exception as e:
+            logger.error(f"Error creating anomaly: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
+    def resolve_anomaly(cls, anomaly_id, resolution_notes=None):
+        """
+        Resolve an anomaly.
+
+        Args:
+            anomaly_id: ID of the anomaly
+            resolution_notes: Optional resolution notes
+
+        Returns:
+            Updated Anomaly object
+        """
+        try:
+            # Get anomaly
+            anomaly = get_object_or_404(Anomaly, id=anomaly_id)
+
+            # Check if already resolved
+            if anomaly.resolved:
+                raise ValidationError("Anomaly is already resolved.")
+
+            # Update anomaly
+            anomaly.resolved = True
+            anomaly.resolved_at = timezone.now()
+
+            if resolution_notes:
+                anomaly.resolution_notes = resolution_notes
+
+            anomaly.save(update_fields=[
+                "resolved",
+                "resolved_at",
+                "resolution_notes",
+                "updated_at",
+            ])
+
+            logger.info(f"Resolved anomaly {anomaly.id}")
+            return anomaly
+
+        except Exception as e:
+            logger.error(f"Error resolving anomaly: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    def detect_speed_anomaly(cls, bus_id, speed, latitude, longitude):
+        """
+        Detect a speed anomaly for a bus.
+
+        Args:
+            bus_id: ID of the bus
+            speed: Current speed
+            latitude: Latitude
+            longitude: Longitude
+
+        Returns:
+            Created Anomaly object or None
+        """
+        try:
+            # Get bus
+            bus = get_bus_by_id(bus_id)
+
+            # Check speed
+            if speed > 120:  # Example threshold, adjust as needed
+                description = f"Speed anomaly detected: {speed} km/h"
+
+                return cls.create_anomaly(
+                    bus_id=bus_id,
+                    anomaly_type="speed",
+                    description=description,
+                    severity="high",
+                    location_latitude=latitude,
+                    location_longitude=longitude,
+                )
+
             return None
-        
-        # Build location data
-        location_data = {
-            'latitude': float(latest_update.latitude),
-            'longitude': float(latest_update.longitude),
-            'accuracy': latest_update.accuracy,
-            'speed': latest_update.speed,
-            'heading': latest_update.heading,
-            'timestamp': latest_update.timestamp.isoformat(),
-            'session_id': str(session.id),
-            'bus_id': str(session.bus.id),
-            'driver_id': str(session.driver.id),
-            'line_id': str(session.line.id),
-        }
-        
-        # Cache the data
-        cache.set(cache_key, location_data, timeout=3600)  # 1 hour
-        
-        return location_data
-    
-    except (TrackingSession.DoesNotExist, AttributeError):
-        return None
+
+        except Exception as e:
+            logger.error(f"Error detecting speed anomaly: {e}")
+            return None
+
+    @classmethod
+    def detect_route_deviation(cls, bus_id, latitude, longitude, line_id):
+        """
+        Detect a route deviation for a bus.
+
+        Args:
+            bus_id: ID of the bus
+            latitude: Latitude
+            longitude: Longitude
+            line_id: ID of the line
+
+        Returns:
+            Created Anomaly object or None
+        """
+        try:
+            # Get nearest stop
+            nearest_stop, distance = LocationUpdateService.find_nearest_stop(
+                latitude, longitude, line_id, radius_km=1.0
+            )
+
+            # If no stop found within 1 km, might be off route
+            if not nearest_stop:
+                description = "Route deviation detected: No stops found within 1 km"
+
+                return cls.create_anomaly(
+                    bus_id=bus_id,
+                    anomaly_type="route",
+                    description=description,
+                    severity="medium",
+                    location_latitude=latitude,
+                    location_longitude=longitude,
+                )
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Error detecting route deviation: {e}")
+            return None

@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 100
+target-version = ['py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[tool.poetry]
+name = "dz_bus_tracker"
+version = "0.1.0"
+description = "Real-time bus tracking application for Algeria"
+authors = ["Your Name <your.email@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+django = "^5.2"
+djangorestframework = "^3.15.1"
+djangorestframework-simplejwt = "^5.3.0"
+django-redis = "^5.3.0"
+django-celery-beat = "^2.5.0"
+celery = "^5.3.5"
+redis = "^5.0.1"
+psycopg = "^3.1.12"
+psycopg-binary = "^3.2.9"
+sentry-sdk = "^1.39.2"
+pillow = "^10.1.0"
+django-storages = "^1.14.2"
+django-environ = "^0.11.2"
+django-cors-headers = "^4.3.1"
+django-filter = "^23.5"
+django-allauth = "^0.60.1"
+pyyaml = "^6.0.1"
+urllib3 = "^2.0.7"
+geopy = "^2.4.1"
+firebase-admin = "^6.3.0"
+twilio = "^8.10.0"
+gunicorn = "^21.2.0"

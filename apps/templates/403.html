@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}{% trans "Permission Denied" %} | DZ Bus Tracker{% endblock %}
+
+{% block content %}
+<div class="error-container">
+    <h1>{% trans "Permission Denied" %}</h1>
+    <p>{% trans "You do not have permission to access this page." %}</p>
+    <p>{% trans "Please log in with an account that has the necessary permissions or contact your administrator." %}</p>
+    <a href="/" class="button">{% trans "Return to Home" %}</a>
+</div>
+{% endblock %}

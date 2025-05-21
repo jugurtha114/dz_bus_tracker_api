@@ -4,57 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="ba03b6d4-ff1e-4bc7-8223-47f7de1c9c38" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/dz_bus_tracker.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/analytics/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/analytics/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/authentication/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/authentication/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/authentication/templates/emails/base.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/buses/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/buses/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/core/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/core/base/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/core/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/drivers/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/drivers/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/eta/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/eta/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/feedback/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/feedback/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/lines/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/lines/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/notifications/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/notifications/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/passengers/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/passengers/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/schedules/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/schedules/admin.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/schedules/api.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/schedules/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/schedules/models.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/schedules/permissions.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/schedules/selectors.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/schedules/serializers.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/schedules/services.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/schedules/urls.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/tracking/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/tracking/migrations/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/celery_app/app.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/config/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/config/settings/__init__.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/config/settings/local.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/script/clean_migrations.sh" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/templates/admin/base.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/utils/__init__.py" afterDir="false" />
-    </list>
+    <list default="true" id="f038dd2d-170e-4a8b-a782-ab5aeb2cee23" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -67,27 +17,21 @@
       </list>
     </option>
   </component>
-  <component name="Git.Settings">
-    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
-  </component>
   <component name="ProjectColorInfo">{
-  &quot;associatedIndex&quot;: 7
+  &quot;associatedIndex&quot;: 1
 }</component>
-  <component name="ProjectId" id="2vlr2aYQVj9rPKjRifeUZznntsh" />
-  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectId" id="2xF343VKwgI19xkfwoQKrufaSXu" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
-    &quot;Django Server.run server.executor&quot;: &quot;Run&quot;,
+    &quot;Django Server.runserver.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.OpenDjangoStructureViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
     &quot;com.codeium.enabled&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/jugu/PycharmProjects/dz_bus_tracker/manage.py&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/shared/projects/PycharmProjects/dz_bus_tracker_v2&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
@@ -104,23 +48,16 @@
 }</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/apps/core" />
+      <recent name="$PROJECT_DIR$/apps/core/mixins" />
+      <recent name="$PROJECT_DIR$/apps/core/utils" />
       <recent name="$PROJECT_DIR$/apps/tracking" />
-      <recent name="$PROJECT_DIR$/apps/schedules" />
-      <recent name="$PROJECT_DIR$/apps/passengers" />
       <recent name="$PROJECT_DIR$/apps/notifications" />
-      <recent name="$PROJECT_DIR$/apps/lines" />
-    </key>
-    <key name="MoveFile.RECENT_KEYS">
-      <recent name="$PROJECT_DIR$/apps/authentication/templates" />
-      <recent name="$PROJECT_DIR$/apps" />
-      <recent name="$PROJECT_DIR$/apps/tracking" />
-      <recent name="$PROJECT_DIR$/apps/schedules" />
-      <recent name="$PROJECT_DIR$" />
     </key>
   </component>
   <component name="RunManager">
-    <configuration name="run server" type="Python.DjangoServer" factoryName="Django server">
-      <module name="dz_bus_tracker" />
+    <configuration name="runserver" type="Python.DjangoServer" factoryName="Django server">
+      <module name="dz_bus_tracker_v2" />
       <option name="ENV_FILES" value="$PROJECT_DIR$/.env" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
@@ -129,14 +66,14 @@
         <env name="DJANGO_SETTINGS_MODULE" value="config.settings.local" />
       </envs>
       <option name="SDK_HOME" value="" />
-      <option name="SDK_NAME" value="Python 3.12 (dz_bus_tracker)" />
-      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="SDK_NAME" value="Python 3.12 (dz_bus_tracker_v2)" />
+      <option name="WORKING_DIRECTORY" value="" />
       <option name="IS_MODULE_SDK" value="false" />
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <option name="launchJavascriptDebuger" value="false" />
-      <option name="port" value="8000" />
-      <option name="host" value="0.0.0.0" />
+      <option name="port" value="8001" />
+      <option name="host" value="" />
       <option name="additionalOptions" value="" />
       <option name="browserUrl" value="" />
       <option name="runTestServer" value="false" />
@@ -157,38 +94,21 @@
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="ba03b6d4-ff1e-4bc7-8223-47f7de1c9c38" name="Changes" comment="" />
-      <created>1744730295772</created>
+      <changelist id="f038dd2d-170e-4a8b-a782-ab5aeb2cee23" name="Changes" comment="" />
+      <created>1747519799528</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1744730295772</updated>
-      <workItem from="1744730296831" duration="36242000" />
-      <workItem from="1744880801586" duration="5318000" />
-      <workItem from="1744999137562" duration="3283000" />
-      <workItem from="1745057207682" duration="9343000" />
-      <workItem from="1745146331475" duration="5918000" />
-      <workItem from="1745226826166" duration="11557000" />
-      <workItem from="1745314312495" duration="1920000" />
+      <updated>1747519799528</updated>
+      <workItem from="1747519800555" duration="18038000" />
+      <workItem from="1747659798273" duration="2208000" />
+      <workItem from="1747726704322" duration="1320000" />
+      <workItem from="1747732693321" duration="614000" />
+      <workItem from="1747736507217" duration="6118000" />
+      <workItem from="1747813600140" duration="3839000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/apps/authentication/models.py</url>
-          <line>28</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/apps/authentication/models.py</url>
-          <line>26</line>
-          <option name="timeStamp" value="2" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>

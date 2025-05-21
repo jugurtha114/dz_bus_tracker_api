@@ -1,0 +1,19 @@
+{% load i18n %}
+{{ notification.title }}
+
+{% trans "Hello" %} {{ user.get_full_name|default:user.email }},
+
+{{ notification.message }}
+
+{% if notification.data %}
+{% trans "Additional Information" %}:
+{% for key, value in notification.data.items %}
+- {{ key }}: {{ value }}
+{% endfor %}
+{% endif %}
+
+{% trans "Thank you for using DZ Bus Tracker" %}!
+
+--
+© {% now "Y" %} DZ Bus Tracker. {% trans "All rights reserved" %}.
+{% trans "If you have any questions, please contact our support team" %}.

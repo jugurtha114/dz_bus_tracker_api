@@ -1,283 +1,142 @@
+"""
+Models for the buses app.
+"""
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from apps.core.base.models import BaseModel
-from apps.core.constants import APPLICATION_STATUSES, APPLICATION_STATUS_PENDING
+from apps.core.constants import BUS_STATUS_CHOICES, BUS_STATUS_ACTIVE
+from apps.core.models import BaseModel
+from apps.core.utils.validators import validate_plate_number
+from apps.drivers.models import Driver
 
 
 class Bus(BaseModel):
     """
     Model for buses.
     """
-    driver = models.ForeignKey(
-        'drivers.Driver',
-        on_delete=models.CASCADE,
-        related_name='buses',
-        verbose_name=_('driver'),
-    )
-    
-    matricule = models.CharField(
-        _('matricule'),
-        max_length=20,
+    license_plate = models.CharField(
+        _("license plate"),
+        max_length=15,
+        validators=[validate_plate_number],
         unique=True,
     )
-    
-    brand = models.CharField(
-        _('brand'),
-        max_length=50,
-    )
-    
-    model = models.CharField(
-        _('model'),
-        max_length=50,
-    )
-    
-    year = models.PositiveIntegerField(
-        _('year'),
-        null=True,
-        blank=True,
-    )
-    
-    capacity = models.PositiveIntegerField(
-        _('capacity'),
-        default=0,
-    )
-    
-    description = models.TextField(
-        _('description'),
-        blank=True,
-    )
-    
-    is_verified = models.BooleanField(
-        _('verified'),
-        default=False,
-    )
-    
-    verification_date = models.DateTimeField(
-        _('verification date'),
-        null=True,
-        blank=True,
-    )
-    
-    last_maintenance = models.DateTimeField(
-        _('last maintenance'),
-        null=True,
-        blank=True,
-    )
-    
-    next_maintenance = models.DateTimeField(
-        _('next maintenance'),
-        null=True,
-        blank=True,
-    )
-    
-    metadata = models.JSONField(
-        _('metadata'),
-        default=dict,
-        blank=True,
-    )
-    
-    class Meta:
-        verbose_name = _('bus')
-        verbose_name_plural = _('buses')
-        ordering = ['matricule']
-        indexes = [
-            models.Index(fields=['driver']),
-            models.Index(fields=['matricule']),
-            models.Index(fields=['is_verified']),
-        ]
-    
-    def __str__(self):
-        return f"{self.matricule} ({self.brand} {self.model})"
-    
-    @property
-    def is_tracking(self):
-        """
-        Check if the bus is currently being tracked.
-        """
-        return self.tracking_sessions.filter(status='active').exists()
-    
-    @property
-    def current_tracking_session(self):
-        """
-        Get the current tracking session for the bus.
-        """
-        return self.tracking_sessions.filter(status='active').first()
-
-
-class BusPhoto(BaseModel):
-    """
-    Model for bus photos.
-    """
-    bus = models.ForeignKey(
-        'Bus',
+    driver = models.ForeignKey(
+        Driver,
         on_delete=models.CASCADE,
-        related_name='photos',
-        verbose_name=_('bus'),
+        related_name="buses",
+        verbose_name=_("driver"),
     )
-    
-    photo = models.ImageField(
-        _('photo'),
-        upload_to='bus_photos/',
+    model = models.CharField(_("model"), max_length=100)
+    manufacturer = models.CharField(_("manufacturer"), max_length=100)
+    year = models.PositiveSmallIntegerField(_("year"))
+    capacity = models.PositiveSmallIntegerField(
+        _("capacity"),
+        help_text=_("Maximum number of passengers"),
     )
-    
-    photo_type = models.CharField(
-        _('photo type'),
-        max_length=50,
-        choices=(
-            ('exterior', _('Exterior')),
-            ('interior', _('Interior')),
-            ('document', _('Document')),
-            ('other', _('Other')),
-        ),
-        default='exterior',
-    )
-    
-    description = models.CharField(
-        _('description'),
-        max_length=255,
-        blank=True,
-    )
-    
-    class Meta:
-        verbose_name = _('bus photo')
-        verbose_name_plural = _('bus photos')
-        ordering = ['bus', 'photo_type']
-    
-    def __str__(self):
-        return f"{self.bus.matricule} - {self.get_photo_type_display()}"
-
-
-class BusVerification(BaseModel):
-    """
-    Model for bus verification.
-    """
-    bus = models.ForeignKey(
-        'Bus',
-        on_delete=models.CASCADE,
-        related_name='verifications',
-        verbose_name=_('bus'),
-    )
-    
-    verified_by = models.ForeignKey(
-        'authentication.User',
-        on_delete=models.SET_NULL,
-        related_name='bus_verifications',
-        verbose_name=_('verified by'),
-        null=True,
-        blank=True,
-    )
-    
     status = models.CharField(
-        _('status'),
+        _("status"),
         max_length=20,
-        choices=APPLICATION_STATUSES,
-        default=APPLICATION_STATUS_PENDING,
+        choices=BUS_STATUS_CHOICES,
+        default=BUS_STATUS_ACTIVE,
     )
-    
-    verification_date = models.DateTimeField(
-        _('verification date'),
+    is_air_conditioned = models.BooleanField(_("air conditioned"), default=False)
+    photo = models.ImageField(
+        _("photo"),
+        upload_to="buses/",
+        blank=True,
         null=True,
-        blank=True,
     )
-    
-    rejection_reason = models.TextField(
-        _('rejection reason'),
+    features = models.JSONField(
+        _("features"),
+        default=list,
         blank=True,
+        help_text=_("Additional features of the bus"),
     )
-    
-    notes = models.TextField(
-        _('notes'),
-        blank=True,
-    )
-    
+    description = models.TextField(_("description"), blank=True)
+    is_active = models.BooleanField(_("active"), default=True)
+    is_approved = models.BooleanField(_("approved"), default=False)
+
     class Meta:
-        verbose_name = _('bus verification')
-        verbose_name_plural = _('bus verifications')
-        ordering = ['-created_at']
-    
+        verbose_name = _("bus")
+        verbose_name_plural = _("buses")
+        ordering = ["-created_at"]
+
     def __str__(self):
-        return f"{self.bus.matricule} - {self.get_status_display()}"
-    
-    def save(self, *args, **kwargs):
-        # Update bus verification status if approved or rejected
-        if self.status == 'approved' and self.bus:
-            self.bus.is_verified = True
-            self.bus.verification_date = self.verification_date or timezone.now()
-            self.bus.save(update_fields=['is_verified', 'verification_date'])
-        elif self.status == 'rejected' and self.bus:
-            self.bus.is_verified = False
-            self.bus.save(update_fields=['is_verified'])
-        
-        super().save(*args, **kwargs)
+        return f"{self.license_plate} ({self.model})"
+
+    @property
+    def is_available(self):
+        """
+        Check if bus is available.
+        """
+        return self.is_active and self.status == BUS_STATUS_ACTIVE
 
 
-class BusMaintenance(BaseModel):
+class BusLocation(BaseModel):
+    """
+    Model for bus locations.
+    """
     bus = models.ForeignKey(
-        'Bus',
+        Bus,
         on_delete=models.CASCADE,
-        related_name='maintenance_records',
-        verbose_name=_('bus'),
+        related_name="locations",
+        verbose_name=_("bus"),
     )
-    
-    maintenance_type = models.CharField(
-        _('maintenance type'),
-        max_length=50,
-        choices=(
-            ('regular', _('Regular')),
-            ('repair', _('Repair')),
-            ('inspection', _('Inspection')),
-            ('other', _('Other')),
-        ),
+    latitude = models.DecimalField(
+        _("latitude"),
+        max_digits=10,
+        decimal_places=7,
     )
-    
-    date = models.DateTimeField(
-        _('date'),
+    longitude = models.DecimalField(
+        _("longitude"),
+        max_digits=10,
+        decimal_places=7,
     )
-    
-    description = models.TextField(
-        _('description'),
-    )
-    
-    cost = models.DecimalField(
-        _('cost'),
+    altitude = models.DecimalField(
+        _("altitude"),
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
     )
-    
-    performed_by = models.CharField(
-        _('performed by'),
-        max_length=100,
+    speed = models.DecimalField(
+        _("speed"),
+        max_digits=5,
+        decimal_places=2,
+        null=True,
         blank=True,
+        help_text=_("Speed in km/h"),
     )
-    
-    notes = models.TextField(
-        _('notes'),
+    heading = models.DecimalField(
+        _("heading"),
+        max_digits=5,
+        decimal_places=2,
+        null=True,
         blank=True,
+        help_text=_("Heading in degrees (0-360)"),
     )
-    
+    accuracy = models.DecimalField(
+        _("accuracy"),
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text=_("Accuracy in meters"),
+    )
+    is_tracking_active = models.BooleanField(
+        _("tracking active"),
+        default=True,
+    )
+    passenger_count = models.PositiveSmallIntegerField(
+        _("passenger count"),
+        default=0,
+    )
+
     class Meta:
-        verbose_name = _('bus maintenance')
-        verbose_name_plural = _('bus maintenances')
-        ordering = ['-date']
-    
+        verbose_name = _("bus location")
+        verbose_name_plural = _("bus locations")
+        ordering = ["-created_at"]
+        get_latest_by = "created_at"
+
     def __str__(self):
-        return f"{self.bus.matricule} - {self.get_maintenance_type_display()} - {self.date}"
-    
-    def save(self, *args, **kwargs):
-        # Update bus last maintenance date
-        if self.bus and self.date:
-            update_fields = []
-            
-            # Update last maintenance if this is newer
-            if not self.bus.last_maintenance or self.date > self.bus.last_maintenance:
-                self.bus.last_maintenance = self.date
-                update_fields.append('last_maintenance')
-            
-            # If fields were updated, save the bus
-            if update_fields:
-                self.bus.save(update_fields=update_fields)
-        
-        super().save(*args, **kwargs)
+        return f"{self.bus} at {self.created_at}"

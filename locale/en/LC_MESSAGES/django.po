@@ -1,0 +1,305 @@
+# English translations for DZ Bus Tracker.
+# Copyright (C) 2023 DZ Bus Tracker
+# This file is distributed under the same license as the DZ Bus Tracker package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: DZ Bus Tracker 1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2024-01-01 12:00+0100\n"
+"PO-Revision-Date: 2024-01-01 12:00+0100\n"
+"Last-Translator: \n"
+"Language-Team: English\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: apps/accounts/models.py:24
+msgid "email address"
+msgstr "email address"
+
+#: apps/accounts/models.py:26
+msgid "A user with that email already exists."
+msgstr "A user with that email already exists."
+
+#: apps/accounts/models.py:28
+msgid "first name"
+msgstr "first name"
+
+#: apps/accounts/models.py:29
+msgid "last name"
+msgstr "last name"
+
+#: apps/accounts/models.py:31
+msgid "phone number"
+msgstr "phone number"
+
+#: apps/accounts/models.py:35
+msgid "active"
+msgstr "active"
+
+#: apps/accounts/models.py:37
+msgid ""
+"Designates whether this user should be treated as active. "
+"Unselect this instead of deleting accounts."
+msgstr ""
+"Designates whether this user should be treated as active. "
+"Unselect this instead of deleting accounts."
+
+#: apps/accounts/models.py:41
+msgid "staff status"
+msgstr "staff status"
+
+#: apps/accounts/models.py:43
+msgid "Designates whether the user can log into this admin site."
+msgstr "Designates whether the user can log into this admin site."
+
+#: apps/accounts/models.py:45
+msgid "date joined"
+msgstr "date joined"
+
+#: apps/accounts/models.py:47
+msgid "user type"
+msgstr "user type"
+
+#: apps/accounts/models.py:57
+msgid "user"
+msgstr "user"
+
+#: apps/accounts/models.py:58
+msgid "users"
+msgstr "users"
+
+#: apps/accounts/models.py:88
+msgid "avatar"
+msgstr "avatar"
+
+#: apps/accounts/models.py:92
+msgid "bio"
+msgstr "bio"
+
+#: apps/accounts/models.py:94
+msgid "language"
+msgstr "language"
+
+#: apps/accounts/models.py:99
+msgid "push notifications enabled"
+msgstr "push notifications enabled"
+
+#: apps/accounts/models.py:103
+msgid "email notifications enabled"
+msgstr "email notifications enabled"
+
+#: apps/accounts/models.py:107
+msgid "SMS notifications enabled"
+msgstr "SMS notifications enabled"
+
+#: apps/accounts/models.py:111
+msgid "profile"
+msgstr "profile"
+
+#: apps/accounts/models.py:112
+msgid "profiles"
+msgstr "profiles"
+
+#: apps/buses/models.py:16
+msgid "license plate"
+msgstr "license plate"
+
+#: apps/buses/models.py:21
+msgid "driver"
+msgstr "driver"
+
+#: apps/buses/models.py:23
+msgid "model"
+msgstr "model"
+
+#: apps/buses/models.py:24
+msgid "manufacturer"
+msgstr "manufacturer"
+
+#: apps/buses/models.py:25
+msgid "year"
+msgstr "year"
+
+#: apps/buses/models.py:27
+msgid "capacity"
+msgstr "capacity"
+
+#: apps/buses/models.py:28
+msgid "Maximum number of passengers"
+msgstr "Maximum number of passengers"
+
+#: apps/buses/models.py:31
+msgid "status"
+msgstr "status"
+
+#: apps/buses/models.py:36
+msgid "air conditioned"
+msgstr "air conditioned"
+
+#: apps/buses/models.py:39
+msgid "photo"
+msgstr "photo"
+
+#: apps/buses/models.py:44
+msgid "features"
+msgstr "features"
+
+#: apps/buses/models.py:45
+msgid "Additional features of the bus"
+msgstr "Additional features of the bus"
+
+#: apps/buses/models.py:47
+msgid "description"
+msgstr "description"
+
+#: apps/buses/models.py:49
+msgid "approved"
+msgstr "approved"
+
+#: apps/buses/models.py:52
+msgid "bus"
+msgstr "bus"
+
+#: apps/buses/models.py:53
+msgid "buses"
+msgstr "buses"
+
+#: apps/buses/models.py:66
+msgid "bus location"
+msgstr "bus location"
+
+#: apps/buses/models.py:67
+msgid "bus locations"
+msgstr "bus locations"
+
+#: apps/core/constants.py:10
+msgid "French"
+msgstr "French"
+
+#: apps/core/constants.py:11
+msgid "Arabic"
+msgstr "Arabic"
+
+#: apps/core/constants.py:12
+msgid "English"
+msgstr "English"
+
+#: apps/core/constants.py:21
+msgid "Admin"
+msgstr "Admin"
+
+#: apps/core/constants.py:22
+msgid "Driver"
+msgstr "Driver"
+
+#: apps/core/constants.py:23
+msgid "Passenger"
+msgstr "Passenger"
+
+#: apps/drivers/models.py:31
+msgid "ID card number"
+msgstr "ID card number"
+
+#: apps/drivers/models.py:35
+msgid "ID card photo"
+msgstr "ID card photo"
+
+#: apps/drivers/models.py:38
+msgid "driver license number"
+msgstr "driver license number"
+
+#: apps/drivers/models.py:42
+msgid "driver license photo"
+msgstr "driver license photo"
+
+#: apps/drivers/models.py:49
+msgid "status changed at"
+msgstr "status changed at"
+
+#: apps/drivers/models.py:52
+msgid "rejection reason"
+msgstr "rejection reason"
+
+#: apps/drivers/models.py:55
+msgid "years of experience"
+msgstr "years of experience"
+
+#: apps/drivers/models.py:59
+msgid "available"
+msgstr "available"
+
+#: apps/drivers/models.py:62
+msgid "rating"
+msgstr "rating"
+
+#: apps/drivers/models.py:68
+msgid "total ratings"
+msgstr "total ratings"
+
+#: apps/lines/models.py:13
+msgid "name"
+msgstr "name"
+
+#: apps/lines/models.py:15
+msgid "latitude"
+msgstr "latitude"
+
+#: apps/lines/models.py:20
+msgid "longitude"
+msgstr "longitude"
+
+#: apps/lines/models.py:25
+msgid "address"
+msgstr "address"
+
+#: apps/notifications/models.py:29
+msgid "device token"
+msgstr "device token"
+
+#: apps/notifications/models.py:30
+msgid "device tokens"
+msgstr "device tokens"
+
+#: apps/notifications/models.py:56
+msgid "notification type"
+msgstr "notification type"
+
+#: apps/notifications/models.py:59
+msgid "title"
+msgstr "title"
+
+#: apps/notifications/models.py:60
+msgid "message"
+msgstr "message"
+
+#: apps/notifications/models.py:65
+msgid "channel"
+msgstr "channel"
+
+#: apps/notifications/models.py:69
+msgid "read"
+msgstr "read"
+
+#: apps/notifications/models.py:70
+msgid "read at"
+msgstr "read at"
+
+#: apps/notifications/models.py:74
+msgid "data"
+msgstr "data"
+
+#: apps/notifications/models.py:75
+msgid "Additional data for the notification"
+msgstr "Additional data for the notification"
+
+#: apps/notifications/models.py:78
+msgid "notification"
+msgstr "notification"
+
+#: apps/notifications/models.py:79
+msgid "notifications"
+msgstr "notifications"

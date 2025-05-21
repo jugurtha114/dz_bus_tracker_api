@@ -1,35 +1,36 @@
 -r base.txt
 
-#🚀 Production
-#🔌 WSGI/ASGI Servers
+# WSGI server
+gunicorn==21.2.0
+uvicorn[standard]==0.24.0
+whitenoise==6.6.0
 
-gunicorn==23.0.0  # A Python WSGI HTTP Server for UNIX.
-# https://github.com/benoitc/gunicorn
+# Database
+psycopg2-binary==2.9.9
 
-uvicorn[standard]==0.34.1  # A lightning-fast ASGI server implementation, using uvloop and httptools.
-# https://github.com/encode/uvicorn
+# AWS
+django-storages[s3]==1.14.2
+boto3==1.29.1
+botocore==1.32.1
 
-#🔒 Security
+# Security
+django-permissions-policy==4.19.0
+django-csp==3.7.0
+django-secure==1.0.2
 
-django-defender==0.9.8  # A simple, super fast Django reusable app that blocks people from brute forcing login attempts.
-# https://github.com/jazzband/django-defender
+# Caching & Performance
+django-cachalot==2.6.1
+django-compressor==4.4
+django-redis-sessions==0.7.0
 
-django-csp==4.0  # Django Content Security Policy support.
-# https://github.com/mozilla/django-csp
+# Monitoring
+datadog==0.49.0
+elastic-apm==6.19.0
+newrelic==8.11.0
 
-django-permissions-policy==4.24.0  # Set the Permissions-Policy HTTP header on your Django app.
-# https://github.com/adamchainz/django-permissions-policy
+# Logging
+python-json-logger==2.0.7
 
-whitenoise==6.9.0  # Radically simplified static file serving for WSGI applications.
-# https://github.com/evansd/whitenoise
-
-#📊 Monitoring & Performance
-
-#scout-apm==3.3.0  # Scout Application Performance Monitoring Agent.
-# https://github.com/scoutapp/scout_apm_python
-
-django-prometheus==2.3.1  # Django exporter for Prometheus monitoring.
-# https://github.com/korfuri/django-prometheus
-
-#elastic-apm==6.19.0  # Elastic APM Python Agent for monitoring applications.
-# https://github.com/elastic/apm-agent-python
+# Deployment
+fabric==3.2.2
+ansible==8.3.0
