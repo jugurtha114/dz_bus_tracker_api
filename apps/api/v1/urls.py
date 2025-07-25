@@ -21,4 +21,7 @@ urlpatterns = [
 
     # Notifications API
     path('notifications/', include('apps.api.v1.notifications.urls')),
+    
+    # Gamification API
+    path('gamification/', include('apps.gamification.urls')),
 ]

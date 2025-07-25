@@ -76,3 +76,21 @@ def setup_periodic_tasks(sender, **kwargs):
         crontab(hour=3, minute=0),
         "notifications.cleanup_old_notifications",
     )
+    
+    # Update leaderboards every hour
+    sender.add_periodic_task(
+        crontab(minute=0),  # Every hour at minute 0
+        "gamification.update_leaderboards",
+    )
+    
+    # Check challenge completion daily at 1 AM
+    sender.add_periodic_task(
+        crontab(hour=1, minute=0),
+        "gamification.check_challenge_completion",
+    )
+    
+    # Award daily bonus at 2 AM
+    sender.add_periodic_task(
+        crontab(hour=2, minute=0),
+        "gamification.award_daily_bonus",
+    )

@@ -55,6 +55,7 @@ LOCAL_APPS = [
     "apps.lines.apps.LinesConfig",
     "apps.notifications.apps.NotificationsConfig",
     "apps.tracking.apps.TrackingConfig",
+    "apps.gamification.apps.GamificationConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
