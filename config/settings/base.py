@@ -56,6 +56,7 @@ LOCAL_APPS = [
     "apps.notifications.apps.NotificationsConfig",
     "apps.tracking.apps.TrackingConfig",
     "apps.gamification.apps.GamificationConfig",
+    "apps.offline_mode.apps.OfflineModeConfig",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS

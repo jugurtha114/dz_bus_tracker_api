@@ -24,4 +24,5 @@ urlpatterns = [
     
     # Gamification API
     path('gamification/', include('apps.gamification.urls')),
+    path('offline/', include('apps.offline_mode.urls')),
 ]

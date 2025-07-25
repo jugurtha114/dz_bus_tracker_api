@@ -94,3 +94,33 @@ def setup_periodic_tasks(sender, **kwargs):
         crontab(hour=2, minute=0),
         "gamification.award_daily_bonus",
     )
+    
+    # Auto-sync offline caches every 30 minutes
+    sender.add_periodic_task(
+        1800.0,  # Every 30 minutes
+        "offline_mode.check_auto_sync",
+    )
+    
+    # Clean expired cache daily at 4 AM
+    sender.add_periodic_task(
+        crontab(hour=4, minute=0),
+        "offline_mode.clean_expired_cache",
+    )
+    
+    # Process sync queues every 10 minutes
+    sender.add_periodic_task(
+        600.0,  # Every 10 minutes
+        "offline_mode.process_sync_queues",
+    )
+    
+    # Update cache statistics every hour
+    sender.add_periodic_task(
+        crontab(minute=30),  # Every hour at :30
+        "offline_mode.update_cache_statistics",
+    )
+    
+    # Clean up old logs weekly
+    sender.add_periodic_task(
+        crontab(day_of_week=0, hour=5, minute=0),  # Sunday at 5 AM
+        "offline_mode.cleanup_old_logs",
+    )
