@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DZ Bus Tracker - Real-time Map</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f5f5f5;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            max-width: 350px;
+            z-index: 1000;
+        }
+        
+        .controls h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+        
+        .form-group {
+            margin-bottom: 10px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .form-group select,
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            max-width: 350px;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .bus-info {
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .bus-info:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .bus-info h4 {
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+        
+        .bus-info p {
+            margin: 3px 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .eta {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .custom-marker {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #007bff;
+            border: 3px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        .bus-marker {
+            background: #28a745;
+        }
+        
+        .stop-marker {
+            background: #dc3545;
+            width: 20px;
+            height: 20px;
+        }
+        
+        @media (max-width: 600px) {
+            .controls,
+            .info-panel {
+                max-width: calc(100% - 20px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="controls">
+        <h3>Real-time Bus Tracking</h3>
+        
+        <div class="form-group">
+            <label for="lineSelect">Select Line:</label>
+            <select id="lineSelect">
+                <option value="">-- Select a line --</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="stopSelect">Select Stop (Optional):</label>
+            <select id="stopSelect" disabled>
+                <option value="">-- All stops --</option>
+            </select>
+        </div>
+        
+        <button class="btn" onclick="trackBuses()">Track Buses</button>
+        <button class="btn btn-secondary" onclick="showMyLocation()">My Location</button>
+        
+        <div id="driverControls" style="display:none; margin-top: 15px;">
+            <h4>Driver Controls</h4>
+            <button class="btn" onclick="trackMyBus()">Track My Bus</button>
+            <button class="btn btn-secondary" onclick="updateLocation()">Update Location</button>
+        </div>
+    </div>
+    
+    <div class="info-panel" id="infoPanel">
+        <h3>Approaching Buses</h3>
+        <div id="busInfo" class="loading">Loading...</div>
+    </div>
+
+    <script>
+        let map;
+        let markers = [];
+        let polylines = [];
+        let userLocation = null;
+        let selectedLine = null;
+        let selectedStop = null;
+        let updateInterval = null;
+        
+        // Initialize map
+        function initMap() {
+            // Default to Algiers center
+            const algiers = { lat: 36.7538, lng: 3.0588 };
+            
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: algiers,
+                zoom: 12,
+                styles: [
+                    {
+                        featureType: "transit.station.bus",
+                        elementType: "labels",
+                        stylers: [{ visibility: "on" }]
+                    }
+                ]
+            });
+            
+            // Load lines
+            loadLines();
+            
+            // Check if user is a driver
+            checkDriverStatus();
+        }
+        
+        // Load available lines
+        async function loadLines() {
+            try {
+                const response = await fetch('/api/v1/lines/lines/', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const lineSelect = document.getElementById('lineSelect');
+                    
+                    data.results.forEach(line => {
+                        const option = document.createElement('option');
+                        option.value = line.id;
+                        option.textContent = line.name;
+                        option.dataset.color = line.color;
+                        lineSelect.appendChild(option);
+                    });
+                    
+                    lineSelect.addEventListener('change', onLineChange);
+                }
+            } catch (error) {
+                console.error('Error loading lines:', error);
+            }
+        }
+        
+        // Handle line selection change
+        async function onLineChange() {
+            const lineId = document.getElementById('lineSelect').value;
+            const stopSelect = document.getElementById('stopSelect');
+            
+            // Clear stops
+            stopSelect.innerHTML = '<option value="">-- All stops --</option>';
+            stopSelect.disabled = true;
+            
+            if (lineId) {
+                selectedLine = lineId;
+                
+                // Load line stops
+                try {
+                    const response = await fetch(`/api/v1/lines/lines/${lineId}/`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const line = await response.json();
+                        
+                        // Load visualization data
+                        loadRouteVisualization(lineId);
+                        
+                        // Populate stops
+                        if (line.stops && line.stops.length > 0) {
+                            line.stops.forEach(stop => {
+                                const option = document.createElement('option');
+                                option.value = stop.id;
+                                option.textContent = stop.name;
+                                stopSelect.appendChild(option);
+                            });
+                            stopSelect.disabled = false;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading line details:', error);
+                }
+            } else {
+                selectedLine = null;
+                clearMap();
+            }
+        }
+        
+        // Load route visualization
+        async function loadRouteVisualization(lineId) {
+            try {
+                const response = await fetch(`/api/v1/tracking/routes/visualization/?line_id=${lineId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayRoute(data);
+                }
+            } catch (error) {
+                console.error('Error loading route visualization:', error);
+            }
+        }
+        
+        // Display route on map
+        function displayRoute(data) {
+            clearMap();
+            
+            // Add stop markers
+            data.markers.forEach((marker, index) => {
+                const mapMarker = new google.maps.Marker({
+                    position: marker.position,
+                    map: map,
+                    title: marker.name,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: marker.is_terminal ? 10 : 6,
+                        fillColor: marker.is_terminal ? '#dc3545' : '#ffc107',
+                        fillOpacity: 1,
+                        strokeColor: 'white',
+                        strokeWeight: 2
+                    }
+                });
+                
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `<div>
+                        <strong>${marker.name}</strong><br>
+                        Stop #${marker.order}
+                        ${marker.is_terminal ? '<br><em>Terminal</em>' : ''}
+                    </div>`
+                });
+                
+                mapMarker.addListener('click', () => {
+                    infoWindow.open(map, mapMarker);
+                });
+                
+                markers.push(mapMarker);
+            });
+            
+            // Draw route polyline
+            if (data.route.segments.length > 0) {
+                const path = [];
+                data.route.segments.forEach(segment => {
+                    // For now, draw straight lines between stops
+                    // In production, decode polyline if available
+                    const fromStop = data.markers.find(m => m.id === segment.from_stop_id);
+                    const toStop = data.markers.find(m => m.id === segment.to_stop_id);
+                    
+                    if (fromStop && toStop) {
+                        path.push(fromStop.position);
+                        path.push(toStop.position);
+                    }
+                });
+                
+                const routeLine = new google.maps.Polyline({
+                    path: path,
+                    geodesic: true,
+                    strokeColor: data.line.color || '#007bff',
+                    strokeOpacity: 0.8,
+                    strokeWeight: 4
+                });
+                
+                routeLine.setMap(map);
+                polylines.push(routeLine);
+            }
+            
+            // Fit bounds
+            if (data.bounds) {
+                const bounds = new google.maps.LatLngBounds(
+                    { lat: data.bounds.south, lng: data.bounds.west },
+                    { lat: data.bounds.north, lng: data.bounds.east }
+                );
+                map.fitBounds(bounds);
+            }
+            
+            // Show active buses
+            displayActiveBuses(data.active_buses);
+        }
+        
+        // Display active buses
+        function displayActiveBuses(buses) {
+            buses.forEach(bus => {
+                const busMarker = new google.maps.Marker({
+                    position: bus.position,
+                    map: map,
+                    title: `Bus ${bus.number}`,
+                    icon: {
+                        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                        scale: 6,
+                        fillColor: '#28a745',
+                        fillOpacity: 1,
+                        strokeColor: 'white',
+                        strokeWeight: 2,
+                        rotation: bus.heading || 0
+                    }
+                });
+                
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `<div>
+                        <strong>Bus ${bus.number}</strong><br>
+                        Driver: ${bus.driver || 'Unknown'}<br>
+                        Speed: ${bus.speed || 0} km/h<br>
+                        Passengers: ${bus.passenger_count || 0}
+                    </div>`
+                });
+                
+                busMarker.addListener('click', () => {
+                    infoWindow.open(map, busMarker);
+                });
+                
+                markers.push(busMarker);
+            });
+        }
+        
+        // Track buses in real-time
+        async function trackBuses() {
+            const stopId = document.getElementById('stopSelect').value;
+            
+            if (stopId) {
+                // Show approaching buses for selected stop
+                showApproachingBuses(stopId);
+            } else if (selectedLine) {
+                // Update bus positions for the line
+                updateBusPositions();
+            }
+            
+            // Start auto-update
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            updateInterval = setInterval(() => {
+                if (stopId) {
+                    showApproachingBuses(stopId);
+                } else if (selectedLine) {
+                    updateBusPositions();
+                }
+            }, 30000); // Update every 30 seconds
+        }
+        
+        // Show approaching buses for a stop
+        async function showApproachingBuses(stopId) {
+            const infoPanel = document.getElementById('infoPanel');
+            const busInfo = document.getElementById('busInfo');
+            
+            infoPanel.style.display = 'block';
+            busInfo.innerHTML = '<div class="loading">Loading...</div>';
+            
+            try {
+                const params = new URLSearchParams({
+                    stop_id: stopId
+                });
+                if (selectedLine) {
+                    params.append('line_id', selectedLine);
+                }
+                
+                const response = await fetch(`/api/v1/tracking/routes/arrivals/?${params}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const estimates = await response.json();
+                    
+                    if (estimates.length === 0) {
+                        busInfo.innerHTML = '<p>No buses approaching this stop</p>';
+                    } else {
+                        busInfo.innerHTML = estimates.map(est => `
+                            <div class="bus-info">
+                                <h4>Bus ${est.bus.number}</h4>
+                                <p>Line: ${est.line.name}</p>
+                                <p>Driver: ${est.driver?.name || 'Unknown'}</p>
+                                <p class="eta">ETA: ${est.eta_minutes} minutes</p>
+                                <p>Distance: ${est.current_location.distance_to_stop} km</p>
+                                <p>Reliability: ${est.reliability}%</p>
+                            </div>
+                        `).join('');
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading arrivals:', error);
+                busInfo.innerHTML = '<p>Error loading bus information</p>';
+            }
+        }
+        
+        // Update bus positions
+        async function updateBusPositions() {
+            if (!selectedLine) return;
+            
+            try {
+                const response = await fetch(`/api/v1/tracking/routes/visualization/?line_id=${selectedLine}`, {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Remove old bus markers
+                    markers.forEach(marker => {
+                        if (marker.getIcon && marker.getIcon().path === google.maps.SymbolPath.FORWARD_CLOSED_ARROW) {
+                            marker.setMap(null);
+                        }
+                    });
+                    
+                    // Add updated bus positions
+                    displayActiveBuses(data.active_buses);
+                }
+            } catch (error) {
+                console.error('Error updating bus positions:', error);
+            }
+        }
+        
+        // Show user's current location
+        function showMyLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        userLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        
+                        // Add/update user marker
+                        if (window.userMarker) {
+                            window.userMarker.setPosition(userLocation);
+                        } else {
+                            window.userMarker = new google.maps.Marker({
+                                position: userLocation,
+                                map: map,
+                                title: 'Your Location',
+                                icon: {
+                                    path: google.maps.SymbolPath.CIRCLE,
+                                    scale: 8,
+                                    fillColor: '#007bff',
+                                    fillOpacity: 1,
+                                    strokeColor: 'white',
+                                    strokeWeight: 2
+                                }
+                            });
+                        }
+                        
+                        map.setCenter(userLocation);
+                        map.setZoom(15);
+                    },
+                    error => {
+                        alert('Error getting your location: ' + error.message);
+                    }
+                );
+            } else {
+                alert('Geolocation is not supported by your browser');
+            }
+        }
+        
+        // Check if user is a driver
+        async function checkDriverStatus() {
+            try {
+                const response = await fetch('/api/v1/drivers/drivers/profile/', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    document.getElementById('driverControls').style.display = 'block';
+                }
+            } catch (error) {
+                // Not a driver, hide controls
+            }
+        }
+        
+        // Track driver's own bus
+        async function trackMyBus() {
+            try {
+                const response = await fetch('/api/v1/tracking/routes/track_me/', {
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Clear map and display driver's route
+                    clearMap();
+                    
+                    // Center on driver's location
+                    map.setCenter({
+                        lat: data.current_location.latitude,
+                        lng: data.current_location.longitude
+                    });
+                    map.setZoom(15);
+                    
+                    // Show route and estimated path
+                    displayDriverRoute(data);
+                }
+            } catch (error) {
+                console.error('Error tracking bus:', error);
+                alert('Error tracking your bus');
+            }
+        }
+        
+        // Display driver's route
+        function displayDriverRoute(data) {
+            // Add current position marker
+            const currentMarker = new google.maps.Marker({
+                position: {
+                    lat: data.current_location.latitude,
+                    lng: data.current_location.longitude
+                },
+                map: map,
+                title: 'Current Position',
+                icon: {
+                    path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+                    scale: 8,
+                    fillColor: '#28a745',
+                    fillOpacity: 1,
+                    strokeColor: 'white',
+                    strokeWeight: 3,
+                    rotation: data.current_location.heading || 0
+                }
+            });
+            markers.push(currentMarker);
+            
+            // Draw estimated path
+            if (data.estimated_path && data.estimated_path.length > 0) {
+                const path = data.estimated_path.map(segment => [
+                    { lat: segment.from_location.lat, lng: segment.from_location.lng },
+                    { lat: segment.to.lat, lng: segment.to.lng }
+                ]).flat();
+                
+                const estimatedRoute = new google.maps.Polyline({
+                    path: path,
+                    geodesic: true,
+                    strokeColor: '#ff9800',
+                    strokeOpacity: 0.8,
+                    strokeWeight: 5,
+                    strokePattern: [10, 5] // Dashed line
+                });
+                
+                estimatedRoute.setMap(map);
+                polylines.push(estimatedRoute);
+            }
+            
+            // Add remaining stop markers with ETAs
+            data.remaining_stops.forEach((stop, index) => {
+                const stopMarker = new google.maps.Marker({
+                    position: stop.location,
+                    map: map,
+                    title: stop.name,
+                    label: {
+                        text: (index + 1).toString(),
+                        color: 'white'
+                    },
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 8,
+                        fillColor: '#dc3545',
+                        fillOpacity: 1,
+                        strokeColor: 'white',
+                        strokeWeight: 2
+                    }
+                });
+                
+                const eta = stop.estimated_arrival ? 
+                    new Date(stop.estimated_arrival).toLocaleTimeString() : 
+                    'Unknown';
+                
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `<div>
+                        <strong>${stop.name}</strong><br>
+                        ETA: ${eta}<br>
+                        Distance: ${stop.distance_km} km<br>
+                        Time: ${stop.travel_time_minutes} minutes
+                    </div>`
+                });
+                
+                stopMarker.addListener('click', () => {
+                    infoWindow.open(map, stopMarker);
+                });
+                
+                markers.push(stopMarker);
+            });
+        }
+        
+        // Update driver location
+        async function updateLocation() {
+            if (!navigator.geolocation) {
+                alert('Geolocation is not supported');
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                async position => {
+                    try {
+                        const locationData = {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy: position.coords.accuracy,
+                            speed: position.coords.speed || 0,
+                            heading: position.coords.heading || 0
+                        };
+                        
+                        const response = await fetch('/api/v1/tracking/locations/', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(locationData)
+                        });
+                        
+                        if (response.ok) {
+                            alert('Location updated successfully');
+                            // Refresh tracking
+                            trackMyBus();
+                        } else {
+                            alert('Error updating location');
+                        }
+                    } catch (error) {
+                        console.error('Error updating location:', error);
+                        alert('Error updating location');
+                    }
+                },
+                error => {
+                    alert('Error getting location: ' + error.message);
+                }
+            );
+        }
+        
+        // Clear map
+        function clearMap() {
+            markers.forEach(marker => marker.setMap(null));
+            polylines.forEach(line => line.setMap(null));
+            markers = [];
+            polylines = [];
+        }
+        
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        });
+    </script>
+    
+    <!-- Replace YOUR_API_KEY with actual Google Maps API key -->
+    <script async defer 
+        src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap">
+    </script>
+</body>
+</html>

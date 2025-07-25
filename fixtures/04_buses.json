@@ -1,0 +1,267 @@
+[
+{
+  "model": "buses.bus",
+  "pk": "1fa5d10c-2e71-4c5b-8787-c52a17015901",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.080Z",
+    "updated_at": "2025-07-24T17:59:57.080Z",
+    "license_plate": "16-386-24",
+    "driver": "253b3d82-c0cc-4bb3-a324-666c8a0cac50",
+    "model": "County",
+    "manufacturer": "Hyundai",
+    "year": 2019,
+    "capacity": 29,
+    "status": "maintenance",
+    "is_air_conditioned": true,
+    "photo": "",
+    "features": [],
+    "description": "Hyundai County - Comfortable bus with 29 seats",
+    "is_active": true,
+    "is_approved": false
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "2333e391-4846-446b-9532-b304cb211f15",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.035Z",
+    "updated_at": "2025-07-24T17:59:57.035Z",
+    "license_plate": "16-186-81",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "model": "Sprinter 516 CDI",
+    "manufacturer": "Mercedes-Benz",
+    "year": 2020,
+    "capacity": 30,
+    "status": "active",
+    "is_air_conditioned": true,
+    "photo": "",
+    "features": [],
+    "description": "Mercedes-Benz Sprinter 516 CDI - Comfortable bus with 30 seats",
+    "is_active": true,
+    "is_approved": true
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.054Z",
+    "updated_at": "2025-07-24T17:59:57.054Z",
+    "license_plate": "16-109-20",
+    "driver": "253b3d82-c0cc-4bb3-a324-666c8a0cac50",
+    "model": "Transit 430",
+    "manufacturer": "Ford",
+    "year": 2021,
+    "capacity": 28,
+    "status": "active",
+    "is_air_conditioned": false,
+    "photo": "",
+    "features": [
+      "WiFi",
+      "USB Charging"
+    ],
+    "description": "Ford Transit 430 - Comfortable bus with 28 seats",
+    "is_active": true,
+    "is_approved": true
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.062Z",
+    "updated_at": "2025-07-24T17:59:57.062Z",
+    "license_plate": "16-136-35",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "model": "Boxer HDi",
+    "manufacturer": "Peugeot",
+    "year": 2018,
+    "capacity": 25,
+    "status": "active",
+    "is_air_conditioned": false,
+    "photo": "",
+    "features": [
+      "WiFi",
+      "USB Charging"
+    ],
+    "description": "Peugeot Boxer HDi - Comfortable bus with 25 seats",
+    "is_active": true,
+    "is_approved": true
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "77517fa3-28f6-42d8-86fc-24e4c52cbbcc",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.089Z",
+    "updated_at": "2025-07-24T17:59:57.089Z",
+    "license_plate": "16-903-32",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "model": "Journey",
+    "manufacturer": "Isuzu",
+    "year": 2020,
+    "capacity": 33,
+    "status": "maintenance",
+    "is_air_conditioned": false,
+    "photo": "",
+    "features": [],
+    "description": "Isuzu Journey - Comfortable bus with 33 seats",
+    "is_active": true,
+    "is_approved": false
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "78250425-5317-471c-88be-55dfeaccaca1",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.045Z",
+    "updated_at": "2025-07-24T17:59:57.045Z",
+    "license_plate": "16-109-19",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "model": "Daily 70C18",
+    "manufacturer": "Iveco",
+    "year": 2019,
+    "capacity": 35,
+    "status": "active",
+    "is_air_conditioned": true,
+    "photo": "",
+    "features": [],
+    "description": "Iveco Daily 70C18 - Comfortable bus with 35 seats",
+    "is_active": true,
+    "is_approved": true
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "ca1afa29-0b75-4e0e-86b3-34e9db03b094",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.085Z",
+    "updated_at": "2025-07-24T17:59:57.085Z",
+    "license_plate": "16-275-18",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "model": "Coaster",
+    "manufacturer": "Toyota",
+    "year": 2021,
+    "capacity": 30,
+    "status": "maintenance",
+    "is_air_conditioned": false,
+    "photo": "",
+    "features": [
+      "WiFi",
+      "USB Charging"
+    ],
+    "description": "Toyota Coaster - Comfortable bus with 30 seats",
+    "is_active": true,
+    "is_approved": false
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "f419f0a6-48e0-406a-8523-d8af3bdc3e08",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.072Z",
+    "updated_at": "2025-07-24T17:59:57.072Z",
+    "license_plate": "16-362-54",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "model": "Master dCi",
+    "manufacturer": "Renault",
+    "year": 2020,
+    "capacity": 32,
+    "status": "active",
+    "is_air_conditioned": false,
+    "photo": "",
+    "features": [
+      "WiFi",
+      "USB Charging"
+    ],
+    "description": "Renault Master dCi - Comfortable bus with 32 seats",
+    "is_active": true,
+    "is_approved": true
+  }
+},
+{
+  "model": "buses.buslocation",
+  "pk": "371a068a-ea36-4346-8b12-d7f71d34fd58",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.076Z",
+    "updated_at": "2025-07-24T17:59:57.076Z",
+    "bus": "f419f0a6-48e0-406a-8523-d8af3bdc3e08",
+    "latitude": "36.7582189",
+    "longitude": "3.0009812",
+    "altitude": null,
+    "speed": null,
+    "heading": null,
+    "accuracy": null,
+    "is_tracking_active": true,
+    "passenger_count": 0
+  }
+},
+{
+  "model": "buses.buslocation",
+  "pk": "6a6ed07c-0fcd-48cc-8ecc-f40eee5fe81b",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.058Z",
+    "updated_at": "2025-07-24T17:59:57.058Z",
+    "bus": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+    "latitude": "36.8010239",
+    "longitude": "3.0534149",
+    "altitude": null,
+    "speed": null,
+    "heading": null,
+    "accuracy": null,
+    "is_tracking_active": true,
+    "passenger_count": 0
+  }
+},
+{
+  "model": "buses.buslocation",
+  "pk": "7fb927c0-fcc6-4147-b6e7-c635c363992e",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.067Z",
+    "updated_at": "2025-07-24T17:59:57.067Z",
+    "bus": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+    "latitude": "36.7238415",
+    "longitude": "3.0280762",
+    "altitude": null,
+    "speed": null,
+    "heading": null,
+    "accuracy": null,
+    "is_tracking_active": true,
+    "passenger_count": 0
+  }
+},
+{
+  "model": "buses.buslocation",
+  "pk": "a186ac77-1a43-4889-919e-bec0cb23fa62",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.050Z",
+    "updated_at": "2025-07-24T17:59:57.050Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "latitude": "36.7644410",
+    "longitude": "3.0088046",
+    "altitude": null,
+    "speed": null,
+    "heading": null,
+    "accuracy": null,
+    "is_tracking_active": true,
+    "passenger_count": 0
+  }
+},
+{
+  "model": "buses.buslocation",
+  "pk": "ab350214-8303-4e41-bbe6-8274cd12a8ef",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.040Z",
+    "updated_at": "2025-07-24T17:59:57.040Z",
+    "bus": "2333e391-4846-446b-9532-b304cb211f15",
+    "latitude": "36.7455948",
+    "longitude": "3.0674445",
+    "altitude": null,
+    "speed": null,
+    "heading": null,
+    "accuracy": null,
+    "is_tracking_active": true,
+    "passenger_count": 0
+  }
+}
+]

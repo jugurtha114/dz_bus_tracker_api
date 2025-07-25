@@ -197,3 +197,21 @@ class UpdateStopOrderSerializer(serializers.Serializer):
     """
     stop_id = serializers.UUIDField(required=True)
     new_order = serializers.IntegerField(required=True, min_value=0)
+
+
+class LineBriefSerializer(BaseSerializer):
+    """
+    Brief serializer for lines.
+    """
+    class Meta:
+        model = Line
+        fields = ['id', 'name', 'code', 'is_active']
+
+
+class StopBriefSerializer(BaseSerializer):
+    """
+    Brief serializer for stops.
+    """
+    class Meta:
+        model = Stop
+        fields = ['id', 'name', 'latitude', 'longitude']

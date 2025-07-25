@@ -1,0 +1,527 @@
+[
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$NdxrOVGJKZC7rZ13xQMCRG$36ah0WYLmr1yJCWsNg1+17dxzxz4AERPIHFI5lwe7KU=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "omar@dzbus.com",
+    "first_name": "Omar",
+    "last_name": "Tlemcani",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:56.562Z",
+    "user_type": "passenger",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$ehc8NnNhWo2FOxhkRFuN1J$tXGpUM0NY+3hIJwVjFuAIHzrOoTBtBluf3BdQ/0XoAE=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "fatima@dzbus.com",
+    "first_name": "Fatima",
+    "last_name": "Zahra",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:55.944Z",
+    "user_type": "passenger",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$BpjTcX9EQ457nW6IPNnNKE$4TgyJ4URknnQ0ugbzmRxMoJDZ6jjXbg5Oqs8TfAJRc8=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "manager@dzbus.com",
+    "first_name": "Bus",
+    "last_name": "Manager",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": true,
+    "date_joined": "2025-07-24T17:59:54.670Z",
+    "user_type": "admin",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$jOXvZ6NcxZ8jIcHUPvToUj$WKHmFZJ8DtDwuro3CMwVXTCSTnOO3z/CcZJRf0PhJM8=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "amina@dzbus.com",
+    "first_name": "Amina",
+    "last_name": "Bouzid",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:56.358Z",
+    "user_type": "passenger",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$AYVMH5QQXPuzK3Y3f81Hiw$lrCG7yf8yQk6F9u9z3lMC6bIlT8JsUzCPDj/8qy8asI=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "sarah@dzbus.com",
+    "first_name": "Sarah",
+    "last_name": "Meddah",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:56.769Z",
+    "user_type": "passenger",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$HOyiYSxkSh1xgkT3aIgY8L$+6+buhA6NHQ34oZGSF3Uvvrz+y96lORDtJoP/StyqtY=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "mohamed.driver@dzbus.com",
+    "first_name": "Mohamed",
+    "last_name": "Khaled",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:55.093Z",
+    "user_type": "driver",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$4MT6eCLqgzfJm2z5kF7l6C$Frp3PXRD/DxVT7N9/BVmBDK2ozNmHq8VHrg1YRhX1k8=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "ahmed.driver@dzbus.com",
+    "first_name": "Ahmed",
+    "last_name": "Benali",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:54.875Z",
+    "user_type": "driver",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$HAEf0rdoTo0PmWZfuKgYLZ$0JolExgo2sOWjzbZn0wJQSpn7R7KYjDTRJ+aFlUMLDI=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "youcef.driver@dzbus.com",
+    "first_name": "Youcef",
+    "last_name": "Amrani",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:55.299Z",
+    "user_type": "driver",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$UfZgxCw1DtWkdkeQeDksgT$PE/EKZ9oqOQqdJ0mVO6VLMbhKhr3BUa/NGtHU6aTXus=",
+    "last_login": null,
+    "is_superuser": true,
+    "email": "admin@example.com",
+    "first_name": "Admin",
+    "last_name": "User",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": true,
+    "date_joined": "2025-07-23T17:25:45.959Z",
+    "user_type": "admin",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$RBraKpcAqsDPyh4AspAh4t$4zmsCAPT7SBI11s5oU/JmYvXBlncFgzY3wY/jvib+mM=",
+    "last_login": null,
+    "is_superuser": true,
+    "email": "jugu@jugu.com",
+    "first_name": "",
+    "last_name": "",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": true,
+    "date_joined": "2025-07-23T18:18:28.360Z",
+    "user_type": "admin",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$5zpVDkl1yp9uXpiv2eO2Pi$+A4SEysZX0F9jPkeeHZ6ejnVKTTrIxDQCnw3j1z9/7M=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "ali@dzbus.com",
+    "first_name": "Ali",
+    "last_name": "Hassan",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:56.151Z",
+    "user_type": "passenger",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$Nd2KZxkmfnBvf1QdqrPFba$l0DI4FICvcxLpmem1utg/oqnBcHmmLcnck224IRvs58=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "rachid.driver@dzbus.com",
+    "first_name": "Rachid",
+    "last_name": "Belkacem",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:55.734Z",
+    "user_type": "driver",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$S6GYeGSFedv1Sh6hb1fCT9$jRuE/A7oJucsCAIURVNTG9OVyhpv6qIWbLV9HL3AtIU=",
+    "last_login": null,
+    "is_superuser": true,
+    "email": "admin@dzbus.com",
+    "first_name": "Super",
+    "last_name": "Admin",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": true,
+    "date_joined": "2025-07-24T17:59:54.452Z",
+    "user_type": "admin",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$XgK4goenMu1Q9iXSdHaRPt$GvvlY1MVeqZkUnBBy4FUNqx6scEAnlD5FNfCLYqaVjg=",
+    "last_login": null,
+    "is_superuser": true,
+    "email": "admin@gmail.com",
+    "first_name": "",
+    "last_name": "",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": true,
+    "date_joined": "2025-07-23T14:35:26.045Z",
+    "user_type": "admin",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$R6bWaUwZOUM7uQrbPYdpBp$UwGtJGe/GKtjXRB/l7uTRPA6qKxDv48ER3ny4Z75304=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "karim.driver@dzbus.com",
+    "first_name": "Karim",
+    "last_name": "Saidi",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:55.519Z",
+    "user_type": "driver",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "08abd6fc-d87c-43d9-ab53-3303b5156125",
+  "fields": {
+    "created_at": "2025-07-24T17:59:55.728Z",
+    "updated_at": "2025-07-24T17:59:55.731Z",
+    "user": [
+      "karim.driver@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "0fd8ddc5-af5a-4b50-a39e-f0aac5bb751b",
+  "fields": {
+    "created_at": "2025-07-24T17:59:55.087Z",
+    "updated_at": "2025-07-24T17:59:55.090Z",
+    "user": [
+      "ahmed.driver@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "12c66362-8c22-4122-a24d-cfbacbc31337",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.763Z",
+    "updated_at": "2025-07-24T17:59:56.766Z",
+    "user": [
+      "omar@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "14c2fd1a-c5e5-4222-bccb-0a6b36d01f53",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.143Z",
+    "updated_at": "2025-07-24T17:59:56.147Z",
+    "user": [
+      "fatima@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "6fe3bd59-6534-458a-ae22-414ffa47b114",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.352Z",
+    "updated_at": "2025-07-24T17:59:56.355Z",
+    "user": [
+      "ali@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "875903d7-6a85-45ae-82c1-f377ec47ca2b",
+  "fields": {
+    "created_at": "2025-07-23T17:25:46.183Z",
+    "updated_at": "2025-07-23T17:25:46.193Z",
+    "user": [
+      "admin@example.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "8c0e1077-09be-4ea5-9658-585cfe1721a1",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.555Z",
+    "updated_at": "2025-07-24T17:59:56.559Z",
+    "user": [
+      "amina@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "94a43be3-433c-4c77-a9f1-4459f7956530",
+  "fields": {
+    "created_at": "2025-07-24T17:59:55.937Z",
+    "updated_at": "2025-07-24T17:59:55.940Z",
+    "user": [
+      "rachid.driver@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "97a3608f-98f1-4042-8cb6-1c92c50d2fc2",
+  "fields": {
+    "created_at": "2025-07-24T17:59:55.512Z",
+    "updated_at": "2025-07-24T17:59:55.515Z",
+    "user": [
+      "youcef.driver@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "9bcccabd-d37d-43b1-b55d-b0c6dd23f490",
+  "fields": {
+    "created_at": "2025-07-24T17:59:55.292Z",
+    "updated_at": "2025-07-24T17:59:55.295Z",
+    "user": [
+      "mohamed.driver@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "a07d91ac-4951-41dc-8c47-4eeef90975a2",
+  "fields": {
+    "created_at": "2025-07-24T17:59:54.868Z",
+    "updated_at": "2025-07-24T17:59:54.872Z",
+    "user": [
+      "manager@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "c1971e64-9d5a-4d74-93d0-1c7b790c98b2",
+  "fields": {
+    "created_at": "2025-07-24T17:59:54.660Z",
+    "updated_at": "2025-07-24T17:59:54.663Z",
+    "user": [
+      "admin@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "d9db80c4-250b-4c00-a787-f84152d92263",
+  "fields": {
+    "created_at": "2025-07-23T18:18:28.571Z",
+    "updated_at": "2025-07-23T18:18:28.577Z",
+    "user": [
+      "jugu@jugu.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "e363c3eb-6ef2-4779-9a4e-d564705ed28a",
+  "fields": {
+    "created_at": "2025-07-23T14:35:26.252Z",
+    "updated_at": "2025-07-23T14:35:26.257Z",
+    "user": [
+      "admin@gmail.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "fcbe467c-e2e3-4df4-b246-f1be501eb0c3",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.971Z",
+    "updated_at": "2025-07-24T17:59:56.974Z",
+    "user": [
+      "sarah@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+}
+]

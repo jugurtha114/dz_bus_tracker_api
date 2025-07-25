@@ -1,0 +1,2135 @@
+[
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$NdxrOVGJKZC7rZ13xQMCRG$36ah0WYLmr1yJCWsNg1+17dxzxz4AERPIHFI5lwe7KU=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "omar@dzbus.com",
+    "first_name": "Omar",
+    "last_name": "Tlemcani",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:56.562Z",
+    "user_type": "passenger",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$ehc8NnNhWo2FOxhkRFuN1J$tXGpUM0NY+3hIJwVjFuAIHzrOoTBtBluf3BdQ/0XoAE=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "fatima@dzbus.com",
+    "first_name": "Fatima",
+    "last_name": "Zahra",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:55.944Z",
+    "user_type": "passenger",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$BpjTcX9EQ457nW6IPNnNKE$4TgyJ4URknnQ0ugbzmRxMoJDZ6jjXbg5Oqs8TfAJRc8=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "manager@dzbus.com",
+    "first_name": "Bus",
+    "last_name": "Manager",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": true,
+    "date_joined": "2025-07-24T17:59:54.670Z",
+    "user_type": "admin",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$jOXvZ6NcxZ8jIcHUPvToUj$WKHmFZJ8DtDwuro3CMwVXTCSTnOO3z/CcZJRf0PhJM8=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "amina@dzbus.com",
+    "first_name": "Amina",
+    "last_name": "Bouzid",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:56.358Z",
+    "user_type": "passenger",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$AYVMH5QQXPuzK3Y3f81Hiw$lrCG7yf8yQk6F9u9z3lMC6bIlT8JsUzCPDj/8qy8asI=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "sarah@dzbus.com",
+    "first_name": "Sarah",
+    "last_name": "Meddah",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:56.769Z",
+    "user_type": "passenger",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$HOyiYSxkSh1xgkT3aIgY8L$+6+buhA6NHQ34oZGSF3Uvvrz+y96lORDtJoP/StyqtY=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "mohamed.driver@dzbus.com",
+    "first_name": "Mohamed",
+    "last_name": "Khaled",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:55.093Z",
+    "user_type": "driver",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$4MT6eCLqgzfJm2z5kF7l6C$Frp3PXRD/DxVT7N9/BVmBDK2ozNmHq8VHrg1YRhX1k8=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "ahmed.driver@dzbus.com",
+    "first_name": "Ahmed",
+    "last_name": "Benali",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:54.875Z",
+    "user_type": "driver",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$HAEf0rdoTo0PmWZfuKgYLZ$0JolExgo2sOWjzbZn0wJQSpn7R7KYjDTRJ+aFlUMLDI=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "youcef.driver@dzbus.com",
+    "first_name": "Youcef",
+    "last_name": "Amrani",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:55.299Z",
+    "user_type": "driver",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$UfZgxCw1DtWkdkeQeDksgT$PE/EKZ9oqOQqdJ0mVO6VLMbhKhr3BUa/NGtHU6aTXus=",
+    "last_login": null,
+    "is_superuser": true,
+    "email": "admin@example.com",
+    "first_name": "Admin",
+    "last_name": "User",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": true,
+    "date_joined": "2025-07-23T17:25:45.959Z",
+    "user_type": "admin",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$RBraKpcAqsDPyh4AspAh4t$4zmsCAPT7SBI11s5oU/JmYvXBlncFgzY3wY/jvib+mM=",
+    "last_login": null,
+    "is_superuser": true,
+    "email": "jugu@jugu.com",
+    "first_name": "",
+    "last_name": "",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": true,
+    "date_joined": "2025-07-23T18:18:28.360Z",
+    "user_type": "admin",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$5zpVDkl1yp9uXpiv2eO2Pi$+A4SEysZX0F9jPkeeHZ6ejnVKTTrIxDQCnw3j1z9/7M=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "ali@dzbus.com",
+    "first_name": "Ali",
+    "last_name": "Hassan",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:56.151Z",
+    "user_type": "passenger",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$Nd2KZxkmfnBvf1QdqrPFba$l0DI4FICvcxLpmem1utg/oqnBcHmmLcnck224IRvs58=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "rachid.driver@dzbus.com",
+    "first_name": "Rachid",
+    "last_name": "Belkacem",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:55.734Z",
+    "user_type": "driver",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$S6GYeGSFedv1Sh6hb1fCT9$jRuE/A7oJucsCAIURVNTG9OVyhpv6qIWbLV9HL3AtIU=",
+    "last_login": null,
+    "is_superuser": true,
+    "email": "admin@dzbus.com",
+    "first_name": "Super",
+    "last_name": "Admin",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": true,
+    "date_joined": "2025-07-24T17:59:54.452Z",
+    "user_type": "admin",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$XgK4goenMu1Q9iXSdHaRPt$GvvlY1MVeqZkUnBBy4FUNqx6scEAnlD5FNfCLYqaVjg=",
+    "last_login": null,
+    "is_superuser": true,
+    "email": "admin@gmail.com",
+    "first_name": "",
+    "last_name": "",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": true,
+    "date_joined": "2025-07-23T14:35:26.045Z",
+    "user_type": "admin",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.user",
+  "fields": {
+    "password": "pbkdf2_sha256$1000000$R6bWaUwZOUM7uQrbPYdpBp$UwGtJGe/GKtjXRB/l7uTRPA6qKxDv48ER3ny4Z75304=",
+    "last_login": null,
+    "is_superuser": false,
+    "email": "karim.driver@dzbus.com",
+    "first_name": "Karim",
+    "last_name": "Saidi",
+    "phone_number": "",
+    "is_active": true,
+    "is_staff": false,
+    "date_joined": "2025-07-24T17:59:55.519Z",
+    "user_type": "driver",
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "08abd6fc-d87c-43d9-ab53-3303b5156125",
+  "fields": {
+    "created_at": "2025-07-24T17:59:55.728Z",
+    "updated_at": "2025-07-24T17:59:55.731Z",
+    "user": [
+      "karim.driver@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "0fd8ddc5-af5a-4b50-a39e-f0aac5bb751b",
+  "fields": {
+    "created_at": "2025-07-24T17:59:55.087Z",
+    "updated_at": "2025-07-24T17:59:55.090Z",
+    "user": [
+      "ahmed.driver@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "12c66362-8c22-4122-a24d-cfbacbc31337",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.763Z",
+    "updated_at": "2025-07-24T17:59:56.766Z",
+    "user": [
+      "omar@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "14c2fd1a-c5e5-4222-bccb-0a6b36d01f53",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.143Z",
+    "updated_at": "2025-07-24T17:59:56.147Z",
+    "user": [
+      "fatima@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "6fe3bd59-6534-458a-ae22-414ffa47b114",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.352Z",
+    "updated_at": "2025-07-24T17:59:56.355Z",
+    "user": [
+      "ali@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "875903d7-6a85-45ae-82c1-f377ec47ca2b",
+  "fields": {
+    "created_at": "2025-07-23T17:25:46.183Z",
+    "updated_at": "2025-07-23T17:25:46.193Z",
+    "user": [
+      "admin@example.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "8c0e1077-09be-4ea5-9658-585cfe1721a1",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.555Z",
+    "updated_at": "2025-07-24T17:59:56.559Z",
+    "user": [
+      "amina@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "94a43be3-433c-4c77-a9f1-4459f7956530",
+  "fields": {
+    "created_at": "2025-07-24T17:59:55.937Z",
+    "updated_at": "2025-07-24T17:59:55.940Z",
+    "user": [
+      "rachid.driver@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "97a3608f-98f1-4042-8cb6-1c92c50d2fc2",
+  "fields": {
+    "created_at": "2025-07-24T17:59:55.512Z",
+    "updated_at": "2025-07-24T17:59:55.515Z",
+    "user": [
+      "youcef.driver@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "9bcccabd-d37d-43b1-b55d-b0c6dd23f490",
+  "fields": {
+    "created_at": "2025-07-24T17:59:55.292Z",
+    "updated_at": "2025-07-24T17:59:55.295Z",
+    "user": [
+      "mohamed.driver@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "a07d91ac-4951-41dc-8c47-4eeef90975a2",
+  "fields": {
+    "created_at": "2025-07-24T17:59:54.868Z",
+    "updated_at": "2025-07-24T17:59:54.872Z",
+    "user": [
+      "manager@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "c1971e64-9d5a-4d74-93d0-1c7b790c98b2",
+  "fields": {
+    "created_at": "2025-07-24T17:59:54.660Z",
+    "updated_at": "2025-07-24T17:59:54.663Z",
+    "user": [
+      "admin@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "d9db80c4-250b-4c00-a787-f84152d92263",
+  "fields": {
+    "created_at": "2025-07-23T18:18:28.571Z",
+    "updated_at": "2025-07-23T18:18:28.577Z",
+    "user": [
+      "jugu@jugu.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "e363c3eb-6ef2-4779-9a4e-d564705ed28a",
+  "fields": {
+    "created_at": "2025-07-23T14:35:26.252Z",
+    "updated_at": "2025-07-23T14:35:26.257Z",
+    "user": [
+      "admin@gmail.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "accounts.profile",
+  "pk": "fcbe467c-e2e3-4df4-b246-f1be501eb0c3",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.971Z",
+    "updated_at": "2025-07-24T17:59:56.974Z",
+    "user": [
+      "sarah@dzbus.com"
+    ],
+    "avatar": "",
+    "bio": "",
+    "language": "fr",
+    "push_notifications_enabled": true,
+    "email_notifications_enabled": true,
+    "sms_notifications_enabled": false
+  }
+},
+{
+  "model": "drivers.driver",
+  "pk": "253b3d82-c0cc-4bb3-a324-666c8a0cac50",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.011Z",
+    "updated_at": "2025-07-24T17:59:57.011Z",
+    "user": [
+      "youcef.driver@dzbus.com"
+    ],
+    "phone_number": "+213555123452",
+    "id_card_number": "12345678902",
+    "id_card_photo": "",
+    "driver_license_number": "DL-2024-003",
+    "driver_license_photo": "",
+    "status": "approved",
+    "status_changed_at": "2025-07-24T17:59:57.011Z",
+    "rejection_reason": "",
+    "years_of_experience": 4,
+    "is_active": true,
+    "is_available": true,
+    "rating": "0.00",
+    "total_ratings": 0
+  }
+},
+{
+  "model": "drivers.driver",
+  "pk": "876e5bbf-5d99-4205-818c-f2aeda964309",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.027Z",
+    "updated_at": "2025-07-24T17:59:57.027Z",
+    "user": [
+      "karim.driver@dzbus.com"
+    ],
+    "phone_number": "+213555123453",
+    "id_card_number": "12345678903",
+    "id_card_photo": "",
+    "driver_license_number": "DL-2024-004",
+    "driver_license_photo": "",
+    "status": "pending",
+    "status_changed_at": "2025-07-24T17:59:57.027Z",
+    "rejection_reason": "",
+    "years_of_experience": 6,
+    "is_active": true,
+    "is_available": true,
+    "rating": "0.00",
+    "total_ratings": 0
+  }
+},
+{
+  "model": "drivers.driver",
+  "pk": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.977Z",
+    "updated_at": "2025-07-24T17:59:56.977Z",
+    "user": [
+      "ahmed.driver@dzbus.com"
+    ],
+    "phone_number": "+213555123450",
+    "id_card_number": "12345678900",
+    "id_card_photo": "",
+    "driver_license_number": "DL-2024-001",
+    "driver_license_photo": "",
+    "status": "approved",
+    "status_changed_at": "2025-07-24T17:59:56.977Z",
+    "rejection_reason": "",
+    "years_of_experience": 2,
+    "is_active": true,
+    "is_available": true,
+    "rating": "0.00",
+    "total_ratings": 0
+  }
+},
+{
+  "model": "drivers.driver",
+  "pk": "ab56d2f2-f5f4-4493-8172-77c814b41dcd",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.031Z",
+    "updated_at": "2025-07-24T17:59:57.031Z",
+    "user": [
+      "rachid.driver@dzbus.com"
+    ],
+    "phone_number": "+213555123454",
+    "id_card_number": "12345678904",
+    "id_card_photo": "",
+    "driver_license_number": "DL-2024-005",
+    "driver_license_photo": "",
+    "status": "pending",
+    "status_changed_at": "2025-07-24T17:59:57.031Z",
+    "rejection_reason": "",
+    "years_of_experience": 14,
+    "is_active": true,
+    "is_available": true,
+    "rating": "0.00",
+    "total_ratings": 0
+  }
+},
+{
+  "model": "drivers.driver",
+  "pk": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.990Z",
+    "updated_at": "2025-07-24T17:59:56.990Z",
+    "user": [
+      "mohamed.driver@dzbus.com"
+    ],
+    "phone_number": "+213555123451",
+    "id_card_number": "12345678901",
+    "id_card_photo": "",
+    "driver_license_number": "DL-2024-002",
+    "driver_license_photo": "",
+    "status": "approved",
+    "status_changed_at": "2025-07-24T17:59:56.990Z",
+    "rejection_reason": "",
+    "years_of_experience": 7,
+    "is_active": true,
+    "is_available": true,
+    "rating": "0.00",
+    "total_ratings": 0
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "1fa5d10c-2e71-4c5b-8787-c52a17015901",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.080Z",
+    "updated_at": "2025-07-24T17:59:57.080Z",
+    "license_plate": "16-386-24",
+    "driver": "253b3d82-c0cc-4bb3-a324-666c8a0cac50",
+    "model": "County",
+    "manufacturer": "Hyundai",
+    "year": 2019,
+    "capacity": 29,
+    "status": "maintenance",
+    "is_air_conditioned": true,
+    "photo": "",
+    "features": [],
+    "description": "Hyundai County - Comfortable bus with 29 seats",
+    "is_active": true,
+    "is_approved": false
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "2333e391-4846-446b-9532-b304cb211f15",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.035Z",
+    "updated_at": "2025-07-24T17:59:57.035Z",
+    "license_plate": "16-186-81",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "model": "Sprinter 516 CDI",
+    "manufacturer": "Mercedes-Benz",
+    "year": 2020,
+    "capacity": 30,
+    "status": "active",
+    "is_air_conditioned": true,
+    "photo": "",
+    "features": [],
+    "description": "Mercedes-Benz Sprinter 516 CDI - Comfortable bus with 30 seats",
+    "is_active": true,
+    "is_approved": true
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.054Z",
+    "updated_at": "2025-07-24T17:59:57.054Z",
+    "license_plate": "16-109-20",
+    "driver": "253b3d82-c0cc-4bb3-a324-666c8a0cac50",
+    "model": "Transit 430",
+    "manufacturer": "Ford",
+    "year": 2021,
+    "capacity": 28,
+    "status": "active",
+    "is_air_conditioned": false,
+    "photo": "",
+    "features": [
+      "WiFi",
+      "USB Charging"
+    ],
+    "description": "Ford Transit 430 - Comfortable bus with 28 seats",
+    "is_active": true,
+    "is_approved": true
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.062Z",
+    "updated_at": "2025-07-24T17:59:57.062Z",
+    "license_plate": "16-136-35",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "model": "Boxer HDi",
+    "manufacturer": "Peugeot",
+    "year": 2018,
+    "capacity": 25,
+    "status": "active",
+    "is_air_conditioned": false,
+    "photo": "",
+    "features": [
+      "WiFi",
+      "USB Charging"
+    ],
+    "description": "Peugeot Boxer HDi - Comfortable bus with 25 seats",
+    "is_active": true,
+    "is_approved": true
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "77517fa3-28f6-42d8-86fc-24e4c52cbbcc",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.089Z",
+    "updated_at": "2025-07-24T17:59:57.089Z",
+    "license_plate": "16-903-32",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "model": "Journey",
+    "manufacturer": "Isuzu",
+    "year": 2020,
+    "capacity": 33,
+    "status": "maintenance",
+    "is_air_conditioned": false,
+    "photo": "",
+    "features": [],
+    "description": "Isuzu Journey - Comfortable bus with 33 seats",
+    "is_active": true,
+    "is_approved": false
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "78250425-5317-471c-88be-55dfeaccaca1",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.045Z",
+    "updated_at": "2025-07-24T17:59:57.045Z",
+    "license_plate": "16-109-19",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "model": "Daily 70C18",
+    "manufacturer": "Iveco",
+    "year": 2019,
+    "capacity": 35,
+    "status": "active",
+    "is_air_conditioned": true,
+    "photo": "",
+    "features": [],
+    "description": "Iveco Daily 70C18 - Comfortable bus with 35 seats",
+    "is_active": true,
+    "is_approved": true
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "ca1afa29-0b75-4e0e-86b3-34e9db03b094",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.085Z",
+    "updated_at": "2025-07-24T17:59:57.085Z",
+    "license_plate": "16-275-18",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "model": "Coaster",
+    "manufacturer": "Toyota",
+    "year": 2021,
+    "capacity": 30,
+    "status": "maintenance",
+    "is_air_conditioned": false,
+    "photo": "",
+    "features": [
+      "WiFi",
+      "USB Charging"
+    ],
+    "description": "Toyota Coaster - Comfortable bus with 30 seats",
+    "is_active": true,
+    "is_approved": false
+  }
+},
+{
+  "model": "buses.bus",
+  "pk": "f419f0a6-48e0-406a-8523-d8af3bdc3e08",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.072Z",
+    "updated_at": "2025-07-24T17:59:57.072Z",
+    "license_plate": "16-362-54",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "model": "Master dCi",
+    "manufacturer": "Renault",
+    "year": 2020,
+    "capacity": 32,
+    "status": "active",
+    "is_air_conditioned": false,
+    "photo": "",
+    "features": [
+      "WiFi",
+      "USB Charging"
+    ],
+    "description": "Renault Master dCi - Comfortable bus with 32 seats",
+    "is_active": true,
+    "is_approved": true
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "0dfea805-e575-4100-870b-398ba5bc3a20",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.106Z",
+    "updated_at": "2025-07-24T17:59:57.106Z",
+    "name": "Cité Universitaire",
+    "latitude": "36.7560000",
+    "longitude": "3.0350000",
+    "address": "",
+    "is_active": true,
+    "description": "Student dormitories",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "290dc6d4-9af5-46d2-9ea4-56f6150bfd4d",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.092Z",
+    "updated_at": "2025-07-24T17:59:57.092Z",
+    "name": "Place des Martyrs",
+    "latitude": "36.7810000",
+    "longitude": "3.0600000",
+    "address": "",
+    "is_active": true,
+    "description": "Central square and major hub",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.132Z",
+    "updated_at": "2025-07-24T17:59:57.132Z",
+    "name": "Ben Aknoun",
+    "latitude": "36.7580000",
+    "longitude": "3.0140000",
+    "address": "",
+    "is_active": true,
+    "description": "Administrative area",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "62d22f03-38e3-4a73-80bf-7e623a3ebb1e",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.103Z",
+    "updated_at": "2025-07-24T17:59:57.103Z",
+    "name": "Université d'Alger",
+    "latitude": "36.7580000",
+    "longitude": "3.0380000",
+    "address": "",
+    "is_active": true,
+    "description": "University campus main entrance",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "67937a91-ae3b-4625-a4cb-c0bdaf372aed",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.118Z",
+    "updated_at": "2025-07-24T17:59:57.118Z",
+    "name": "El Harrach",
+    "latitude": "36.7167000",
+    "longitude": "3.1333000",
+    "address": "",
+    "is_active": true,
+    "description": "Eastern district",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "7811cb1b-b906-4e52-b583-90bece7b6f47",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.135Z",
+    "updated_at": "2025-07-24T17:59:57.135Z",
+    "name": "Gare Routière",
+    "latitude": "36.7720000",
+    "longitude": "3.0650000",
+    "address": "",
+    "is_active": true,
+    "description": "Main bus terminal",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.097Z",
+    "updated_at": "2025-07-24T17:59:57.097Z",
+    "name": "Alger Centre",
+    "latitude": "36.7694000",
+    "longitude": "3.0556000",
+    "address": "",
+    "is_active": true,
+    "description": "City center station",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "a1d7ca9f-3b18-40f2-826c-f10a428fe783",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.138Z",
+    "updated_at": "2025-07-24T17:59:57.138Z",
+    "name": "Aéroport",
+    "latitude": "36.6914000",
+    "longitude": "3.2153000",
+    "address": "",
+    "is_active": true,
+    "description": "Airport terminal",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "a6cd0c9f-7bca-47c1-b396-284f296ca67d",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.095Z",
+    "updated_at": "2025-07-24T17:59:57.095Z",
+    "name": "Grande Poste",
+    "latitude": "36.7753000",
+    "longitude": "3.0588000",
+    "address": "",
+    "is_active": true,
+    "description": "Historic post office area",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "af467765-1c68-43d0-b1a2-1048799cd1e7",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.124Z",
+    "updated_at": "2025-07-24T17:59:57.124Z",
+    "name": "Bir Mourad Raïs",
+    "latitude": "36.7370000",
+    "longitude": "3.0520000",
+    "address": "",
+    "is_active": true,
+    "description": "Southern residential",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "c0ed0c44-b122-4604-b227-19f4acdcf09b",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.121Z",
+    "updated_at": "2025-07-24T17:59:57.121Z",
+    "name": "Hussein Dey",
+    "latitude": "36.7389000",
+    "longitude": "3.0956000",
+    "address": "",
+    "is_active": true,
+    "description": "Southeastern area",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "c5152db5-54c8-4a74-aa8a-aaddc1b928f7",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.129Z",
+    "updated_at": "2025-07-24T17:59:57.129Z",
+    "name": "Dely Ibrahim",
+    "latitude": "36.7540000",
+    "longitude": "2.9880000",
+    "address": "",
+    "is_active": true,
+    "description": "Commercial zone",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "daa648c6-d0ee-4d8d-b750-f3a1ed07aa42",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.114Z",
+    "updated_at": "2025-07-24T17:59:57.114Z",
+    "name": "Bab El Oued",
+    "latitude": "36.7950000",
+    "longitude": "3.0510000",
+    "address": "",
+    "is_active": true,
+    "description": "Residential neighborhood",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "f170f504-81e2-4628-9aa2-09f5e57b9f2e",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.127Z",
+    "updated_at": "2025-07-24T17:59:57.127Z",
+    "name": "Cheraga",
+    "latitude": "36.7670000",
+    "longitude": "2.9590000",
+    "address": "",
+    "is_active": true,
+    "description": "Business district",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "f31c569b-2766-4a8b-b77b-467aed36faf3",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.100Z",
+    "updated_at": "2025-07-24T17:59:57.100Z",
+    "name": "Tafourah",
+    "latitude": "36.7734000",
+    "longitude": "3.0512000",
+    "address": "",
+    "is_active": true,
+    "description": "Commercial district",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.stop",
+  "pk": "fb12fd01-8593-42f0-b286-ed987b7d4fee",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.110Z",
+    "updated_at": "2025-07-24T17:59:57.110Z",
+    "name": "Faculté de Médecine",
+    "latitude": "36.7600000",
+    "longitude": "3.0400000",
+    "address": "",
+    "is_active": true,
+    "description": "Medical school",
+    "features": [],
+    "photo": ""
+  }
+},
+{
+  "model": "lines.line",
+  "pk": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.142Z",
+    "updated_at": "2025-07-24T17:59:57.142Z",
+    "name": "Line 1: Centre - University",
+    "code": "L1",
+    "description": "Main line connecting city center to university area",
+    "is_active": true,
+    "color": "#FF0000",
+    "frequency": null
+  }
+},
+{
+  "model": "lines.line",
+  "pk": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.172Z",
+    "updated_at": "2025-07-24T17:59:57.172Z",
+    "name": "Line 2: Bab El Oued - El Harrach",
+    "code": "L2",
+    "description": "East-West connection through the city",
+    "is_active": true,
+    "color": "#00FF00",
+    "frequency": null
+  }
+},
+{
+  "model": "lines.line",
+  "pk": "5ad7c84d-5153-4288-b900-58910ac895f8",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.209Z",
+    "updated_at": "2025-07-24T17:59:57.209Z",
+    "name": "Line 4: Business Route",
+    "code": "L4",
+    "description": "Connecting business districts",
+    "is_active": true,
+    "color": "#FFA500",
+    "frequency": null
+  }
+},
+{
+  "model": "lines.line",
+  "pk": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.192Z",
+    "updated_at": "2025-07-24T17:59:57.192Z",
+    "name": "Line 3: Airport Express",
+    "code": "L3",
+    "description": "Direct connection to airport",
+    "is_active": true,
+    "color": "#0000FF",
+    "frequency": null
+  }
+},
+{
+  "model": "lines.line",
+  "pk": "d7197295-9489-45db-b03b-2834c4d36d02",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.240Z",
+    "updated_at": "2025-07-24T17:59:57.240Z",
+    "name": "Line 5: University Circuit",
+    "code": "L5",
+    "description": "University campus circulation",
+    "is_active": true,
+    "color": "#800080",
+    "frequency": null
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "03b3fc07-2f7c-4145-8afe-8fcd5bbfded9",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.225Z",
+    "updated_at": "2025-07-24T17:59:57.225Z",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "order": 2,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "0b0969f2-bb23-427b-9f53-41fdeab0f60e",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.165Z",
+    "updated_at": "2025-07-24T17:59:57.165Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "stop": "62d22f03-38e3-4a73-80bf-7e623a3ebb1e",
+    "order": 4,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "1558dd6d-908f-40c9-9f5c-593209bf832b",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.161Z",
+    "updated_at": "2025-07-24T17:59:57.161Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "order": 3,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "1e428c28-bcdc-4df2-8d8e-b1ecff1dd2c2",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.179Z",
+    "updated_at": "2025-07-24T17:59:57.179Z",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "stop": "290dc6d4-9af5-46d2-9ea4-56f6150bfd4d",
+    "order": 1,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "1fb19b44-a27a-413e-a272-81e0abff1139",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.230Z",
+    "updated_at": "2025-07-24T17:59:57.230Z",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "stop": "af467765-1c68-43d0-b1a2-1048799cd1e7",
+    "order": 3,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "29f3ef7a-57d7-49c7-80db-d892cf787f6a",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.206Z",
+    "updated_at": "2025-07-24T17:59:57.206Z",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "stop": "a1d7ca9f-3b18-40f2-826c-f10a428fe783",
+    "order": 3,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "2ab090ef-eac4-4927-a6f7-0fbb5f70f161",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.169Z",
+    "updated_at": "2025-07-24T17:59:57.169Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "stop": "0dfea805-e575-4100-870b-398ba5bc3a20",
+    "order": 5,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "39dfb62e-e6fe-4a6b-87c6-991e1ffece21",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.149Z",
+    "updated_at": "2025-07-24T17:59:57.149Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "order": 0,
+    "distance_from_previous": null,
+    "average_time_from_previous": 0
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "3b345ccc-209a-4bec-a7d7-bfcb54aa0170",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.250Z",
+    "updated_at": "2025-07-24T17:59:57.250Z",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "stop": "fb12fd01-8593-42f0-b286-ed987b7d4fee",
+    "order": 1,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "3f9e0584-3191-4ba3-a0f9-8dc20416c3a0",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.198Z",
+    "updated_at": "2025-07-24T17:59:57.198Z",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "order": 1,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "4369e813-5b5c-4cd1-9641-e999b53ce734",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.202Z",
+    "updated_at": "2025-07-24T17:59:57.202Z",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "stop": "c0ed0c44-b122-4604-b227-19f4acdcf09b",
+    "order": 2,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "616597e7-6b1b-4d2a-b88d-51fa56061702",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.176Z",
+    "updated_at": "2025-07-24T17:59:57.176Z",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "stop": "daa648c6-d0ee-4d8d-b750-f3a1ed07aa42",
+    "order": 0,
+    "distance_from_previous": null,
+    "average_time_from_previous": 0
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "7b270274-ad2a-4db8-9817-b1754dbf2d1a",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.245Z",
+    "updated_at": "2025-07-24T17:59:57.245Z",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "stop": "62d22f03-38e3-4a73-80bf-7e623a3ebb1e",
+    "order": 0,
+    "distance_from_previous": null,
+    "average_time_from_previous": 0
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "7f012668-409d-42d5-8f90-cc19b4109b45",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.214Z",
+    "updated_at": "2025-07-24T17:59:57.214Z",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "stop": "f170f504-81e2-4628-9aa2-09f5e57b9f2e",
+    "order": 0,
+    "distance_from_previous": null,
+    "average_time_from_previous": 0
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "a187b3e8-a1fe-4f52-91cf-63dc9ed26f48",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.219Z",
+    "updated_at": "2025-07-24T17:59:57.219Z",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "stop": "c5152db5-54c8-4a74-aa8a-aaddc1b928f7",
+    "order": 1,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "bba743e4-7605-4b6b-bb12-270741d02321",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.261Z",
+    "updated_at": "2025-07-24T17:59:57.261Z",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "order": 3,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "c0b063a3-e9ca-400f-a9c9-687a58105caa",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.154Z",
+    "updated_at": "2025-07-24T17:59:57.154Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "stop": "a6cd0c9f-7bca-47c1-b396-284f296ca67d",
+    "order": 1,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "c5a7d121-3330-4ac1-87e9-10c5beebcca2",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.183Z",
+    "updated_at": "2025-07-24T17:59:57.183Z",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "order": 2,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "c6f8b4a7-08ae-4e31-be5f-9ba991984bf9",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.157Z",
+    "updated_at": "2025-07-24T17:59:57.157Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "stop": "f31c569b-2766-4a8b-b77b-467aed36faf3",
+    "order": 2,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "ce4f3f9e-c411-4a32-ab64-efaf0ca8b6fb",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.195Z",
+    "updated_at": "2025-07-24T17:59:57.195Z",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "stop": "7811cb1b-b906-4e52-b583-90bece7b6f47",
+    "order": 0,
+    "distance_from_previous": null,
+    "average_time_from_previous": 0
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "d26fcb15-54eb-4c7f-a420-40f0621f1fe9",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.256Z",
+    "updated_at": "2025-07-24T17:59:57.256Z",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "stop": "0dfea805-e575-4100-870b-398ba5bc3a20",
+    "order": 2,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "d6776726-79d8-4e63-a6b4-a26e8ed7146f",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.236Z",
+    "updated_at": "2025-07-24T17:59:57.236Z",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "order": 4,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "e4fac01e-65a0-4dca-9f85-b7dfbb989154",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.186Z",
+    "updated_at": "2025-07-24T17:59:57.186Z",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "stop": "c0ed0c44-b122-4604-b227-19f4acdcf09b",
+    "order": 3,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.linestop",
+  "pk": "ec88041e-18df-41e4-af39-52090d7909f7",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.189Z",
+    "updated_at": "2025-07-24T17:59:57.189Z",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "stop": "67937a91-ae3b-4625-a4cb-c0bdaf372aed",
+    "order": 4,
+    "distance_from_previous": null,
+    "average_time_from_previous": 300
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "037f18f2-2346-410f-876a-061b9ad8970a",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.385Z",
+    "updated_at": "2025-07-24T17:59:57.385Z",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "day_of_week": 1,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "08bba390-05f3-4cdb-871d-7f36d50170f5",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.401Z",
+    "updated_at": "2025-07-24T17:59:57.401Z",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "day_of_week": 4,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "0ff3914e-0e69-4b25-a807-5cb57eb1a224",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.390Z",
+    "updated_at": "2025-07-24T17:59:57.390Z",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "day_of_week": 2,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "181733f5-7b5f-4b4b-b29c-339e7b44dcd4",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.370Z",
+    "updated_at": "2025-07-24T17:59:57.370Z",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "day_of_week": 4,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "2435fbc3-bdd7-4b2f-9688-13375593d774",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.323Z",
+    "updated_at": "2025-07-24T17:59:57.323Z",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "day_of_week": 6,
+    "start_time": "07:00:00",
+    "end_time": "21:00:00",
+    "is_active": true,
+    "frequency_minutes": 20
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "2918efb2-5877-4202-b699-a8f7602f8600",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.351Z",
+    "updated_at": "2025-07-24T17:59:57.351Z",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "day_of_week": 6,
+    "start_time": "07:00:00",
+    "end_time": "21:00:00",
+    "is_active": true,
+    "frequency_minutes": 45
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "2a5aa08d-dac4-4813-9a13-3e5a37c1319d",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.297Z",
+    "updated_at": "2025-07-24T17:59:57.297Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "day_of_week": 6,
+    "start_time": "07:00:00",
+    "end_time": "21:00:00",
+    "is_active": true,
+    "frequency_minutes": 20
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "2ad3f6c5-106b-490b-87ff-6b3f0e30a776",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.343Z",
+    "updated_at": "2025-07-24T17:59:57.343Z",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "day_of_week": 4,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "2ca2e463-a6c6-497b-b18d-cacb269b97eb",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.358Z",
+    "updated_at": "2025-07-24T17:59:57.358Z",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "day_of_week": 1,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "36ae17a5-1471-4945-a042-15054cbebf87",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.374Z",
+    "updated_at": "2025-07-24T17:59:57.374Z",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "day_of_week": 5,
+    "start_time": "07:00:00",
+    "end_time": "21:00:00",
+    "is_active": true,
+    "frequency_minutes": 45
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "39605dea-5ec9-48c0-89ed-406062e62362",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.283Z",
+    "updated_at": "2025-07-24T17:59:57.283Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "day_of_week": 3,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 15
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "41f1ba6c-4f49-463e-8b9b-05aa4a34aff3",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.327Z",
+    "updated_at": "2025-07-24T17:59:57.327Z",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "day_of_week": 0,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "424efe24-dd51-48d9-97a3-0441927811bc",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.339Z",
+    "updated_at": "2025-07-24T17:59:57.339Z",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "day_of_week": 3,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "436e3c6d-f2b3-4875-96f3-651f0b08e185",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.347Z",
+    "updated_at": "2025-07-24T17:59:57.347Z",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "day_of_week": 5,
+    "start_time": "07:00:00",
+    "end_time": "21:00:00",
+    "is_active": true,
+    "frequency_minutes": 45
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "468fe32d-8078-463c-9510-8043bcbb2e14",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.318Z",
+    "updated_at": "2025-07-24T17:59:57.318Z",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "day_of_week": 5,
+    "start_time": "07:00:00",
+    "end_time": "21:00:00",
+    "is_active": true,
+    "frequency_minutes": 20
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "490ac927-d405-41f6-bac9-4562f1b4fd41",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.311Z",
+    "updated_at": "2025-07-24T17:59:57.311Z",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "day_of_week": 3,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 15
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "5f28569a-45fc-4810-b872-b6a1b99d87ee",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.304Z",
+    "updated_at": "2025-07-24T17:59:57.304Z",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "day_of_week": 1,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 15
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "61ec736b-121a-406b-862c-4822094ea87f",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.278Z",
+    "updated_at": "2025-07-24T17:59:57.278Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "day_of_week": 2,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 15
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "636fcac0-afd0-472e-8773-1835b5f41f10",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.293Z",
+    "updated_at": "2025-07-24T17:59:57.293Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "day_of_week": 5,
+    "start_time": "07:00:00",
+    "end_time": "21:00:00",
+    "is_active": true,
+    "frequency_minutes": 20
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "7fd045c7-60a9-45dc-896d-fc140ef2803c",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.354Z",
+    "updated_at": "2025-07-24T17:59:57.354Z",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "day_of_week": 0,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "84ef2f00-923f-4415-af28-b48eeb9b4600",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.301Z",
+    "updated_at": "2025-07-24T17:59:57.301Z",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "day_of_week": 0,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 15
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "8a567c76-d951-4b88-bac6-03e6d87484a5",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.366Z",
+    "updated_at": "2025-07-24T17:59:57.366Z",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "day_of_week": 3,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "8c6ec55e-f452-4776-a2f7-2d0a39a9b31e",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.308Z",
+    "updated_at": "2025-07-24T17:59:57.308Z",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "day_of_week": 2,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 15
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "8f5194b0-1a9d-490a-b55e-e866091f2cfe",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.315Z",
+    "updated_at": "2025-07-24T17:59:57.315Z",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "day_of_week": 4,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 15
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "93284ea3-7a63-4492-89e7-f4aa76ea6fc1",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.331Z",
+    "updated_at": "2025-07-24T17:59:57.331Z",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "day_of_week": 1,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "9f2283b5-df22-4aaf-ba3b-a6bb50b3099a",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.395Z",
+    "updated_at": "2025-07-24T17:59:57.395Z",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "day_of_week": 3,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "acc599ee-e42c-4842-891d-03333aa5cfde",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.335Z",
+    "updated_at": "2025-07-24T17:59:57.335Z",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "day_of_week": 2,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "b9dabbd9-2890-4e93-89f7-88dce978b2ad",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.406Z",
+    "updated_at": "2025-07-24T17:59:57.406Z",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "day_of_week": 5,
+    "start_time": "07:00:00",
+    "end_time": "21:00:00",
+    "is_active": true,
+    "frequency_minutes": 45
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "bd3a0038-db6c-4251-9f6d-096a80bb5ada",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.378Z",
+    "updated_at": "2025-07-24T17:59:57.378Z",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "day_of_week": 6,
+    "start_time": "07:00:00",
+    "end_time": "21:00:00",
+    "is_active": true,
+    "frequency_minutes": 45
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "d3d1c505-b88a-483e-b030-705bf5f5b313",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.265Z",
+    "updated_at": "2025-07-24T17:59:57.265Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "day_of_week": 0,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 15
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "df1850b2-4e61-4654-bbd1-3f74d8e19022",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.382Z",
+    "updated_at": "2025-07-24T17:59:57.382Z",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "day_of_week": 0,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "e83eb3fe-6150-4f48-abbb-3f1d60c981ec",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.289Z",
+    "updated_at": "2025-07-24T17:59:57.289Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "day_of_week": 4,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 15
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "efd31135-8f82-4504-980d-abd572e9c3f9",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.362Z",
+    "updated_at": "2025-07-24T17:59:57.362Z",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "day_of_week": 2,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 30
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "fd909e22-ef14-4e6f-99ca-d78ef50a15e8",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.411Z",
+    "updated_at": "2025-07-24T17:59:57.411Z",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "day_of_week": 6,
+    "start_time": "07:00:00",
+    "end_time": "21:00:00",
+    "is_active": true,
+    "frequency_minutes": 45
+  }
+},
+{
+  "model": "lines.schedule",
+  "pk": "fec06e52-9aa6-4702-a2d2-6b47adbbf744",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.270Z",
+    "updated_at": "2025-07-24T17:59:57.270Z",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "day_of_week": 1,
+    "start_time": "06:00:00",
+    "end_time": "22:00:00",
+    "is_active": true,
+    "frequency_minutes": 15
+  }
+},
+{
+  "model": "tracking.busline",
+  "pk": "24eadb9b-8c28-48c6-a3e4-c220a9679b48",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.572Z",
+    "updated_at": "2025-07-24T17:59:57.572Z",
+    "bus": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "is_active": true,
+    "tracking_status": "active",
+    "trip_id": null,
+    "start_time": null,
+    "end_time": null
+  }
+},
+{
+  "model": "tracking.busline",
+  "pk": "65ac5cb1-a256-431e-8062-265418704853",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.417Z",
+    "updated_at": "2025-07-24T17:59:57.417Z",
+    "bus": "2333e391-4846-446b-9532-b304cb211f15",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "is_active": true,
+    "tracking_status": "active",
+    "trip_id": null,
+    "start_time": null,
+    "end_time": null
+  }
+},
+{
+  "model": "tracking.busline",
+  "pk": "9b18e07a-378a-4d17-98c9-c17cbc62c94c",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.523Z",
+    "updated_at": "2025-07-24T17:59:57.523Z",
+    "bus": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "is_active": true,
+    "tracking_status": "active",
+    "trip_id": null,
+    "start_time": null,
+    "end_time": null
+  }
+},
+{
+  "model": "tracking.busline",
+  "pk": "a86d432f-7bb3-4b2e-9671-52401b919b14",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.464Z",
+    "updated_at": "2025-07-24T17:59:57.464Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "is_active": true,
+    "tracking_status": "active",
+    "trip_id": null,
+    "start_time": null,
+    "end_time": null
+  }
+},
+{
+  "model": "tracking.busline",
+  "pk": "e7e4f75d-00f7-4d82-b420-8f64a71e9059",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.613Z",
+    "updated_at": "2025-07-24T17:59:57.613Z",
+    "bus": "f419f0a6-48e0-406a-8523-d8af3bdc3e08",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "is_active": true,
+    "tracking_status": "active",
+    "trip_id": null,
+    "start_time": null,
+    "end_time": null
+  }
+},
+{
+  "model": "tracking.trip",
+  "pk": "51869096-1c18-4c25-8913-4b0c34a1782e",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.579Z",
+    "updated_at": "2025-07-24T17:59:57.579Z",
+    "bus": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "start_time": "2025-07-24T17:35:57.579Z",
+    "end_time": null,
+    "start_stop": "f170f504-81e2-4628-9aa2-09f5e57b9f2e",
+    "end_stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "is_completed": false,
+    "distance": null,
+    "average_speed": null,
+    "max_passengers": 0,
+    "total_stops": 0,
+    "notes": ""
+  }
+},
+{
+  "model": "tracking.trip",
+  "pk": "5f0ec89d-13e7-4719-a133-afbd1c327f6f",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.621Z",
+    "updated_at": "2025-07-24T17:59:57.621Z",
+    "bus": "f419f0a6-48e0-406a-8523-d8af3bdc3e08",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "start_time": "2025-07-24T17:36:57.620Z",
+    "end_time": null,
+    "start_stop": "62d22f03-38e3-4a73-80bf-7e623a3ebb1e",
+    "end_stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "is_completed": false,
+    "distance": null,
+    "average_speed": null,
+    "max_passengers": 0,
+    "total_stops": 0,
+    "notes": ""
+  }
+},
+{
+  "model": "tracking.trip",
+  "pk": "6db6636b-5262-4bf2-8956-7e1024b69b04",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.531Z",
+    "updated_at": "2025-07-24T17:59:57.531Z",
+    "bus": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+    "driver": "253b3d82-c0cc-4bb3-a324-666c8a0cac50",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "start_time": "2025-07-24T17:44:57.531Z",
+    "end_time": null,
+    "start_stop": "7811cb1b-b906-4e52-b583-90bece7b6f47",
+    "end_stop": "a1d7ca9f-3b18-40f2-826c-f10a428fe783",
+    "is_completed": false,
+    "distance": null,
+    "average_speed": null,
+    "max_passengers": 0,
+    "total_stops": 0,
+    "notes": ""
+  }
+},
+{
+  "model": "tracking.trip",
+  "pk": "776136af-5d35-4982-bab6-fbe3c00e095f",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.472Z",
+    "updated_at": "2025-07-24T17:59:57.472Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "start_time": "2025-07-24T17:48:57.472Z",
+    "end_time": null,
+    "start_stop": "daa648c6-d0ee-4d8d-b750-f3a1ed07aa42",
+    "end_stop": "67937a91-ae3b-4625-a4cb-c0bdaf372aed",
+    "is_completed": false,
+    "distance": null,
+    "average_speed": null,
+    "max_passengers": 0,
+    "total_stops": 0,
+    "notes": ""
+  }
+},
+{
+  "model": "tracking.trip",
+  "pk": "ade099ca-ce4d-470a-8962-ee173d2619dd",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.423Z",
+    "updated_at": "2025-07-24T17:59:57.423Z",
+    "bus": "2333e391-4846-446b-9532-b304cb211f15",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "start_time": "2025-07-24T17:45:57.423Z",
+    "end_time": null,
+    "start_stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "end_stop": "0dfea805-e575-4100-870b-398ba5bc3a20",
+    "is_completed": false,
+    "distance": null,
+    "average_speed": null,
+    "max_passengers": 0,
+    "total_stops": 0,
+    "notes": ""
+  }
+}
+]

@@ -59,6 +59,8 @@ class UserViewSet(BaseModelViewSet):
         """
         Get permissions based on action.
         """
+        if self.action == 'me':
+            return [IsAuthenticated()]
         if self.action in ['create', 'reset_password_request', 'reset_password_confirm']:
             return [AllowAny()]
         if self.action in ['list', 'retrieve']:
@@ -153,7 +155,7 @@ class UserViewSet(BaseModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def me(self, request):
         """
         Get the current user.
@@ -201,6 +203,8 @@ class ProfileViewSet(BaseModelViewSet):
         """
         Get permissions based on action.
         """
+        if self.action in ['me', 'update_me', 'update_notification_preferences']:
+            return [IsAuthenticated()]
         if self.action in ['list', 'retrieve']:
             return [IsAuthenticated()]
         if self.action in ['update', 'partial_update']:

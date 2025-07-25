@@ -6,7 +6,7 @@ import uuid
 from datetime import timedelta
 
 from django.db import transaction
-from django.db.models import Avg, Sum
+from django.db.models import Avg, Sum, Max
 from django.utils import timezone
 
 from apps.buses.models import Bus
@@ -25,7 +25,7 @@ from apps.drivers.selectors import get_driver_by_id
 from apps.lines.models import Line, Stop
 from apps.lines.selectors import get_line_by_id, get_stop_by_id
 
-from .models import (
+from ..models import (
     Anomaly,
     BusLine,
     LocationUpdate,
@@ -33,7 +33,7 @@ from .models import (
     Trip,
     WaitingPassengers,
 )
-from .selectors import (
+from ..selectors import (
     get_active_trip,
     get_bus_line,
     get_latest_location_update,
@@ -374,7 +374,7 @@ class LocationUpdateService(BaseService):
 
             # Update line buses cache if line exists
             if line:
-                from .selectors import get_buses_on_line
+                from ..selectors import get_buses_on_line
                 buses_on_line = get_buses_on_line(line.id)
                 cache_line_buses(line.id, buses_on_line)
 
@@ -659,7 +659,7 @@ class TripService(BaseService):
                 max_passengers = PassengerCount.objects.filter(
                     trip_id=trip.id
                 ).aggregate(
-                    max=models.Max("count")
+                    max=Max("count")
                 )["max"] or 0
 
                 trip_data["max_passengers"] = max_passengers
@@ -750,6 +750,7 @@ class AnomalyService(BaseService):
         """
         try:
             # Get anomaly
+            from apps.core.selectors import get_object_or_404
             anomaly = get_object_or_404(Anomaly, id=anomaly_id)
 
             # Check if already resolved
@@ -852,3 +853,4 @@ class AnomalyService(BaseService):
         except Exception as e:
             logger.error(f"Error detecting route deviation: {e}")
             return None
+__all__ = ['AnomalyService', 'BusLineService', 'LocationUpdateService', 'PassengerCountService', 'TripService']

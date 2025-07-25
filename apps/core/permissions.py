@@ -100,6 +100,9 @@ class IsOwnerOrReadOnly(BasePermission):
             return obj.owner == request.user
         elif hasattr(obj, "driver") and hasattr(obj.driver, "user"):
             return obj.driver.user == request.user
+        elif obj.__class__.__name__ == 'User':
+            # For User objects, check if it's the same user
+            return obj == request.user
 
         return False
 

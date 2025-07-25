@@ -52,3 +52,27 @@ def setup_periodic_tasks(sender, **kwargs):
         crontab(hour=2, minute=0),
         "tasks.periodic.generate_daily_reports.s",
     )
+    
+    # Process scheduled notifications every minute
+    sender.add_periodic_task(
+        60.0,  # Every 60 seconds
+        "notifications.process_scheduled",
+    )
+    
+    # Check for arrival notifications every 2 minutes
+    sender.add_periodic_task(
+        120.0,  # Every 120 seconds
+        "notifications.check_arrival_notifications",
+    )
+    
+    # Send trip updates every minute
+    sender.add_periodic_task(
+        60.0,  # Every 60 seconds
+        "notifications.send_trip_updates",
+    )
+    
+    # Clean up old notifications daily at 3 AM
+    sender.add_periodic_task(
+        crontab(hour=3, minute=0),
+        "notifications.cleanup_old_notifications",
+    )

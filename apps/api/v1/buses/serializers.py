@@ -129,3 +129,12 @@ class PassengerCountUpdateSerializer(serializers.Serializer):
     Serializer for updating passenger count.
     """
     count = serializers.IntegerField(min_value=0)
+
+
+class BusBriefSerializer(BaseSerializer):
+    """
+    Brief serializer for buses.
+    """
+    class Meta:
+        model = Bus
+        fields = ['id', 'bus_number', 'license_plate', 'status']

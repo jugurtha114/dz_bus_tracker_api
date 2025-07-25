@@ -267,3 +267,15 @@ class EstimateArrivalTimeSerializer(serializers.Serializer):
     Serializer for estimating arrival time.
     """
     stop_id = serializers.UUIDField(required=True)
+
+
+class TripBriefSerializer(BaseSerializer):
+    """
+    Brief serializer for trips.
+    """
+    bus_number = serializers.CharField(source='bus.bus_number', read_only=True)
+    line_name = serializers.CharField(source='line.name', read_only=True)
+    
+    class Meta:
+        model = Trip
+        fields = ['id', 'bus_number', 'line_name', 'start_time', 'end_time']

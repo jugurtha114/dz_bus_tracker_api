@@ -2,6 +2,9 @@
 Service functions for the notifications app.
 """
 import logging
+from datetime import datetime, timedelta
+from typing import List, Optional, Dict
+
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -12,11 +15,18 @@ from apps.core.constants import (
     NOTIFICATION_CHANNEL_IN_APP,
     NOTIFICATION_CHANNEL_PUSH,
     NOTIFICATION_CHANNEL_SMS,
+    NOTIFICATION_TYPE_ARRIVAL,
+    NOTIFICATION_TYPE_BUS_DELAYED,
+    NOTIFICATION_TYPE_TRIP_START,
+    NOTIFICATION_TYPE_TRIP_END,
 )
 from apps.core.exceptions import ValidationError
 from apps.core.services import BaseService, create_object, update_object
+from apps.buses.models import Bus
+from apps.lines.models import Line, Stop
+from apps.tracking.models import Trip
 
-from .models import DeviceToken, Notification
+from .models import DeviceToken, Notification, NotificationPreference, NotificationSchedule
 from .selectors import get_notification_by_id, get_user_device_tokens, user_has_device_token
 
 logger = logging.getLogger(__name__)
@@ -318,6 +328,299 @@ class NotificationService(BaseService):
         except Exception as e:
             logger.error(f"Error sending SMS notification: {e}")
             return False
+    
+    @classmethod
+    @transaction.atomic
+    def schedule_arrival_notification(
+        cls,
+        user_id: str,
+        bus_id: str,
+        stop_id: str,
+        estimated_arrival: datetime,
+        trip_id: Optional[str] = None
+    ) -> Optional[NotificationSchedule]:
+        """
+        Schedule a notification for bus arrival.
+        
+        Args:
+            user_id: ID of the user
+            bus_id: ID of the bus
+            stop_id: ID of the stop
+            estimated_arrival: Estimated arrival time
+            trip_id: Optional trip ID
+            
+        Returns:
+            Created NotificationSchedule or None
+        """
+        try:
+            from apps.buses.selectors import get_bus_by_id
+            from apps.lines.selectors import get_stop_by_id
+            from apps.tracking.selectors import get_trip_by_id
+            
+            user = get_user_by_id(user_id)
+            bus = get_bus_by_id(bus_id)
+            stop = get_stop_by_id(stop_id)
+            trip = get_trip_by_id(trip_id) if trip_id else None
+            
+            # Get user preference for timing
+            preference = NotificationPreference.objects.filter(
+                user=user,
+                notification_type=NOTIFICATION_TYPE_ARRIVAL,
+                enabled=True
+            ).first()
+            
+            minutes_before = preference.minutes_before_arrival if preference else 10
+            
+            # Calculate when to send
+            scheduled_for = estimated_arrival - timedelta(minutes=minutes_before)
+            
+            # Don't schedule if it's in the past
+            if scheduled_for <= timezone.now():
+                # Send immediately if arrival is soon
+                cls.create_notification(
+                    user_id=user_id,
+                    notification_type=NOTIFICATION_TYPE_ARRIVAL,
+                    title=f"Bus {bus.bus_number} Arriving Soon",
+                    message=f"Bus {bus.bus_number} will arrive at {stop.name} in {minutes_before} minutes",
+                    data={
+                        'bus_id': str(bus.id),
+                        'stop_id': str(stop.id),
+                        'trip_id': str(trip.id) if trip else None,
+                        'estimated_arrival': estimated_arrival.isoformat()
+                    }
+                )
+                return None
+            
+            # Create scheduled notification
+            scheduled = NotificationSchedule.objects.create(
+                user=user,
+                notification_type=NOTIFICATION_TYPE_ARRIVAL,
+                scheduled_for=scheduled_for,
+                title=f"Bus {bus.bus_number} Arriving Soon",
+                message=f"Bus {bus.bus_number} will arrive at {stop.name} in {minutes_before} minutes",
+                channels=preference.channels if preference else [NOTIFICATION_CHANNEL_IN_APP],
+                bus=bus,
+                stop=stop,
+                trip=trip,
+                data={
+                    'bus_id': str(bus.id),
+                    'stop_id': str(stop.id),
+                    'trip_id': str(trip.id) if trip else None,
+                    'estimated_arrival': estimated_arrival.isoformat()
+                }
+            )
+            
+            logger.info(f"Scheduled arrival notification for user {user.email}")
+            return scheduled
+            
+        except Exception as e:
+            logger.error(f"Error scheduling arrival notification: {e}")
+            raise ValidationError(str(e))
+    
+    @classmethod
+    def notify_delay(
+        cls,
+        bus_id: str,
+        line_id: str,
+        delay_minutes: int,
+        reason: Optional[str] = None
+    ):
+        """
+        Notify users about bus delays.
+        
+        Args:
+            bus_id: ID of the bus
+            line_id: ID of the line
+            delay_minutes: Delay in minutes
+            reason: Optional reason for delay
+        """
+        try:
+            from apps.buses.selectors import get_bus_by_id
+            from apps.lines.selectors import get_line_by_id
+            
+            bus = get_bus_by_id(bus_id)
+            line = get_line_by_id(line_id)
+            
+            # Get users interested in this line
+            preferences = NotificationPreference.objects.filter(
+                notification_type=NOTIFICATION_TYPE_BUS_DELAYED,
+                enabled=True,
+                favorite_lines=line
+            )
+            
+            for pref in preferences:
+                cls.create_notification(
+                    user_id=str(pref.user.id),
+                    notification_type=NOTIFICATION_TYPE_BUS_DELAYED,
+                    title=f"Bus Delay - Line {line.name}",
+                    message=f"Bus {bus.bus_number} is delayed by {delay_minutes} minutes. {reason or ''}",
+                    data={
+                        'bus_id': str(bus.id),
+                        'line_id': str(line.id),
+                        'delay_minutes': delay_minutes,
+                        'reason': reason
+                    }
+                )
+                
+            logger.info(f"Sent delay notifications for bus {bus.bus_number}")
+            
+        except Exception as e:
+            logger.error(f"Error sending delay notifications: {e}")
+    
+    @classmethod
+    def process_scheduled_notifications(cls):
+        """
+        Process and send scheduled notifications.
+        This should be called periodically by a Celery task.
+        """
+        try:
+            # Get due notifications
+            due_notifications = NotificationSchedule.objects.filter(
+                is_sent=False,
+                scheduled_for__lte=timezone.now()
+            )
+            
+            for scheduled in due_notifications:
+                try:
+                    # Create and send notification
+                    notification = cls.create_notification(
+                        user_id=str(scheduled.user.id),
+                        notification_type=scheduled.notification_type,
+                        title=scheduled.title,
+                        message=scheduled.message,
+                        data=scheduled.data
+                    )
+                    
+                    # Send through preferred channels
+                    for channel in scheduled.channels:
+                        if channel == NOTIFICATION_CHANNEL_PUSH:
+                            cls.send_push_notification(notification)
+                        elif channel == NOTIFICATION_CHANNEL_EMAIL:
+                            cls.send_email_notification(notification)
+                        elif channel == NOTIFICATION_CHANNEL_SMS:
+                            cls.send_sms_notification(notification)
+                    
+                    # Mark as sent
+                    scheduled.is_sent = True
+                    scheduled.sent_at = timezone.now()
+                    scheduled.save()
+                    
+                except Exception as e:
+                    logger.error(f"Failed to send scheduled notification {scheduled.id}: {e}")
+                    scheduled.error = str(e)
+                    scheduled.save()
+                    
+            logger.info(f"Processed {due_notifications.count()} scheduled notifications")
+            
+        except Exception as e:
+            logger.error(f"Error processing scheduled notifications: {e}")
+    
+    @classmethod
+    @transaction.atomic
+    def update_preferences(
+        cls,
+        user_id: str,
+        notification_type: str,
+        enabled: Optional[bool] = None,
+        channels: Optional[List[str]] = None,
+        minutes_before_arrival: Optional[int] = None,
+        quiet_hours_start: Optional[str] = None,
+        quiet_hours_end: Optional[str] = None,
+        favorite_stops: Optional[List[str]] = None,
+        favorite_lines: Optional[List[str]] = None
+    ) -> NotificationPreference:
+        """
+        Update notification preferences for a user.
+        
+        Args:
+            user_id: ID of the user
+            notification_type: Type of notification
+            enabled: Whether notifications are enabled
+            channels: Preferred notification channels
+            minutes_before_arrival: Minutes before arrival to notify
+            quiet_hours_start: Start time for quiet hours (HH:MM)
+            quiet_hours_end: End time for quiet hours (HH:MM)
+            favorite_stops: List of favorite stop IDs
+            favorite_lines: List of favorite line IDs
+            
+        Returns:
+            Updated NotificationPreference
+        """
+        try:
+            user = get_user_by_id(user_id)
+            
+            preference, created = NotificationPreference.objects.get_or_create(
+                user=user,
+                notification_type=notification_type,
+                defaults={'enabled': True}
+            )
+            
+            if enabled is not None:
+                preference.enabled = enabled
+            
+            if channels is not None:
+                preference.channels = channels
+            
+            if minutes_before_arrival is not None:
+                preference.minutes_before_arrival = minutes_before_arrival
+            
+            if quiet_hours_start is not None:
+                from datetime import datetime
+                if isinstance(quiet_hours_start, str):
+                    preference.quiet_hours_start = datetime.strptime(quiet_hours_start, "%H:%M").time()
+                else:
+                    preference.quiet_hours_start = quiet_hours_start
+            
+            if quiet_hours_end is not None:
+                from datetime import datetime
+                if isinstance(quiet_hours_end, str):
+                    preference.quiet_hours_end = datetime.strptime(quiet_hours_end, "%H:%M").time()
+                else:
+                    preference.quiet_hours_end = quiet_hours_end
+            
+            preference.save()
+            
+            # Update favorite stops and lines
+            if favorite_stops is not None:
+                from apps.lines.selectors import get_stop_by_id
+                stops = [get_stop_by_id(stop_id) for stop_id in favorite_stops]
+                preference.favorite_stops.set(stops)
+            
+            if favorite_lines is not None:
+                from apps.lines.selectors import get_line_by_id
+                lines = [get_line_by_id(line_id) for line_id in favorite_lines]
+                preference.favorite_lines.set(lines)
+            
+            logger.info(f"Updated {notification_type} preferences for user {user.email}")
+            return preference
+            
+        except Exception as e:
+            logger.error(f"Error updating preferences: {e}")
+            raise ValidationError(str(e))
+    
+    @classmethod
+    def _is_quiet_hours(cls, preference: NotificationPreference) -> bool:
+        """
+        Check if current time is within quiet hours.
+        
+        Args:
+            preference: NotificationPreference object
+            
+        Returns:
+            True if in quiet hours, False otherwise
+        """
+        if not preference.quiet_hours_start or not preference.quiet_hours_end:
+            return False
+        
+        now = timezone.now().time()
+        start = preference.quiet_hours_start
+        end = preference.quiet_hours_end
+        
+        # Handle overnight quiet hours
+        if start > end:
+            return now >= start or now <= end
+        else:
+            return start <= now <= end
 
 
 class DeviceTokenService(BaseService):

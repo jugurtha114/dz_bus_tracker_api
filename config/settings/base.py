@@ -31,7 +31,7 @@ DJANGO_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django.contrib.gis",
+    # "django.contrib.gis",  # Commented out - requires GDAL library
 ]
 
 THIRD_PARTY_APPS = [
@@ -40,6 +40,7 @@ THIRD_PARTY_APPS = [
     "django_celery_beat",
     "corsheaders",
     "django_filters",
+    "drf_spectacular",
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
@@ -321,3 +322,18 @@ DRIVER_APPROVAL_REQUIRED = True
 
 # Admin URL (used in URLs configuration)
 ADMIN_URL = "admin/"
+
+# drf-spectacular settings
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'DZ Bus Tracker API',
+    'DESCRIPTION': 'Real-time bus tracking system for Algeria',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+    },
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': '/api/v[0-9]',
+}

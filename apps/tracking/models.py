@@ -415,3 +415,49 @@ class Anomaly(BaseModel):
 
     def __str__(self):
         return f"{self.type} anomaly for {self.bus} at {self.created_at}"
+
+
+class RouteSegment(BaseModel):
+    """
+    Store route segments between stops for visualization.
+    """
+    from_stop = models.ForeignKey(
+        'lines.Stop',
+        on_delete=models.CASCADE,
+        related_name='route_segments_from'
+    )
+    to_stop = models.ForeignKey(
+        'lines.Stop',
+        on_delete=models.CASCADE,
+        related_name='route_segments_to'
+    )
+    polyline = models.TextField(
+        help_text=_('Encoded polyline for the route segment')
+    )
+    distance = models.FloatField(
+        help_text=_('Distance in kilometers')
+    )
+    duration = models.IntegerField(
+        help_text=_('Estimated duration in minutes')
+    )
+    
+    class Meta:
+        db_table = 'tracking_route_segments'
+        unique_together = ['from_stop', 'to_stop']
+        indexes = [
+            models.Index(fields=['from_stop', 'to_stop']),
+        ]
+    
+    def __str__(self):
+        return f"{self.from_stop} -> {self.to_stop}"
+
+
+__all__ = [
+    'LocationUpdate',
+    'Trip',
+    'PassengerCount',
+    'WaitingPassengers',
+    'BusLine',
+    'Anomaly',
+    'RouteSegment',
+]

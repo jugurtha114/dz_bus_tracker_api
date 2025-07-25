@@ -32,8 +32,8 @@ pre-commit==3.5.0
 # Local development
 watchdog==3.0.0
 
-# Database
-dbeaver-tools==0.3.0
+# Database tools (for local development)
+# Note: dbeaver-tools package doesn't exist, removed
 
 # Jupyter
 jupyterlab==4.0.9

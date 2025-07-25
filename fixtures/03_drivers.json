@@ -1,0 +1,272 @@
+[
+{
+  "model": "drivers.driver",
+  "pk": "253b3d82-c0cc-4bb3-a324-666c8a0cac50",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.011Z",
+    "updated_at": "2025-07-24T17:59:57.011Z",
+    "user": [
+      "youcef.driver@dzbus.com"
+    ],
+    "phone_number": "+213555123452",
+    "id_card_number": "12345678902",
+    "id_card_photo": "",
+    "driver_license_number": "DL-2024-003",
+    "driver_license_photo": "",
+    "status": "approved",
+    "status_changed_at": "2025-07-24T17:59:57.011Z",
+    "rejection_reason": "",
+    "years_of_experience": 4,
+    "is_active": true,
+    "is_available": true,
+    "rating": "0.00",
+    "total_ratings": 0
+  }
+},
+{
+  "model": "drivers.driver",
+  "pk": "876e5bbf-5d99-4205-818c-f2aeda964309",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.027Z",
+    "updated_at": "2025-07-24T17:59:57.027Z",
+    "user": [
+      "karim.driver@dzbus.com"
+    ],
+    "phone_number": "+213555123453",
+    "id_card_number": "12345678903",
+    "id_card_photo": "",
+    "driver_license_number": "DL-2024-004",
+    "driver_license_photo": "",
+    "status": "pending",
+    "status_changed_at": "2025-07-24T17:59:57.027Z",
+    "rejection_reason": "",
+    "years_of_experience": 6,
+    "is_active": true,
+    "is_available": true,
+    "rating": "0.00",
+    "total_ratings": 0
+  }
+},
+{
+  "model": "drivers.driver",
+  "pk": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.977Z",
+    "updated_at": "2025-07-24T17:59:56.977Z",
+    "user": [
+      "ahmed.driver@dzbus.com"
+    ],
+    "phone_number": "+213555123450",
+    "id_card_number": "12345678900",
+    "id_card_photo": "",
+    "driver_license_number": "DL-2024-001",
+    "driver_license_photo": "",
+    "status": "approved",
+    "status_changed_at": "2025-07-24T17:59:56.977Z",
+    "rejection_reason": "",
+    "years_of_experience": 2,
+    "is_active": true,
+    "is_available": true,
+    "rating": "0.00",
+    "total_ratings": 0
+  }
+},
+{
+  "model": "drivers.driver",
+  "pk": "ab56d2f2-f5f4-4493-8172-77c814b41dcd",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.031Z",
+    "updated_at": "2025-07-24T17:59:57.031Z",
+    "user": [
+      "rachid.driver@dzbus.com"
+    ],
+    "phone_number": "+213555123454",
+    "id_card_number": "12345678904",
+    "id_card_photo": "",
+    "driver_license_number": "DL-2024-005",
+    "driver_license_photo": "",
+    "status": "pending",
+    "status_changed_at": "2025-07-24T17:59:57.031Z",
+    "rejection_reason": "",
+    "years_of_experience": 14,
+    "is_active": true,
+    "is_available": true,
+    "rating": "0.00",
+    "total_ratings": 0
+  }
+},
+{
+  "model": "drivers.driver",
+  "pk": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.990Z",
+    "updated_at": "2025-07-24T17:59:56.990Z",
+    "user": [
+      "mohamed.driver@dzbus.com"
+    ],
+    "phone_number": "+213555123451",
+    "id_card_number": "12345678901",
+    "id_card_photo": "",
+    "driver_license_number": "DL-2024-002",
+    "driver_license_photo": "",
+    "status": "approved",
+    "status_changed_at": "2025-07-24T17:59:56.990Z",
+    "rejection_reason": "",
+    "years_of_experience": 7,
+    "is_active": true,
+    "is_available": true,
+    "rating": "0.00",
+    "total_ratings": 0
+  }
+},
+{
+  "model": "drivers.driverrating",
+  "pk": "1a100443-13f9-4d6a-be16-3e2ff4a070e9",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.023Z",
+    "updated_at": "2025-07-24T17:59:57.023Z",
+    "driver": "253b3d82-c0cc-4bb3-a324-666c8a0cac50",
+    "user": [
+      "ali@dzbus.com"
+    ],
+    "rating": 5,
+    "rating_date": "2025-07-24",
+    "comment": "Excellent driver, very professional"
+  }
+},
+{
+  "model": "drivers.driverrating",
+  "pk": "2b708895-3b60-45c3-8fef-28c039b1fa9b",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.007Z",
+    "updated_at": "2025-07-24T17:59:57.007Z",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "user": [
+      "ali@dzbus.com"
+    ],
+    "rating": 3,
+    "rating_date": "2025-07-24",
+    "comment": "Safe driver"
+  }
+},
+{
+  "model": "drivers.driverrating",
+  "pk": "34c4af08-c70e-4bb4-8ad5-9a1abb7f64d0",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.981Z",
+    "updated_at": "2025-07-24T17:59:56.981Z",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "user": [
+      "fatima@dzbus.com"
+    ],
+    "rating": 4,
+    "rating_date": "2025-07-24",
+    "comment": ""
+  }
+},
+{
+  "model": "drivers.driverrating",
+  "pk": "35638009-843a-4a07-af53-5fe7584919d7",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.998Z",
+    "updated_at": "2025-07-24T17:59:56.998Z",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "user": [
+      "amina@dzbus.com"
+    ],
+    "rating": 3,
+    "rating_date": "2025-07-24",
+    "comment": "Excellent driver, very professional"
+  }
+},
+{
+  "model": "drivers.driverrating",
+  "pk": "56cf8390-2872-451b-b970-1ce9d25c4453",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.015Z",
+    "updated_at": "2025-07-24T17:59:57.015Z",
+    "driver": "253b3d82-c0cc-4bb3-a324-666c8a0cac50",
+    "user": [
+      "fatima@dzbus.com"
+    ],
+    "rating": 4,
+    "rating_date": "2025-07-24",
+    "comment": "Punctual and friendly"
+  }
+},
+{
+  "model": "drivers.driverrating",
+  "pk": "b3a32dd2-260e-4780-b135-5c9c9f7485f3",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.019Z",
+    "updated_at": "2025-07-24T17:59:57.019Z",
+    "driver": "253b3d82-c0cc-4bb3-a324-666c8a0cac50",
+    "user": [
+      "omar@dzbus.com"
+    ],
+    "rating": 5,
+    "rating_date": "2025-07-24",
+    "comment": "Excellent driver, very professional"
+  }
+},
+{
+  "model": "drivers.driverrating",
+  "pk": "b6713aef-2a4a-464c-a368-d4bbe8d6e203",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.003Z",
+    "updated_at": "2025-07-24T17:59:57.003Z",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "user": [
+      "sarah@dzbus.com"
+    ],
+    "rating": 5,
+    "rating_date": "2025-07-24",
+    "comment": "Excellent driver, very professional"
+  }
+},
+{
+  "model": "drivers.driverrating",
+  "pk": "d2bcbcea-7bb9-48ca-b8a3-1d0b84553e8a",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.987Z",
+    "updated_at": "2025-07-24T17:59:56.987Z",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "user": [
+      "ali@dzbus.com"
+    ],
+    "rating": 5,
+    "rating_date": "2025-07-24",
+    "comment": "Good driving, safe and comfortable"
+  }
+},
+{
+  "model": "drivers.driverrating",
+  "pk": "d30b122e-f22f-4b50-ba70-79169f0272e9",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.984Z",
+    "updated_at": "2025-07-24T17:59:56.984Z",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "user": [
+      "sarah@dzbus.com"
+    ],
+    "rating": 4,
+    "rating_date": "2025-07-24",
+    "comment": "Excellent driver, very professional"
+  }
+},
+{
+  "model": "drivers.driverrating",
+  "pk": "d3f6c608-bcaa-4e4c-8a5c-f50cd16f5532",
+  "fields": {
+    "created_at": "2025-07-24T17:59:56.994Z",
+    "updated_at": "2025-07-24T17:59:56.994Z",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "user": [
+      "fatima@dzbus.com"
+    ],
+    "rating": 5,
+    "rating_date": "2025-07-24",
+    "comment": "Safe driver"
+  }
+}
+]

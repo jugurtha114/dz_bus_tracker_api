@@ -1,0 +1,961 @@
+[
+{
+  "model": "tracking.busline",
+  "pk": "24eadb9b-8c28-48c6-a3e4-c220a9679b48",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.572Z",
+    "updated_at": "2025-07-24T17:59:57.572Z",
+    "bus": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "is_active": true,
+    "tracking_status": "active",
+    "trip_id": null,
+    "start_time": null,
+    "end_time": null
+  }
+},
+{
+  "model": "tracking.busline",
+  "pk": "65ac5cb1-a256-431e-8062-265418704853",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.417Z",
+    "updated_at": "2025-07-24T17:59:57.417Z",
+    "bus": "2333e391-4846-446b-9532-b304cb211f15",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "is_active": true,
+    "tracking_status": "active",
+    "trip_id": null,
+    "start_time": null,
+    "end_time": null
+  }
+},
+{
+  "model": "tracking.busline",
+  "pk": "9b18e07a-378a-4d17-98c9-c17cbc62c94c",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.523Z",
+    "updated_at": "2025-07-24T17:59:57.523Z",
+    "bus": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "is_active": true,
+    "tracking_status": "active",
+    "trip_id": null,
+    "start_time": null,
+    "end_time": null
+  }
+},
+{
+  "model": "tracking.busline",
+  "pk": "a86d432f-7bb3-4b2e-9671-52401b919b14",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.464Z",
+    "updated_at": "2025-07-24T17:59:57.464Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "is_active": true,
+    "tracking_status": "active",
+    "trip_id": null,
+    "start_time": null,
+    "end_time": null
+  }
+},
+{
+  "model": "tracking.busline",
+  "pk": "e7e4f75d-00f7-4d82-b420-8f64a71e9059",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.613Z",
+    "updated_at": "2025-07-24T17:59:57.613Z",
+    "bus": "f419f0a6-48e0-406a-8523-d8af3bdc3e08",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "is_active": true,
+    "tracking_status": "active",
+    "trip_id": null,
+    "start_time": null,
+    "end_time": null
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "03cb6d1f-e7a7-4a80-94c6-539f2a1f6180",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.496Z",
+    "updated_at": "2025-07-24T17:59:57.496Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "latitude": "36.7871128",
+    "longitude": "3.0210944",
+    "altitude": null,
+    "speed": "41.74",
+    "heading": "46.37",
+    "accuracy": "6.95",
+    "trip_id": null,
+    "nearest_stop": "c0ed0c44-b122-4604-b227-19f4acdcf09b",
+    "distance_to_stop": "463.07",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "1a3078d6-72f7-4765-8a55-ecd6cd7bf3b2",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.484Z",
+    "updated_at": "2025-07-24T17:59:57.484Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "latitude": "36.7131386",
+    "longitude": "3.0865444",
+    "altitude": null,
+    "speed": "48.86",
+    "heading": "101.28",
+    "accuracy": "6.85",
+    "trip_id": null,
+    "nearest_stop": "daa648c6-d0ee-4d8d-b750-f3a1ed07aa42",
+    "distance_to_stop": "151.88",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "1a67154a-a6a2-4056-8768-62298c395e00",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.589Z",
+    "updated_at": "2025-07-24T17:59:57.589Z",
+    "bus": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+    "latitude": "36.7258981",
+    "longitude": "3.0636999",
+    "altitude": null,
+    "speed": "27.40",
+    "heading": "355.60",
+    "accuracy": "5.72",
+    "trip_id": null,
+    "nearest_stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "distance_to_stop": "395.30",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "2d7088d3-67b9-422b-b43b-b98fb02e45ec",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.595Z",
+    "updated_at": "2025-07-24T17:59:57.595Z",
+    "bus": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+    "latitude": "36.7593047",
+    "longitude": "3.0212637",
+    "altitude": null,
+    "speed": "38.14",
+    "heading": "142.62",
+    "accuracy": "10.84",
+    "trip_id": null,
+    "nearest_stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "distance_to_stop": "150.89",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "320e8d28-d8ce-49b1-bc20-d1ec266978e5",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.548Z",
+    "updated_at": "2025-07-24T17:59:57.548Z",
+    "bus": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+    "latitude": "36.7238676",
+    "longitude": "3.0119228",
+    "altitude": null,
+    "speed": "31.88",
+    "heading": "109.57",
+    "accuracy": "13.11",
+    "trip_id": null,
+    "nearest_stop": "a1d7ca9f-3b18-40f2-826c-f10a428fe783",
+    "distance_to_stop": "354.23",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "34458a29-3ae9-4e3b-898d-9946f7d993cd",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.583Z",
+    "updated_at": "2025-07-24T17:59:57.583Z",
+    "bus": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+    "latitude": "36.7243417",
+    "longitude": "3.0325186",
+    "altitude": null,
+    "speed": "45.13",
+    "heading": "355.29",
+    "accuracy": "5.08",
+    "trip_id": null,
+    "nearest_stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "distance_to_stop": "66.13",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "3d7564b8-2a32-415e-ae3e-3ee3a6f6a63d",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.477Z",
+    "updated_at": "2025-07-24T17:59:57.477Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "latitude": "36.7117211",
+    "longitude": "2.9987295",
+    "altitude": null,
+    "speed": "39.76",
+    "heading": "227.23",
+    "accuracy": "13.72",
+    "trip_id": null,
+    "nearest_stop": "c0ed0c44-b122-4604-b227-19f4acdcf09b",
+    "distance_to_stop": "125.44",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "46d16c96-d899-4773-821c-53d88fb92a0f",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.500Z",
+    "updated_at": "2025-07-24T17:59:57.501Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "latitude": "36.7217391",
+    "longitude": "2.9962411",
+    "altitude": null,
+    "speed": "46.52",
+    "heading": "104.05",
+    "accuracy": "5.78",
+    "trip_id": null,
+    "nearest_stop": "daa648c6-d0ee-4d8d-b750-f3a1ed07aa42",
+    "distance_to_stop": "484.81",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "639587b8-9ca3-4398-a79f-2bd3014bc2ea",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.436Z",
+    "updated_at": "2025-07-24T17:59:57.436Z",
+    "bus": "2333e391-4846-446b-9532-b304cb211f15",
+    "latitude": "36.7528516",
+    "longitude": "3.0418171",
+    "altitude": null,
+    "speed": "40.75",
+    "heading": "219.27",
+    "accuracy": "9.72",
+    "trip_id": null,
+    "nearest_stop": "f31c569b-2766-4a8b-b77b-467aed36faf3",
+    "distance_to_stop": "241.84",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "658abcb5-ee59-4f4c-908d-2e110310759e",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.491Z",
+    "updated_at": "2025-07-24T17:59:57.491Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "latitude": "36.7935265",
+    "longitude": "3.0347608",
+    "altitude": null,
+    "speed": "28.28",
+    "heading": "264.55",
+    "accuracy": "11.53",
+    "trip_id": null,
+    "nearest_stop": "c0ed0c44-b122-4604-b227-19f4acdcf09b",
+    "distance_to_stop": "365.60",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "6f53b685-b8a8-4f37-9e0f-8133d54db245",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.634Z",
+    "updated_at": "2025-07-24T17:59:57.634Z",
+    "bus": "f419f0a6-48e0-406a-8523-d8af3bdc3e08",
+    "latitude": "36.7352609",
+    "longitude": "3.0760661",
+    "altitude": null,
+    "speed": "44.86",
+    "heading": "88.62",
+    "accuracy": "14.10",
+    "trip_id": null,
+    "nearest_stop": "0dfea805-e575-4100-870b-398ba5bc3a20",
+    "distance_to_stop": "191.39",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "7cb6b9cf-2bbc-4e84-af94-3e38f396ed76",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.629Z",
+    "updated_at": "2025-07-24T17:59:57.629Z",
+    "bus": "f419f0a6-48e0-406a-8523-d8af3bdc3e08",
+    "latitude": "36.7929651",
+    "longitude": "3.0331492",
+    "altitude": null,
+    "speed": "42.99",
+    "heading": "293.37",
+    "accuracy": "8.29",
+    "trip_id": null,
+    "nearest_stop": "fb12fd01-8593-42f0-b286-ed987b7d4fee",
+    "distance_to_stop": "236.65",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "9a2f10d8-a7e0-4ea7-90a9-c79150d36fc9",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.625Z",
+    "updated_at": "2025-07-24T17:59:57.625Z",
+    "bus": "f419f0a6-48e0-406a-8523-d8af3bdc3e08",
+    "latitude": "36.7159514",
+    "longitude": "3.0783945",
+    "altitude": null,
+    "speed": "40.55",
+    "heading": "287.65",
+    "accuracy": "7.64",
+    "trip_id": null,
+    "nearest_stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "distance_to_stop": "61.37",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "9e0ccc05-d98c-4584-8fa0-a63cb3569748",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.592Z",
+    "updated_at": "2025-07-24T17:59:57.592Z",
+    "bus": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+    "latitude": "36.7202321",
+    "longitude": "3.0896361",
+    "altitude": null,
+    "speed": "34.81",
+    "heading": "357.55",
+    "accuracy": "7.79",
+    "trip_id": null,
+    "nearest_stop": "c5152db5-54c8-4a74-aa8a-aaddc1b928f7",
+    "distance_to_stop": "494.91",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "a90a12eb-c0e0-4813-ae81-e3abcfa65094",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.552Z",
+    "updated_at": "2025-07-24T17:59:57.552Z",
+    "bus": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+    "latitude": "36.7473567",
+    "longitude": "3.0277511",
+    "altitude": null,
+    "speed": "40.51",
+    "heading": "131.31",
+    "accuracy": "14.21",
+    "trip_id": null,
+    "nearest_stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "distance_to_stop": "399.87",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "abda0c39-35b8-44cb-9eb8-fb93e29490e1",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.430Z",
+    "updated_at": "2025-07-24T17:59:57.430Z",
+    "bus": "2333e391-4846-446b-9532-b304cb211f15",
+    "latitude": "36.7290639",
+    "longitude": "3.0322249",
+    "altitude": null,
+    "speed": "31.86",
+    "heading": "237.71",
+    "accuracy": "6.37",
+    "trip_id": null,
+    "nearest_stop": "62d22f03-38e3-4a73-80bf-7e623a3ebb1e",
+    "distance_to_stop": "233.92",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "b685e742-d012-4600-9de4-e8d9ae8b31ff",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.544Z",
+    "updated_at": "2025-07-24T17:59:57.544Z",
+    "bus": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+    "latitude": "36.7645391",
+    "longitude": "3.0022110",
+    "altitude": null,
+    "speed": "29.81",
+    "heading": "325.46",
+    "accuracy": "10.84",
+    "trip_id": null,
+    "nearest_stop": "a1d7ca9f-3b18-40f2-826c-f10a428fe783",
+    "distance_to_stop": "222.84",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "bc49e789-59da-4495-90a6-4c65aa07a021",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.481Z",
+    "updated_at": "2025-07-24T17:59:57.481Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "latitude": "36.7194430",
+    "longitude": "3.0267139",
+    "altitude": null,
+    "speed": "47.49",
+    "heading": "335.87",
+    "accuracy": "8.96",
+    "trip_id": null,
+    "nearest_stop": "290dc6d4-9af5-46d2-9ea4-56f6150bfd4d",
+    "distance_to_stop": "434.89",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "cd8ea428-376b-4cbe-8f2d-efe2dc4e1dc0",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.586Z",
+    "updated_at": "2025-07-24T17:59:57.586Z",
+    "bus": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+    "latitude": "36.7965323",
+    "longitude": "3.0596693",
+    "altitude": null,
+    "speed": "42.05",
+    "heading": "326.42",
+    "accuracy": "13.45",
+    "trip_id": null,
+    "nearest_stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "distance_to_stop": "180.94",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "daba4a03-fa1b-47eb-8b07-10a059326415",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.440Z",
+    "updated_at": "2025-07-24T17:59:57.440Z",
+    "bus": "2333e391-4846-446b-9532-b304cb211f15",
+    "latitude": "36.7978736",
+    "longitude": "3.0730997",
+    "altitude": null,
+    "speed": "36.03",
+    "heading": "26.71",
+    "accuracy": "14.25",
+    "trip_id": null,
+    "nearest_stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "distance_to_stop": "162.37",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "e3b87a38-019a-4bdd-bce9-c9dd73c9e737",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.536Z",
+    "updated_at": "2025-07-24T17:59:57.536Z",
+    "bus": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+    "latitude": "36.7894058",
+    "longitude": "3.0528948",
+    "altitude": null,
+    "speed": "20.23",
+    "heading": "266.22",
+    "accuracy": "6.24",
+    "trip_id": null,
+    "nearest_stop": "c0ed0c44-b122-4604-b227-19f4acdcf09b",
+    "distance_to_stop": "302.85",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "ea125e8f-1899-4792-aa49-1b7e30b6c36c",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.540Z",
+    "updated_at": "2025-07-24T17:59:57.540Z",
+    "bus": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+    "latitude": "36.7088000",
+    "longitude": "2.9931370",
+    "altitude": null,
+    "speed": "37.78",
+    "heading": "77.16",
+    "accuracy": "12.23",
+    "trip_id": null,
+    "nearest_stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "distance_to_stop": "57.42",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "eb58a09b-69ff-45fe-98f5-7ec4d2d28c08",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.488Z",
+    "updated_at": "2025-07-24T17:59:57.488Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "latitude": "36.7932046",
+    "longitude": "3.0053580",
+    "altitude": null,
+    "speed": "33.66",
+    "heading": "131.08",
+    "accuracy": "13.13",
+    "trip_id": null,
+    "nearest_stop": "67937a91-ae3b-4625-a4cb-c0bdaf372aed",
+    "distance_to_stop": "376.31",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "ed4be7db-2c41-467c-970a-13d0b77eb80a",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.433Z",
+    "updated_at": "2025-07-24T17:59:57.433Z",
+    "bus": "2333e391-4846-446b-9532-b304cb211f15",
+    "latitude": "36.7504890",
+    "longitude": "3.0451058",
+    "altitude": null,
+    "speed": "24.06",
+    "heading": "43.00",
+    "accuracy": "13.53",
+    "trip_id": null,
+    "nearest_stop": "62d22f03-38e3-4a73-80bf-7e623a3ebb1e",
+    "distance_to_stop": "174.84",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "f3c08a9e-e383-4272-b722-1628dd132b5f",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.444Z",
+    "updated_at": "2025-07-24T17:59:57.444Z",
+    "bus": "2333e391-4846-446b-9532-b304cb211f15",
+    "latitude": "36.7700156",
+    "longitude": "3.0200727",
+    "altitude": null,
+    "speed": "41.65",
+    "heading": "247.06",
+    "accuracy": "7.66",
+    "trip_id": null,
+    "nearest_stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "distance_to_stop": "490.19",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868"
+  }
+},
+{
+  "model": "tracking.locationupdate",
+  "pk": "f57a015c-49eb-43aa-9978-727c337d77a1",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.427Z",
+    "updated_at": "2025-07-24T17:59:57.427Z",
+    "bus": "2333e391-4846-446b-9532-b304cb211f15",
+    "latitude": "36.7719734",
+    "longitude": "3.0009263",
+    "altitude": null,
+    "speed": "42.45",
+    "heading": "80.23",
+    "accuracy": "10.14",
+    "trip_id": null,
+    "nearest_stop": "0dfea805-e575-4100-870b-398ba5bc3a20",
+    "distance_to_stop": "231.01",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868"
+  }
+},
+{
+  "model": "tracking.passengercount",
+  "pk": "06ad5b7a-e959-4e36-baf7-a6ecf835a032",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.638Z",
+    "updated_at": "2025-07-24T17:59:57.638Z",
+    "bus": "f419f0a6-48e0-406a-8523-d8af3bdc3e08",
+    "count": 23,
+    "capacity": 32,
+    "occupancy_rate": "0.72",
+    "trip_id": "5f0ec89d-13e7-4719-a133-afbd1c327f6f",
+    "stop": null,
+    "line": null
+  }
+},
+{
+  "model": "tracking.passengercount",
+  "pk": "40f71641-62ff-4fb3-b915-f6ad9a10ff55",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.505Z",
+    "updated_at": "2025-07-24T17:59:57.505Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "count": 18,
+    "capacity": 35,
+    "occupancy_rate": "0.51",
+    "trip_id": "776136af-5d35-4982-bab6-fbe3c00e095f",
+    "stop": null,
+    "line": null
+  }
+},
+{
+  "model": "tracking.passengercount",
+  "pk": "ad4af8c3-092a-46d5-be6e-9ad695389236",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.556Z",
+    "updated_at": "2025-07-24T17:59:57.556Z",
+    "bus": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+    "count": 23,
+    "capacity": 28,
+    "occupancy_rate": "0.82",
+    "trip_id": "6db6636b-5262-4bf2-8956-7e1024b69b04",
+    "stop": null,
+    "line": null
+  }
+},
+{
+  "model": "tracking.passengercount",
+  "pk": "b83996a7-2f07-44dd-b678-201ca1c128c6",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.448Z",
+    "updated_at": "2025-07-24T17:59:57.448Z",
+    "bus": "2333e391-4846-446b-9532-b304cb211f15",
+    "count": 23,
+    "capacity": 30,
+    "occupancy_rate": "0.77",
+    "trip_id": "ade099ca-ce4d-470a-8962-ee173d2619dd",
+    "stop": null,
+    "line": null
+  }
+},
+{
+  "model": "tracking.passengercount",
+  "pk": "b91c9058-13ee-40ec-a60e-d4611ffa4053",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.599Z",
+    "updated_at": "2025-07-24T17:59:57.599Z",
+    "bus": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+    "count": 15,
+    "capacity": 25,
+    "occupancy_rate": "0.60",
+    "trip_id": "51869096-1c18-4c25-8913-4b0c34a1782e",
+    "stop": null,
+    "line": null
+  }
+},
+{
+  "model": "tracking.trip",
+  "pk": "51869096-1c18-4c25-8913-4b0c34a1782e",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.579Z",
+    "updated_at": "2025-07-24T17:59:57.579Z",
+    "bus": "73faadb2-ea37-4428-8b1a-67d4ec5ea902",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "start_time": "2025-07-24T17:35:57.579Z",
+    "end_time": null,
+    "start_stop": "f170f504-81e2-4628-9aa2-09f5e57b9f2e",
+    "end_stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "is_completed": false,
+    "distance": null,
+    "average_speed": null,
+    "max_passengers": 0,
+    "total_stops": 0,
+    "notes": ""
+  }
+},
+{
+  "model": "tracking.trip",
+  "pk": "5f0ec89d-13e7-4719-a133-afbd1c327f6f",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.621Z",
+    "updated_at": "2025-07-24T17:59:57.621Z",
+    "bus": "f419f0a6-48e0-406a-8523-d8af3bdc3e08",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "start_time": "2025-07-24T17:36:57.620Z",
+    "end_time": null,
+    "start_stop": "62d22f03-38e3-4a73-80bf-7e623a3ebb1e",
+    "end_stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "is_completed": false,
+    "distance": null,
+    "average_speed": null,
+    "max_passengers": 0,
+    "total_stops": 0,
+    "notes": ""
+  }
+},
+{
+  "model": "tracking.trip",
+  "pk": "6db6636b-5262-4bf2-8956-7e1024b69b04",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.531Z",
+    "updated_at": "2025-07-24T17:59:57.531Z",
+    "bus": "2fc05334-7735-4848-805e-bfe850a6bdd1",
+    "driver": "253b3d82-c0cc-4bb3-a324-666c8a0cac50",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "start_time": "2025-07-24T17:44:57.531Z",
+    "end_time": null,
+    "start_stop": "7811cb1b-b906-4e52-b583-90bece7b6f47",
+    "end_stop": "a1d7ca9f-3b18-40f2-826c-f10a428fe783",
+    "is_completed": false,
+    "distance": null,
+    "average_speed": null,
+    "max_passengers": 0,
+    "total_stops": 0,
+    "notes": ""
+  }
+},
+{
+  "model": "tracking.trip",
+  "pk": "776136af-5d35-4982-bab6-fbe3c00e095f",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.472Z",
+    "updated_at": "2025-07-24T17:59:57.472Z",
+    "bus": "78250425-5317-471c-88be-55dfeaccaca1",
+    "driver": "e3ba54bf-378a-406c-8d7e-810f97f3d0e4",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "start_time": "2025-07-24T17:48:57.472Z",
+    "end_time": null,
+    "start_stop": "daa648c6-d0ee-4d8d-b750-f3a1ed07aa42",
+    "end_stop": "67937a91-ae3b-4625-a4cb-c0bdaf372aed",
+    "is_completed": false,
+    "distance": null,
+    "average_speed": null,
+    "max_passengers": 0,
+    "total_stops": 0,
+    "notes": ""
+  }
+},
+{
+  "model": "tracking.trip",
+  "pk": "ade099ca-ce4d-470a-8962-ee173d2619dd",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.423Z",
+    "updated_at": "2025-07-24T17:59:57.423Z",
+    "bus": "2333e391-4846-446b-9532-b304cb211f15",
+    "driver": "9889f12b-e098-470f-a3b6-82fe15794b6a",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "start_time": "2025-07-24T17:45:57.423Z",
+    "end_time": null,
+    "start_stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "end_stop": "0dfea805-e575-4100-870b-398ba5bc3a20",
+    "is_completed": false,
+    "distance": null,
+    "average_speed": null,
+    "max_passengers": 0,
+    "total_stops": 0,
+    "notes": ""
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "3465c7c8-3c10-48a2-b43c-9cd333625de7",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.518Z",
+    "updated_at": "2025-07-24T17:59:57.518Z",
+    "stop": "c0ed0c44-b122-4604-b227-19f4acdcf09b",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "count": 12,
+    "reported_by": [
+      "amina@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "539b7361-322f-4f8d-a840-0a8109c94b2f",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.652Z",
+    "updated_at": "2025-07-24T17:59:57.652Z",
+    "stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "count": 6,
+    "reported_by": [
+      "amina@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "6ebc2e7a-f6b5-45f9-b846-5472cb645328",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.602Z",
+    "updated_at": "2025-07-24T17:59:57.602Z",
+    "stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "count": 15,
+    "reported_by": [
+      "fatima@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "72602794-919c-4e2a-a026-e3f4fc8298d5",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.610Z",
+    "updated_at": "2025-07-24T17:59:57.610Z",
+    "stop": "f170f504-81e2-4628-9aa2-09f5e57b9f2e",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "count": 8,
+    "reported_by": [
+      "ali@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "a493efc6-f988-4abe-b602-d7784adf79ee",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.642Z",
+    "updated_at": "2025-07-24T17:59:57.642Z",
+    "stop": "fb12fd01-8593-42f0-b286-ed987b7d4fee",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "count": 16,
+    "reported_by": [
+      "ali@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "a5da249a-2a83-4cbe-b459-c7cc31443a1c",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.647Z",
+    "updated_at": "2025-07-24T17:59:57.647Z",
+    "stop": "62d22f03-38e3-4a73-80bf-7e623a3ebb1e",
+    "line": "d7197295-9489-45db-b03b-2834c4d36d02",
+    "count": 9,
+    "reported_by": [
+      "amina@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "a9187a7a-2a2c-48d5-9e74-ff8f7526af93",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.452Z",
+    "updated_at": "2025-07-24T17:59:57.452Z",
+    "stop": "f31c569b-2766-4a8b-b77b-467aed36faf3",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "count": 7,
+    "reported_by": [
+      "omar@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "a9f8b45d-4c37-4b35-a2db-2454030204fd",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.514Z",
+    "updated_at": "2025-07-24T17:59:57.514Z",
+    "stop": "290dc6d4-9af5-46d2-9ea4-56f6150bfd4d",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "count": 15,
+    "reported_by": [
+      "sarah@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "ae6054f8-cfd3-4400-bef8-fe1336f86cdc",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.509Z",
+    "updated_at": "2025-07-24T17:59:57.509Z",
+    "stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "line": "343b6d0e-1c05-454d-abb8-1c289092c74b",
+    "count": 7,
+    "reported_by": [
+      "ali@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "b3536452-c9c5-4ba6-9b45-87398fb3f256",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.606Z",
+    "updated_at": "2025-07-24T17:59:57.606Z",
+    "stop": "af467765-1c68-43d0-b1a2-1048799cd1e7",
+    "line": "5ad7c84d-5153-4288-b900-58910ac895f8",
+    "count": 9,
+    "reported_by": [
+      "fatima@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "b817221f-c27f-4074-8d45-0ecea46a6681",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.560Z",
+    "updated_at": "2025-07-24T17:59:57.560Z",
+    "stop": "c0ed0c44-b122-4604-b227-19f4acdcf09b",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "count": 5,
+    "reported_by": [
+      "ali@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "b9f8578b-c12a-405e-bdfe-6bf6f13e9100",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.568Z",
+    "updated_at": "2025-07-24T17:59:57.568Z",
+    "stop": "7811cb1b-b906-4e52-b583-90bece7b6f47",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "count": 5,
+    "reported_by": [
+      "omar@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "c62852e5-37f6-4f9b-ad73-b1b7042afc3f",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.564Z",
+    "updated_at": "2025-07-24T17:59:57.564Z",
+    "stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "line": "87b0a024-5aa2-477d-8479-a6c04ed82bae",
+    "count": 14,
+    "reported_by": [
+      "omar@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "d9a385f5-81b2-43d8-b243-8c9d53ee22f0",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.456Z",
+    "updated_at": "2025-07-24T17:59:57.456Z",
+    "stop": "56eb81cf-97d2-4e28-81a8-23f846489ef0",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "count": 11,
+    "reported_by": [
+      "fatima@dzbus.com"
+    ]
+  }
+},
+{
+  "model": "tracking.waitingpassengers",
+  "pk": "e91b5c16-562b-4d32-ab3b-b17c2de558c9",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.460Z",
+    "updated_at": "2025-07-24T17:59:57.460Z",
+    "stop": "9e97c30c-7815-4c48-a6ac-080bfbd02e53",
+    "line": "15840f21-b65d-40ad-a3d8-4d9d60e75868",
+    "count": 9,
+    "reported_by": [
+      "omar@dzbus.com"
+    ]
+  }
+}
+]

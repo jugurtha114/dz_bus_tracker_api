@@ -1,0 +1,284 @@
+[
+{
+  "model": "notifications.notification",
+  "pk": "355d59d8-a61e-423e-906e-084b936cff16",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.703Z",
+    "updated_at": "2025-07-24T17:59:57.703Z",
+    "user": [
+      "ali@dzbus.com"
+    ],
+    "notification_type": "bus_delayed",
+    "title": "Route Delay Alert",
+    "message": "Line Line 2: Bab El Oued - El Harrach is experiencing delays due to traffic",
+    "channel": "in_app",
+    "is_read": true,
+    "read_at": null,
+    "data": {}
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": "46241a0e-9abf-4896-8dfb-446b32df9a89",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.696Z",
+    "updated_at": "2025-07-24T17:59:57.696Z",
+    "user": [
+      "ali@dzbus.com"
+    ],
+    "notification_type": "bus_arriving",
+    "title": "Bus Arriving Soon",
+    "message": "Bus 16-275-18 will arrive at Alger Centre in approximately 5 minutes",
+    "channel": "in_app",
+    "is_read": true,
+    "read_at": null,
+    "data": {}
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": "6e406066-46f7-417f-8706-913b9e830722",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.692Z",
+    "updated_at": "2025-07-24T17:59:57.692Z",
+    "user": [
+      "amina@dzbus.com"
+    ],
+    "notification_type": "bus_arriving",
+    "title": "Bus Arriving Soon",
+    "message": "Bus 16-186-81 will arrive at Dely Ibrahim in approximately 5 minutes",
+    "channel": "in_app",
+    "is_read": true,
+    "read_at": null,
+    "data": {}
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": "7b26d7c7-8729-414a-b8ed-5665e1dd7be4",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.700Z",
+    "updated_at": "2025-07-24T17:59:57.700Z",
+    "user": [
+      "fatima@dzbus.com"
+    ],
+    "notification_type": "bus_arriving",
+    "title": "Bus Arriving Soon",
+    "message": "Bus 16-903-32 will arrive at Cheraga in approximately 5 minutes",
+    "channel": "in_app",
+    "is_read": true,
+    "read_at": null,
+    "data": {}
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": "a8533a0c-8519-4a46-b98c-fddc966665bd",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.706Z",
+    "updated_at": "2025-07-24T17:59:57.706Z",
+    "user": [
+      "sarah@dzbus.com"
+    ],
+    "notification_type": "bus_delayed",
+    "title": "Route Delay Alert",
+    "message": "Line Line 4: Business Route is experiencing delays due to traffic",
+    "channel": "in_app",
+    "is_read": false,
+    "read_at": null,
+    "data": {}
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": "afce69a4-6674-446d-9d0d-d64adf97e123",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.715Z",
+    "updated_at": "2025-07-24T17:59:57.715Z",
+    "user": [
+      "fatima@dzbus.com"
+    ],
+    "notification_type": "system",
+    "title": "Service Update",
+    "message": "New schedule effective from tomorrow for Line Line 2: Bab El Oued - El Harrach",
+    "channel": "in_app",
+    "is_read": false,
+    "read_at": null,
+    "data": {}
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": "c0a6d11d-7f92-44ef-87f0-f1b8eae498b7",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.709Z",
+    "updated_at": "2025-07-24T17:59:57.709Z",
+    "user": [
+      "fatima@dzbus.com"
+    ],
+    "notification_type": "bus_delayed",
+    "title": "Route Delay Alert",
+    "message": "Line Line 4: Business Route is experiencing delays due to traffic",
+    "channel": "in_app",
+    "is_read": false,
+    "read_at": null,
+    "data": {}
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": "db580407-9c81-43de-9af1-3698751d54de",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.719Z",
+    "updated_at": "2025-07-24T17:59:57.719Z",
+    "user": [
+      "sarah@dzbus.com"
+    ],
+    "notification_type": "system",
+    "title": "Service Update",
+    "message": "New schedule effective from tomorrow for Line Line 4: Business Route",
+    "channel": "in_app",
+    "is_read": false,
+    "read_at": null,
+    "data": {}
+  }
+},
+{
+  "model": "notifications.notification",
+  "pk": "de20162b-84e2-41c1-b2f5-b12a3064382e",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.712Z",
+    "updated_at": "2025-07-24T17:59:57.712Z",
+    "user": [
+      "omar@dzbus.com"
+    ],
+    "notification_type": "system",
+    "title": "Service Update",
+    "message": "New schedule effective from tomorrow for Line Line 5: University Circuit",
+    "channel": "in_app",
+    "is_read": true,
+    "read_at": null,
+    "data": {}
+  }
+},
+{
+  "model": "notifications.devicetoken",
+  "pk": "13a4414c-7c37-491f-8c6c-daf043844872",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.671Z",
+    "updated_at": "2025-07-24T17:59:57.671Z",
+    "user": [
+      "sarah@dzbus.com"
+    ],
+    "token": "sample_token_4632150a-8d15-4c69-a657-cc4c48a441c9_6310",
+    "device_type": "ios",
+    "is_active": true,
+    "last_used": "2025-07-24T17:59:57.671Z"
+  }
+},
+{
+  "model": "notifications.devicetoken",
+  "pk": "19565eae-9c7f-427d-a189-c0aefb2d7278",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.684Z",
+    "updated_at": "2025-07-24T17:59:57.684Z",
+    "user": [
+      "rachid.driver@dzbus.com"
+    ],
+    "token": "sample_token_aa7a444c-fff2-4711-ba11-fce94c9d3796_1954",
+    "device_type": "ios",
+    "is_active": true,
+    "last_used": "2025-07-24T17:59:57.684Z"
+  }
+},
+{
+  "model": "notifications.devicetoken",
+  "pk": "3ecfda57-8424-48ce-a0f7-35e79dbe804c",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.688Z",
+    "updated_at": "2025-07-24T17:59:57.688Z",
+    "user": [
+      "fatima@dzbus.com"
+    ],
+    "token": "sample_token_2a9aa28e-df2e-439a-b79a-c7e398fc174c_4074",
+    "device_type": "ios",
+    "is_active": true,
+    "last_used": "2025-07-24T17:59:57.688Z"
+  }
+},
+{
+  "model": "notifications.devicetoken",
+  "pk": "5100b233-f3b6-4f64-92fc-101e92757f50",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.667Z",
+    "updated_at": "2025-07-24T17:59:57.667Z",
+    "user": [
+      "omar@dzbus.com"
+    ],
+    "token": "sample_token_12c3f72b-9ed0-4a29-8f99-b460823b7d27_1681",
+    "device_type": "ios",
+    "is_active": true,
+    "last_used": "2025-07-24T17:59:57.667Z"
+  }
+},
+{
+  "model": "notifications.devicetoken",
+  "pk": "901070b0-d2d2-41bb-8c5b-309293ff38d0",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.679Z",
+    "updated_at": "2025-07-24T17:59:57.679Z",
+    "user": [
+      "manager@dzbus.com"
+    ],
+    "token": "sample_token_341e99c4-0b58-44d4-897c-c4b8be9d14eb_7185",
+    "device_type": "ios",
+    "is_active": true,
+    "last_used": "2025-07-24T17:59:57.679Z"
+  }
+},
+{
+  "model": "notifications.devicetoken",
+  "pk": "bee385d2-f05e-4095-a4af-70f69edb16c1",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.657Z",
+    "updated_at": "2025-07-24T17:59:57.657Z",
+    "user": [
+      "admin@dzbus.com"
+    ],
+    "token": "sample_token_bd63cfa8-c229-4814-bd0b-8954c4a2f12f_7723",
+    "device_type": "ios",
+    "is_active": true,
+    "last_used": "2025-07-24T17:59:57.657Z"
+  }
+},
+{
+  "model": "notifications.devicetoken",
+  "pk": "e9c6bd30-daa6-4f0f-a52f-a73a63a8be5a",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.662Z",
+    "updated_at": "2025-07-24T17:59:57.662Z",
+    "user": [
+      "mohamed.driver@dzbus.com"
+    ],
+    "token": "sample_token_464cbd16-34a1-4fc2-a107-572e0688c512_8439",
+    "device_type": "android",
+    "is_active": true,
+    "last_used": "2025-07-24T17:59:57.662Z"
+  }
+},
+{
+  "model": "notifications.devicetoken",
+  "pk": "eef805d5-fd1e-46dc-b760-ca47dafb53e7",
+  "fields": {
+    "created_at": "2025-07-24T17:59:57.675Z",
+    "updated_at": "2025-07-24T17:59:57.675Z",
+    "user": [
+      "ahmed.driver@dzbus.com"
+    ],
+    "token": "sample_token_5a750975-4f66-4500-a66d-13ab304b72bf_3961",
+    "device_type": "ios",
+    "is_active": true,
+    "last_used": "2025-07-24T17:59:57.675Z"
+  }
+}
+]

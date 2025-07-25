@@ -1,3 +1,6 @@
+# Core dependencies
+setuptools
+
 # Django & DRF
 Django==5.2.1
 djangorestframework==3.16
@@ -9,6 +12,7 @@ django-storages
 django-environ
 django-redis
 django-allauth
+drf-spectacular==0.27.0
 
 # Database
 psycopg[binary]
@@ -23,6 +27,7 @@ redis
 
 # Images & Media
 Pillow
+whitenoise
 
 
 # Validation

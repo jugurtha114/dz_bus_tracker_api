@@ -4,10 +4,23 @@ URL configuration for DZ Bus Tracker project.
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
+from django.http import JsonResponse
 from django.urls import include, path
 from django.utils.translation import gettext_lazy as _
 
+
+def health_check(request):
+    """Simple health check endpoint for Docker."""
+    return JsonResponse({
+        "status": "healthy",
+        "service": "dz-bus-tracker",
+        "version": "1.0.0"
+    })
+
 urlpatterns = [
+    # Health check endpoint
+    path("health/", health_check, name="health_check"),
+    
     # Django Admin, use {% url 'admin:index' %}
     path(settings.ADMIN_URL, admin.site.urls),
 

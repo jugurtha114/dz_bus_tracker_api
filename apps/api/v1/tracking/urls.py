@@ -12,6 +12,7 @@ from .views import (
     TripViewSet,
     WaitingPassengersViewSet,
 )
+from .views.route_views import RouteTrackingViewSet, RouteSegmentViewSet
 
 router = DefaultRouter()
 router.register(r'bus-lines', BusLineViewSet)
@@ -20,6 +21,8 @@ router.register(r'passenger-counts', PassengerCountViewSet)
 router.register(r'waiting-passengers', WaitingPassengersViewSet)
 router.register(r'trips', TripViewSet)
 router.register(r'anomalies', AnomalyViewSet)
+router.register(r'routes', RouteTrackingViewSet, basename='route-tracking')
+router.register(r'route-segments', RouteSegmentViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

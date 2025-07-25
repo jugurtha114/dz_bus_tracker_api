@@ -24,7 +24,7 @@ from apps.tracking.services import (
     TripService,
 )
 
-from .filters import (
+from ..filters import (
     AnomalyFilter,
     BusLineFilter,
     LocationUpdateFilter,
@@ -32,7 +32,7 @@ from .filters import (
     TripFilter,
     WaitingPassengersFilter,
 )
-from .serializers import (
+from ..serializers import (
     AnomalyCreateSerializer,
     AnomalyResolveSerializer,
     AnomalySerializer,
@@ -493,9 +493,9 @@ class WaitingPassengersViewSet(BaseModelViewSet):
         Create a waiting passengers report.
         """
         PassengerCountService.update_waiting_passengers(
-            stop_id=serializer.validated_data['stop'],
+            stop_id=serializer.validated_data['stop'].id,
             count=serializer.validated_data['count'],
-            line_id=serializer.validated_data.get('line'),
+            line_id=serializer.validated_data.get('line').id if serializer.validated_data.get('line') else None,
             user_id=self.request.user.id
         )
 
@@ -752,3 +752,13 @@ class AnomalyViewSet(BaseModelViewSet):
         # Return updated anomaly
         updated_serializer = AnomalySerializer(anomaly)
         return Response(updated_serializer.data)
+
+
+__all__ = [
+    'AnomalyViewSet',
+    'BusLineViewSet',
+    'LocationUpdateViewSet',
+    'PassengerCountViewSet',
+    'TripViewSet',
+    'WaitingPassengersViewSet',
+]

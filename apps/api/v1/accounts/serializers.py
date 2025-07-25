@@ -155,3 +155,18 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
         if attrs['new_password'] != attrs['confirm_password']:
             raise serializers.ValidationError({'confirm_password': 'Passwords do not match'})
         return attrs
+
+
+class UserBriefSerializer(BaseSerializer):
+    """
+    Brief serializer for users.
+    """
+    full_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        fields = ['id', 'email', 'full_name', 'user_type']
+    
+    def get_full_name(self, obj):
+        """Get user's full name."""
+        return obj.get_full_name()

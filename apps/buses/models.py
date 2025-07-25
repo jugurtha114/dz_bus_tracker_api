@@ -33,6 +33,11 @@ class Bus(BaseModel):
         _("capacity"),
         help_text=_("Maximum number of passengers"),
     )
+    average_speed = models.FloatField(
+        _("average speed"),
+        default=30.0,
+        help_text=_("Average speed in km/h for ETA calculations"),
+    )
     status = models.CharField(
         _("status"),
         max_length=20,
@@ -70,6 +75,25 @@ class Bus(BaseModel):
         Check if bus is available.
         """
         return self.is_active and self.status == BUS_STATUS_ACTIVE
+    
+    @property
+    def bus_number(self):
+        """
+        Get bus number (license plate without special characters).
+        """
+        return self.license_plate.replace('-', '')
+    
+    @property
+    def current_passenger_count(self):
+        """
+        Get current passenger count from the latest tracking data.
+        """
+        from apps.tracking.models import PassengerCount
+        latest_count = PassengerCount.objects.filter(
+            bus=self
+        ).order_by('-created_at').first()
+        
+        return latest_count.count if latest_count else 0
 
 
 class BusLocation(BaseModel):

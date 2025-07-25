@@ -156,6 +156,21 @@ class DriverViewSet(BaseModelViewSet):
 
         return Response({'detail': 'Availability updated'})
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def profile(self, request):
+        """
+        Get the current driver's profile.
+        """
+        try:
+            driver = Driver.objects.get(user=request.user)
+            serializer = self.get_serializer(driver)
+            return Response(serializer.data)
+        except Driver.DoesNotExist:
+            return Response(
+                {'detail': 'Driver profile not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
     @action(detail=True, methods=['get'])
     def ratings(self, request, pk=None):
         """
