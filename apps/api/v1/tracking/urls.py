@@ -13,6 +13,7 @@ from .views import (
     WaitingPassengersViewSet,
 )
 from .views.route_views import RouteTrackingViewSet, RouteSegmentViewSet
+from .active_buses_view import active_buses
 
 router = DefaultRouter()
 router.register(r'bus-lines', BusLineViewSet)
@@ -25,5 +26,9 @@ router.register(r'routes', RouteTrackingViewSet, basename='route-tracking')
 router.register(r'route-segments', RouteSegmentViewSet)
 
 urlpatterns = [
+    # Active buses endpoint
+    path('active-buses/', active_buses, name='active-buses'),
+    
+    # Router URLs
     path('', include(router.urls)),
 ]

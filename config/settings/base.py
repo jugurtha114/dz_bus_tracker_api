@@ -15,13 +15,17 @@ APPS_DIR = ROOT_DIR / "apps"
 env = environ.Env()
 env.read_env(str(ROOT_DIR / ".env"))
 
+# Firebase Configuration
+FIREBASE_CREDENTIALS_PATH = env("FIREBASE_CREDENTIALS_PATH", default=None)
+FIREBASE_PROJECT_ID = env("FIREBASE_PROJECT_ID", default=None)
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY", default="django-insecure-key-for-dev")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env.bool("DEBUG", False)
 
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1", "192.168.114.253"])
 
 # Application definition
 DJANGO_APPS = [
@@ -125,6 +129,7 @@ AUTH_USER_MODEL = "accounts.User"
 
 # Authentication backends
 AUTHENTICATION_BACKENDS = [
+    "apps.accounts.auth_backends.EmailBackend",  # Custom email backend
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 ]

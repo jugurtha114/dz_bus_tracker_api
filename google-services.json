@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "715316138522",
+    "project_id": "dz-bus-tracker-jugu",
+    "storage_bucket": "dz-bus-tracker-jugu.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:715316138522:android:78df3df970d7b36d3a37a3",
+        "android_client_info": {
+          "package_name": "com.jugurtha_green.dz_bus_tracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqRoCH4Ut0440vFjovwvvqGz1yfh8N_H0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

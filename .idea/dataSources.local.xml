@@ -10,8 +10,18 @@
       <user-name>postgres</user-name>
       <schema-mapping>
         <introspection-scope>
-          <node kind="database" qname="@">
-            <node kind="schema" qname="@" />
+          <node negative="1">
+            <node kind="database">
+              <name qname="@" />
+              <name qname="test_dz_bus_tracker_db_1" />
+              <node kind="schema" qname="@" />
+            </node>
+            <node kind="database" qname="test_dz_bus_tracker_db">
+              <node kind="schema" qname="public" />
+            </node>
+            <node kind="database" qname="test_dz_bus_tracker_db_17">
+              <node kind="schema" negative="1" />
+            </node>
           </node>
         </introspection-scope>
       </schema-mapping>

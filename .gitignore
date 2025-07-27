@@ -177,3 +177,18 @@ logs/
 .env.*
 !.env.example
 firebase-credentials.json
+
+# Test outputs
+test-results/
+.test_cache/
+*.test.log
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# Server logs
+server.log
+nohup.out

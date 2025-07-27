@@ -2,7 +2,7 @@
 setuptools
 
 # Django & DRF
-Django==5.2.1
+Django==5.2.4
 djangorestframework==3.16
 djangorestframework-simplejwt==5.3.0
 #djangorestframework-nested

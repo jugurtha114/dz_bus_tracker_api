@@ -7,6 +7,7 @@ from apps.api.serializers import BaseSerializer
 from apps.api.v1.buses.serializers import BusSerializer
 from apps.api.v1.drivers.serializers import DriverSerializer
 from apps.api.v1.lines.serializers import LineSerializer, StopSerializer
+from drf_spectacular.utils import extend_schema_field
 from apps.tracking.models import (
     Anomaly,
     BusLine,
@@ -33,6 +34,7 @@ class BusLineSerializer(BaseSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    @extend_schema_field(dict)
     def get_bus_details(self, obj):
         """
         Get bus details if expand_bus is True.
@@ -42,6 +44,7 @@ class BusLineSerializer(BaseSerializer):
             return BusSerializer(obj.bus).data
         return None
 
+    @extend_schema_field(dict)
     def get_line_details(self, obj):
         """
         Get line details if expand_line is True.
@@ -123,6 +126,7 @@ class WaitingPassengersSerializer(BaseSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    @extend_schema_field(dict)
     def get_stop_details(self, obj):
         """
         Get stop details if expand_stop is True.
@@ -164,6 +168,7 @@ class TripSerializer(BaseSerializer):
             'max_passengers', 'total_stops', 'created_at', 'updated_at',
         ]
 
+    @extend_schema_field(dict)
     def get_bus_details(self, obj):
         """
         Get bus details if expand_bus is True.
@@ -173,6 +178,7 @@ class TripSerializer(BaseSerializer):
             return BusSerializer(obj.bus).data
         return None
 
+    @extend_schema_field(dict)
     def get_driver_details(self, obj):
         """
         Get driver details if expand_driver is True.
@@ -182,6 +188,7 @@ class TripSerializer(BaseSerializer):
             return DriverSerializer(obj.driver).data
         return None
 
+    @extend_schema_field(dict)
     def get_line_details(self, obj):
         """
         Get line details if expand_line is True.

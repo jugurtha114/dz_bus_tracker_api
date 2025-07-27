@@ -5,6 +5,7 @@ from rest_framework import serializers
 
 from apps.api.serializers import BaseSerializer
 from apps.lines.models import Line, LineStop, Schedule, Stop
+from drf_spectacular.utils import extend_schema_field
 
 
 class StopSerializer(BaseSerializer):
@@ -60,6 +61,7 @@ class LineStopSerializer(BaseSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    @extend_schema_field(dict)
     def get_stop_details(self, obj):
         """
         Get stop details if expand_stop is True.
@@ -123,6 +125,7 @@ class LineSerializer(BaseSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    @extend_schema_field(list)
     def get_stops(self, obj):
         """
         Get stops for this line if expand_stops is True.
@@ -137,6 +140,7 @@ class LineSerializer(BaseSerializer):
             ).data
         return None
 
+    @extend_schema_field(list)
     def get_schedules(self, obj):
         """
         Get schedules for this line if expand_schedules is True.

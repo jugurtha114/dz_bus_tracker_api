@@ -6,6 +6,7 @@ from rest_framework import serializers
 
 from apps.accounts.models import Profile, User
 from apps.api.serializers import BaseSerializer, DynamicFieldsModelSerializer
+from drf_spectacular.utils import extend_schema_field
 
 User = get_user_model()
 
@@ -167,6 +168,7 @@ class UserBriefSerializer(BaseSerializer):
         model = User
         fields = ['id', 'email', 'full_name', 'user_type']
     
+    @extend_schema_field(str)
     def get_full_name(self, obj):
         """Get user's full name."""
         return obj.get_full_name()

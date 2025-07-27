@@ -6,6 +6,7 @@ from rest_framework import serializers
 from apps.api.serializers import BaseSerializer
 from apps.api.v1.accounts.serializers import UserSerializer
 from apps.drivers.models import Driver, DriverRating
+from drf_spectacular.utils import extend_schema_field
 
 
 class DriverRatingSerializer(BaseSerializer):
@@ -22,6 +23,7 @@ class DriverRatingSerializer(BaseSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    @extend_schema_field(str)
     def get_user_name(self, obj):
         """
         Get user name.
@@ -65,6 +67,7 @@ class DriverSerializer(BaseSerializer):
             'rating', 'total_ratings', 'created_at', 'updated_at',
         ]
 
+    @extend_schema_field(dict)
     def get_user_details(self, obj):
         """
         Get user details if expand_user is True.
@@ -74,6 +77,7 @@ class DriverSerializer(BaseSerializer):
             return UserSerializer(obj.user).data
         return None
 
+    @extend_schema_field(str)
     def get_full_name(self, obj):
         """
         Get driver's full name.

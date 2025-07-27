@@ -146,6 +146,65 @@ class NotificationScheduleSerializer(serializers.ModelSerializer):
         ]
 
 
+class DeviceTokenCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating device tokens.
+    """
+    device_info = serializers.JSONField(required=False)
+    app_version = serializers.CharField(required=False)
+    
+    class Meta:
+        model = DeviceToken
+        fields = ['token', 'device_type', 'device_info', 'app_version']
+
+
+class DeviceTokenTestSerializer(serializers.Serializer):
+    """
+    Serializer for testing device tokens.
+    """
+    message = serializers.CharField(default="Test notification")
+
+
+class NotificationSendSerializer(serializers.Serializer):
+    """
+    Serializer for sending notifications.
+    """
+    user_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        help_text=_("List of user IDs to send notification to")
+    )
+    template_type = serializers.CharField(help_text=_("Template type"))
+    channels = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        help_text=_("Notification channels")
+    )
+    template_data = serializers.JSONField(
+        required=False,
+        help_text=_("Data for template rendering")
+    )
+
+
+class BulkNotificationSerializer(serializers.Serializer):
+    """
+    Serializer for bulk notifications.
+    """
+    user_ids = serializers.ListField(
+        child=serializers.UUIDField(),
+        help_text=_("List of user IDs")
+    )
+    template_type = serializers.CharField(help_text=_("Template type"))
+    channels = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        help_text=_("Notification channels")
+    )
+    template_data = serializers.JSONField(
+        required=False,
+        help_text=_("Template data")
+    )
+
+
 class ArrivalNotificationSerializer(serializers.Serializer):
     """
     Serializer for scheduling arrival notifications.

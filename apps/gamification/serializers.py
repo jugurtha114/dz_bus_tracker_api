@@ -4,6 +4,8 @@ Serializers for the gamification app.
 from rest_framework import serializers
 from django.utils.translation import gettext_lazy as _
 
+from drf_spectacular.utils import extend_schema_field
+
 from apps.api.v1.accounts.serializers import UserBriefSerializer
 from .models import (
     UserProfile,
@@ -43,10 +45,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
     
+    @extend_schema_field(int)
     def get_next_level_points(self, obj):
         """Points needed for next level."""
         return obj.current_level * 100
     
+    @extend_schema_field(int)
     def get_level_progress(self, obj):
         """Progress percentage to next level."""
         next_level_points = obj.current_level * 100
@@ -83,6 +87,7 @@ class AchievementSerializer(serializers.ModelSerializer):
             'rarity', 'is_unlocked', 'progress', 'progress_percentage'
         ]
     
+    @extend_schema_field(bool)
     def get_is_unlocked(self, obj):
         """Check if user has unlocked this achievement."""
         request = self.context.get('request')
@@ -93,6 +98,7 @@ class AchievementSerializer(serializers.ModelSerializer):
             ).exists()
         return False
     
+    @extend_schema_field(int)
     def get_progress(self, obj):
         """Get user's progress towards this achievement."""
         request = self.context.get('request')
@@ -121,6 +127,7 @@ class AchievementSerializer(serializers.ModelSerializer):
         
         return 0
     
+    @extend_schema_field(float)
     def get_progress_percentage(self, obj):
         """Get progress percentage."""
         progress = self.get_progress(obj)
@@ -188,6 +195,7 @@ class ChallengeSerializer(serializers.ModelSerializer):
             'user_progress', 'participants_count', 'time_remaining'
         ]
     
+    @extend_schema_field(bool)
     def get_is_joined(self, obj):
         """Check if user has joined this challenge."""
         request = self.context.get('request')
@@ -198,6 +206,7 @@ class ChallengeSerializer(serializers.ModelSerializer):
             ).exists()
         return False
     
+    @extend_schema_field(dict)
     def get_user_progress(self, obj):
         """Get user's progress in this challenge."""
         request = self.context.get('request')
@@ -215,10 +224,12 @@ class ChallengeSerializer(serializers.ModelSerializer):
                 }
         return None
     
+    @extend_schema_field(int)
     def get_participants_count(self, obj):
         """Get number of participants."""
         return obj.participants.count()
     
+    @extend_schema_field(str)
     def get_time_remaining(self, obj):
         """Get time remaining in seconds."""
         from django.utils import timezone
@@ -241,6 +252,7 @@ class UserChallengeSerializer(serializers.ModelSerializer):
             'is_completed', 'completed_at', 'points_earned', 'is_rewarded'
         ]
     
+    @extend_schema_field(float)
     def get_progress_percentage(self, obj):
         """Get progress percentage."""
         if obj.challenge.target_value == 0:
@@ -264,6 +276,7 @@ class RewardSerializer(serializers.ModelSerializer):
             'is_available', 'can_afford'
         ]
     
+    @extend_schema_field(bool)
     def get_can_afford(self, obj):
         """Check if user can afford this reward."""
         request = self.context.get('request')

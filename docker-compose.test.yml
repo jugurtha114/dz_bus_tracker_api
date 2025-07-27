@@ -1,55 +1,37 @@
 version: '3.8'
 
 services:
-  postgres-test:
-    image: postgres:15-alpine
-    container_name: dz_bus_tracker_postgres_test
+  db-test:
+    image: postgis/postgis:15-3.3
     environment:
-      POSTGRES_DB: dz_bus_tracker_test
+      POSTGRES_DB: test_dz_bus_tracker
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5434:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - "5433:5432"  # Different port to avoid conflict
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
 
   redis-test:
-    image: redis:7-alpine
-    container_name: dz_bus_tracker_redis_test
-    command: redis-server --appendonly yes
+    image: redis:7
     ports:
-      - "6381:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      - "6380:6379"  # Different port to avoid conflict
 
   test:
-    build:
-      context: .
-      dockerfile: Dockerfile.test
-    container_name: dz_bus_tracker_test
+    build: .
+    command: python manage.py test
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.test
-      - DATABASE_URL=postgres://postgres:postgres@postgres-test:5432/dz_bus_tracker_test
-      - DB_HOST=postgres-test
-      - DB_PORT=5432
-      - DB_NAME=dz_bus_tracker_test
+      - DB_HOST=db-test
+      - DB_NAME=test_dz_bus_tracker
       - DB_USER=postgres
       - DB_PASSWORD=postgres
-      - CELERY_BROKER_URL=redis://redis-test:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis-test:6379/0
-      - CELERY_TASK_ALWAYS_EAGER=True
-      - PYTHONUNBUFFERED=1
+      - REDIS_URL=redis://redis-test:6379/0
+    depends_on:
+      - db-test
+      - redis-test
     volumes:
       - .:/app
-    depends_on:
-      postgres-test:
-        condition: service_healthy
-      redis-test:
-        condition: service_healthy
-    command: ["sh", "-c", "python manage.py migrate && python manage.py test --no-input --parallel"]
+
+volumes:
+  test_postgres_data:

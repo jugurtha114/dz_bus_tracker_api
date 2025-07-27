@@ -8,7 +8,7 @@ import json
 from datetime import datetime
 
 # Configuration
-BASE_URL = "http://localhost:8001/api"
+BASE_URL = "http://0.0.0.0:8007/api"
 
 # Test users credentials
 USERS = {
@@ -390,9 +390,9 @@ class APITester:
         
         # Print useful links
         print(f"\n{BLUE}Useful Links:{RESET}")
-        print(f"  • Admin Panel: http://localhost:8001/admin/")
-        print(f"  • API Documentation: http://localhost:8001/api/schema/swagger-ui/")
-        print(f"  • API Root: http://localhost:8001/api/v1/")
+        print(f"  • Admin Panel: http://localhost:8007/admin/")
+        print(f"  • API Documentation: http://localhost:8007/api/schema/swagger-ui/")
+        print(f"  • API Root: http://localhost:8007/api/v1/")
 
 if __name__ == '__main__':
     tester = APITester()

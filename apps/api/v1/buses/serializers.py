@@ -6,6 +6,7 @@ from rest_framework import serializers
 from apps.api.serializers import BaseSerializer
 from apps.api.v1.drivers.serializers import DriverSerializer
 from apps.buses.models import Bus, BusLocation
+from drf_spectacular.utils import extend_schema_field
 
 
 class BusLocationSerializer(BaseSerializer):
@@ -53,6 +54,7 @@ class BusSerializer(BaseSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
+    @extend_schema_field(dict)
     def get_driver_details(self, obj):
         """
         Get driver details if expand_driver is True.
@@ -62,6 +64,7 @@ class BusSerializer(BaseSerializer):
             return DriverSerializer(obj.driver).data
         return None
 
+    @extend_schema_field(dict)
     def get_current_location(self, obj):
         """
         Get current location if expand_location is True.

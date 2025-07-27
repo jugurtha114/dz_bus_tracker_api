@@ -182,7 +182,7 @@
 {
   "model": "accounts.user",
   "fields": {
-    "password": "pbkdf2_sha256$1000000$5zpVDkl1yp9uXpiv2eO2Pi$+A4SEysZX0F9jPkeeHZ6ejnVKTTrIxDQCnw3j1z9/7M=",
+    "password": "pbkdf2_sha256$1000000$RBraKpcAqsDPyh4AspAh4t$4zmsCAPT7SBI11s5oU/JmYvXBlncFgzY3wY/jvib+mM=",
     "last_login": null,
     "is_superuser": false,
     "email": "ali@dzbus.com",
@@ -200,7 +200,7 @@
 {
   "model": "accounts.user",
   "fields": {
-    "password": "pbkdf2_sha256$1000000$Nd2KZxkmfnBvf1QdqrPFba$l0DI4FICvcxLpmem1utg/oqnBcHmmLcnck224IRvs58=",
+    "password": "pbkdf2_sha256$1000000$RBraKpcAqsDPyh4AspAh4t$4zmsCAPT7SBI11s5oU/JmYvXBlncFgzY3wY/jvib+mM=",
     "last_login": null,
     "is_superuser": false,
     "email": "rachid.driver@dzbus.com",

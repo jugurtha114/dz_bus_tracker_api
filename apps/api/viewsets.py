@@ -24,7 +24,9 @@ class BaseModelViewSet(
 ):
     """
     Base viewset for model operations with extended functionality.
+    Only supports PATCH for updates, not PUT.
     """
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options', 'trace']
 
     def get_serializer_context(self):
         """
@@ -213,7 +215,7 @@ class BatchOperationViewSet(BaseModelViewSet):
         """
         serializer.save()
 
-    @action(detail=False, methods=['put', 'patch'])
+    @action(detail=False, methods=['patch'])
     def bulk_update(self, request):
         """
         Update multiple resources in a single request.
