@@ -22,6 +22,9 @@ class TrackingConsumer(AsyncWebsocketConsumer):
         # Get user from scope (added by AuthMiddlewareStack)
         self.user = self.scope["user"]
         
+        logger.info(f"WebSocket connection attempt from {self.scope.get('client', 'unknown')}")
+        logger.info(f"WebSocket path: {self.scope.get('path', 'unknown')}")
+        
         # Accept connection for both authenticated and anonymous users
         # Anonymous users can view public tracking data
         await self.accept()
@@ -36,10 +39,12 @@ class TrackingConsumer(AsyncWebsocketConsumer):
         logger.info(f"WebSocket connected: {self.channel_name} for user {self.user}")
         
         # Send connection confirmation
+        timestamp = await self.get_current_timestamp()
         await self.send(text_data=json.dumps({
             'type': 'connection_established',
             'message': 'Connected to real-time tracking',
-            'user_authenticated': not isinstance(self.user, AnonymousUser)
+            'user_authenticated': not isinstance(self.user, AnonymousUser),
+            'timestamp': timestamp
         }))
 
     async def disconnect(self, close_code):
@@ -141,9 +146,10 @@ class TrackingConsumer(AsyncWebsocketConsumer):
         """
         Handle heartbeat ping.
         """
+        timestamp = await self.get_current_timestamp()
         await self.send(text_data=json.dumps({
             'type': 'heartbeat_response',
-            'timestamp': self.get_current_timestamp()
+            'timestamp': timestamp
         }))
 
     @database_sync_to_async
