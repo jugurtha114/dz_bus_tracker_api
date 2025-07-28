@@ -1,4 +1,8 @@
 
+# WebSocket support
+channels==4.3.0
+channels_redis==4.3.0
+
 # Testing dependencies
 pytest-django==4.5.2
 pytest-cov==4.1.0

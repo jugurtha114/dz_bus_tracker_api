@@ -48,6 +48,7 @@ THIRD_PARTY_APPS = [
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
+    "channels",
 ]
 
 LOCAL_APPS = [
@@ -235,6 +236,16 @@ CACHES = {
             "IGNORE_EXCEPTIONS": False,
         },
     }
+}
+
+# Channel layers for WebSocket support
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [env("REDIS_URL", default="redis://localhost:6379/2")],
+        },
+    },
 }
 
 # Email settings
