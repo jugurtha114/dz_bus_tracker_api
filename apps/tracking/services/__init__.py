@@ -853,4 +853,21 @@ class AnomalyService(BaseService):
         except Exception as e:
             logger.error(f"Error detecting route deviation: {e}")
             return None
-__all__ = ['AnomalyService', 'BusLineService', 'LocationUpdateService', 'PassengerCountService', 'TripService']
+from .waiting_service import (
+    ReputationService,
+    VirtualCurrencyService,
+    WaitingListService,
+    WaitingReportService,
+)
+
+__all__ = [
+    'AnomalyService', 
+    'BusLineService', 
+    'LocationUpdateService', 
+    'PassengerCountService',
+    'ReputationService',
+    'TripService',
+    'VirtualCurrencyService',
+    'WaitingListService',
+    'WaitingReportService',
+]
