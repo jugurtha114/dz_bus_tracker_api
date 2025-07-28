@@ -1,8 +1,7 @@
-version: '3.8'
 
 services:
   db-test:
-    image: postgis/postgis:15-3.3
+    image: postgres:17-alpine
     environment:
       POSTGRES_DB: test_dz_bus_tracker
       POSTGRES_USER: postgres

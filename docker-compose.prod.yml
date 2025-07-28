@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: dz_bus_tracker_postgres_prod
     environment:
       POSTGRES_DB: ${DB_NAME}
