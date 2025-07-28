@@ -155,13 +155,26 @@ class UserViewSet(BaseModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['get', 'patch'], permission_classes=[IsAuthenticated])
     def me(self, request):
         """
-        Get the current user.
+        Get or update the current user.
         """
-        serializer = self.get_serializer(request.user)
-        return Response(serializer.data)
+        if request.method == 'GET':
+            serializer = self.get_serializer(request.user)
+            return Response(serializer.data)
+        elif request.method == 'PATCH':
+            serializer = UserUpdateSerializer(request.user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            
+            updated_user = UserService.update_user(
+                user_id=request.user.id,
+                **serializer.validated_data
+            )
+            
+            # Return updated user data
+            updated_serializer = self.get_serializer(updated_user)
+            return Response(updated_serializer.data)
 
     @action(detail=False, methods=['post'])
     def logout(self, request):
