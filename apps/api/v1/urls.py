@@ -2,6 +2,7 @@
 URL configuration for API v1.
 """
 from django.urls import include, path
+from django.views.generic import RedirectView
 
 urlpatterns = [
     # Accounts API
@@ -25,4 +26,11 @@ urlpatterns = [
     # Gamification API
     path('gamification/', include('apps.gamification.urls')),
     path('offline/', include('apps.offline_mode.urls')),
+    
+    # Trip history shortcut - redirects to the tracking trips history endpoint
+    path('trips/history/', RedirectView.as_view(
+        url='/api/v1/tracking/trips/history/',
+        permanent=False,
+        query_string=True
+    ), name='trips-history-redirect'),
 ]

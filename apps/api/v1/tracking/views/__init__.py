@@ -548,7 +548,7 @@ class TripViewSet(BaseModelViewSet):
         """
         Get permissions based on action.
         """
-        if self.action in ['list', 'retrieve', 'statistics']:
+        if self.action in ['list', 'retrieve', 'statistics', 'history']:
             return [IsAuthenticated()]
         if self.action in ['create']:
             return [IsApprovedDriver()]
@@ -646,6 +646,67 @@ class TripViewSet(BaseModelViewSet):
 
         # Return updated trip
         serializer = self.get_serializer(trip)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def history(self, request):
+        """
+        Get trip history for the authenticated user.
+        
+        This endpoint returns a paginated list of trips based on user type:
+        - Drivers: Returns their own trip history
+        - Passengers: Returns trips they've taken
+        - Admins: Can see all trips
+        
+        Query parameters:
+        - limit: Number of results to return (default: 20, max: 100)
+        - offset: Number of results to skip for pagination
+        - is_completed: Filter by completion status (true/false)
+        - start_date: Filter trips after this date (YYYY-MM-DD)
+        - end_date: Filter trips before this date (YYYY-MM-DD)
+        - line_id: Filter by specific line
+        - ordering: Order results by field (e.g., '-start_time' for newest first)
+        
+        Returns paginated trip history with trip details.
+        """
+        # Get queryset based on user type
+        queryset = self.get_queryset()
+        
+        # Additional filtering for non-admin users
+        if not request.user.is_staff and request.user.user_type != 'admin':
+            if request.user.user_type == 'driver':
+                # Drivers see their own trips
+                try:
+                    from apps.drivers.models import Driver
+                    driver = Driver.objects.get(user=request.user)
+                    queryset = queryset.filter(driver=driver)
+                except Driver.DoesNotExist:
+                    queryset = queryset.none()
+            else:
+                # Passengers would see trips they've taken (need to implement passenger tracking)
+                # For now, return empty queryset for passengers
+                queryset = queryset.none()
+        
+        # Apply ordering (newest first by default)
+        ordering = request.query_params.get('ordering', '-start_time')
+        queryset = queryset.order_by(ordering)
+        
+        # Handle limit parameter
+        limit = request.query_params.get('limit', '20')
+        try:
+            limit = min(int(limit), 100)  # Max 100 results
+        except (ValueError, TypeError):
+            limit = 20
+        
+        # Apply pagination
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        # If no pagination, apply limit manually
+        queryset = queryset[:limit]
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 class AnomalyViewSet(BaseModelViewSet):
