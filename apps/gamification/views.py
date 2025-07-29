@@ -1,12 +1,15 @@
 """
 Views for the gamification app.
 """
+import logging
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+
+logger = logging.getLogger(__name__)
 
 from apps.api.pagination import StandardResultsSetPagination
 from .models import (
@@ -19,6 +22,8 @@ from .models import (
     Reward,
     UserReward,
 )
+from apps.tracking.models import VirtualCurrency, CurrencyTransaction, ReputationScore, BusWaitingList, WaitingCountReport
+from apps.tracking.services.waiting_service import WaitingListService, WaitingReportService
 from .serializers import (
     UserProfileSerializer,
     ProfileUpdateSerializer,
@@ -32,8 +37,14 @@ from .serializers import (
     UserRewardSerializer,
     RedeemRewardSerializer,
     CompleteTriSerializer,
+    VirtualCurrencySerializer,
+    CurrencyTransactionSerializer,
+    ReputationScoreSerializer,
+    WaitingListJoinSerializer,
+    WaitingCountReportSerializer,
+    WaitingListResponseSerializer,
 )
-from .services import GamificationService
+from .services import GamificationService, VirtualCurrencyService, ReputationService
 from .filters import AchievementFilter, ChallengeFilter, RewardFilter
 
 
@@ -368,3 +379,225 @@ class RewardViewSet(viewsets.ReadOnlyModelViewSet):
         
         serializer = UserRewardSerializer(user_rewards, many=True)
         return Response(serializer.data)
+
+
+class VirtualCurrencyViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for virtual currency management.
+    """
+    serializer_class = VirtualCurrencySerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Get current user's virtual currency."""
+        return VirtualCurrency.objects.filter(user=self.request.user)
+    
+    @action(detail=False, methods=['get'])
+    def balance(self, request):
+        """Get current user's virtual currency balance."""
+        currency = VirtualCurrencyService.get_or_create_currency(str(request.user.id))
+        serializer = VirtualCurrencySerializer(currency)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def transactions(self, request):
+        """Get current user's virtual currency transaction history."""
+        limit = int(request.query_params.get('limit', 20))
+        transaction_type = request.query_params.get('type')
+        
+        transactions = CurrencyTransaction.objects.filter(
+            user=request.user
+        ).order_by('-created_at')
+        
+        if transaction_type:
+            transactions = transactions.filter(transaction_type=transaction_type)
+        
+        transactions = transactions[:limit]
+        
+        page = self.paginate_queryset(transactions)
+        if page is not None:
+            serializer = CurrencyTransactionSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = CurrencyTransactionSerializer(transactions, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['get'])
+    def leaderboard(self, request):
+        """Get virtual currency leaderboard."""
+        period = request.query_params.get('period', 'monthly')
+        limit = int(request.query_params.get('limit', 10))
+        
+        leaderboard = VirtualCurrencyService.get_leaderboard(period=period, limit=limit)
+        
+        return Response({
+            'period': period,
+            'leaderboard': leaderboard
+        })
+
+
+class ReputationViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for reputation score management.
+    """
+    serializer_class = ReputationScoreSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        """Get current user's reputation score."""
+        return ReputationScore.objects.filter(user=self.request.user)
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Get current user's reputation statistics."""
+        stats = ReputationService.get_reputation_stats(str(request.user.id))
+        return Response(stats)
+    
+    @action(detail=False, methods=['get'])
+    def leaderboard(self, request):
+        """Get reputation leaderboard."""
+        # Get top reputation users
+        top_users = ReputationScore.objects.filter(
+            total_reports__gte=10  # Minimum 10 reports to be on leaderboard
+        ).select_related('user').order_by('-trust_multiplier', '-correct_reports')[:20]
+        
+        leaderboard = []
+        for i, reputation in enumerate(top_users):
+            leaderboard.append({
+                'rank': i + 1,
+                'user_name': reputation.user.get_full_name() or reputation.user.first_name,
+                'reputation_level': reputation.reputation_level,
+                'accuracy_rate': reputation.accuracy_rate,
+                'total_reports': reputation.total_reports,
+                'trust_multiplier': float(reputation.trust_multiplier)
+            })
+        
+        return Response(leaderboard)
+
+
+class WaitingListViewSet(viewsets.GenericViewSet):
+    """
+    ViewSet for waiting list operations integrated with gamification.
+    Provides endpoints for joining waiting lists and reporting passenger counts.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=False, methods=['post'], url_path='join')
+    def join_waiting_list(self, request):
+        """
+        Join a bus waiting list and earn virtual currency.
+        
+        This endpoint allows users to join a waiting list for a specific bus at a stop.
+        Users earn 10 coins for joining and contribute to crowdsourced data.
+        
+        Request body:
+        {
+            "bus_id": "uuid",
+            "stop_id": "stop_id"
+        }
+        
+        Returns:
+        {
+            "success": true,
+            "message": "Successfully joined waiting list",
+            "coins_earned": 10,
+            "waiting_list_id": "uuid"
+        }
+        """
+        serializer = WaitingListJoinSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            # Join the waiting list
+            waiting_list = WaitingListService.join_waiting_list(
+                user_id=str(request.user.id),
+                bus_id=str(serializer.validated_data['bus_id']),
+                stop_id=str(serializer.validated_data['stop_id'])
+            )
+            
+            # Get coins earned (handled by service but we can check)
+            coins_earned = 10  # Standard reward for joining
+            
+            response_data = {
+                'success': True,
+                'message': _('Successfully joined waiting list'),
+                'coins_earned': coins_earned,
+                'waiting_list_id': str(waiting_list.id)
+            }
+            
+            return Response(
+                WaitingListResponseSerializer(response_data).data,
+                status=status.HTTP_201_CREATED
+            )
+            
+        except Exception as e:
+            logger.error(f"Error joining waiting list: {e}")
+            return Response(
+                {
+                    'success': False,
+                    'message': str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    
+    @action(detail=False, methods=['post'], url_path='report_count')
+    def report_waiting_count(self, request):
+        """
+        Report the number of people waiting at a stop.
+        
+        This endpoint allows users to report crowdsourced waiting passenger counts.
+        Reports contribute to the user's reputation score and earn virtual currency
+        based on accuracy when verified by drivers.
+        
+        Request body:
+        {
+            "stop_id": "stop_id",
+            "bus_id": "uuid" (optional),
+            "reported_count": 24,
+            "confidence_level": "high",
+            "reporter_latitude": 50.6118085 (optional),
+            "reporter_longitude": 3.0743687 (optional)
+        }
+        
+        Returns:
+        {
+            "success": true,
+            "message": "Report submitted successfully",
+            "report_id": "uuid"
+        }
+        """
+        serializer = WaitingCountReportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        try:
+            # Create the report
+            report = WaitingReportService.create_report(
+                reporter_id=str(request.user.id),
+                stop_id=str(serializer.validated_data['stop_id']),
+                reported_count=serializer.validated_data['reported_count'],
+                bus_id=str(serializer.validated_data.get('bus_id')) if serializer.validated_data.get('bus_id') else None,
+                confidence_level=serializer.validated_data.get('confidence_level', 'medium'),
+                reporter_latitude=serializer.validated_data.get('reporter_latitude'),
+                reporter_longitude=serializer.validated_data.get('reporter_longitude')
+            )
+            
+            response_data = {
+                'success': True,
+                'message': _('Report submitted successfully. You will earn coins when verified.'),
+                'report_id': str(report.id)
+            }
+            
+            return Response(
+                WaitingListResponseSerializer(response_data).data,
+                status=status.HTTP_201_CREATED
+            )
+            
+        except Exception as e:
+            logger.error(f"Error creating waiting count report: {e}")
+            return Response(
+                {
+                    'success': False,
+                    'message': str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )

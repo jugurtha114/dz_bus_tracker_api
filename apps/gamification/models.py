@@ -541,3 +541,7 @@ class UserReward(BaseModel):
         
     def __str__(self):
         return f"{self.user.email} - {self.reward.name}"
+
+
+# Import the existing models from tracking app instead of duplicating them
+from apps.tracking.models import VirtualCurrency, CurrencyTransaction, ReputationScore

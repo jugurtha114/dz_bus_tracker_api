@@ -29,6 +29,7 @@ from .models import (
     Reward,
     UserReward,
 )
+from apps.tracking.models import VirtualCurrency, CurrencyTransaction, ReputationScore
 
 logger = logging.getLogger(__name__)
 
@@ -669,3 +670,229 @@ class GamificationService(BaseService):
             
         except Exception as e:
             logger.error(f"Error updating leaderboards: {e}")
+
+
+class VirtualCurrencyService(BaseService):
+    """
+    Service for virtual currency operations.
+    """
+    
+    @classmethod
+    @transaction.atomic
+    def get_or_create_currency(cls, user_id: str) -> VirtualCurrency:
+        """
+        Get or create user's virtual currency account.
+        
+        Args:
+            user_id: ID of the user
+            
+        Returns:
+            VirtualCurrency: User's currency account
+        """
+        try:
+            user = get_user_by_id(user_id)
+            currency, created = VirtualCurrency.objects.get_or_create(
+                user=user,
+                defaults={
+                    'balance': 0,
+                    'lifetime_earned': 0,
+                    'lifetime_spent': 0
+                }
+            )
+            
+            if created:
+                logger.info(f"Created virtual currency account for user {user.email}")
+            
+            return currency
+            
+        except Exception as e:
+            logger.error(f"Error getting/creating currency account: {e}")
+            raise ValidationError(str(e))
+    
+    @classmethod
+    @transaction.atomic
+    def add_currency(cls, user_id: str, amount: int, transaction_type: str, 
+                    description: str, metadata: dict = None) -> VirtualCurrency:
+        """
+        Add virtual currency to user's account.
+        
+        Args:
+            user_id: ID of the user
+            amount: Amount to add (positive) or subtract (negative)
+            transaction_type: Type of transaction
+            description: Description of the transaction
+            metadata: Additional transaction data
+            
+        Returns:
+            VirtualCurrency: Updated currency account
+        """
+        try:
+            currency = cls.get_or_create_currency(user_id)
+            
+            # Validate balance for spending
+            if amount < 0 and currency.balance < abs(amount):
+                raise ValidationError("Insufficient balance")
+            
+            # Update balance
+            old_balance = currency.balance
+            currency.add_currency(amount, description, transaction_type)
+            
+            logger.info(f"Currency transaction: {description} - Amount: {amount} - New balance: {currency.balance}")
+            return currency
+            
+        except Exception as e:
+            logger.error(f"Error adding currency: {e}")
+            raise ValidationError(str(e))
+    
+    @classmethod
+    def get_leaderboard(cls, period: str = 'monthly', limit: int = 10) -> List[Dict]:
+        """
+        Get virtual currency leaderboard.
+        
+        Args:
+            period: Time period (weekly/monthly/all-time)
+            limit: Number of top users to return
+            
+        Returns:
+            List of leaderboard entries
+        """
+        try:
+            currencies = VirtualCurrency.objects.select_related('user').order_by('-balance')[:limit]
+            
+            leaderboard = []
+            for rank, currency in enumerate(currencies, 1):
+                leaderboard.append({
+                    'rank': rank,
+                    'user_name': currency.user.get_full_name() or currency.user.email,
+                    'balance': currency.balance,
+                    'lifetime_earned': currency.lifetime_earned,
+                })
+            
+            return leaderboard
+            
+        except Exception as e:
+            logger.error(f"Error getting currency leaderboard: {e}")
+            return []
+
+
+class ReputationService(BaseService):
+    """
+    Service for reputation management operations.
+    """
+    
+    @classmethod
+    @transaction.atomic
+    def get_or_create_reputation(cls, user_id: str) -> ReputationScore:
+        """
+        Get or create user's reputation score.
+        
+        Args:
+            user_id: ID of the user
+            
+        Returns:
+            ReputationScore: User's reputation score
+        """
+        try:
+            user = get_user_by_id(user_id)
+            reputation, created = ReputationScore.objects.get_or_create(
+                user=user,
+                defaults={
+                    'total_reports': 0,
+                    'correct_reports': 0,
+                    'reputation_level': 'bronze',
+                    'trust_multiplier': 1.00
+                }
+            )
+            
+            if created:
+                logger.info(f"Created reputation score for user {user.email}")
+            
+            return reputation
+            
+        except Exception as e:
+            logger.error(f"Error getting/creating reputation score: {e}")
+            raise ValidationError(str(e))
+    
+    @classmethod
+    @transaction.atomic
+    def update_reputation(cls, user_id: str, correct: bool = True) -> ReputationScore:
+        """
+        Update user's reputation based on report accuracy.
+        
+        Args:
+            user_id: ID of the user
+            correct: Whether the report was correct
+            
+        Returns:
+            ReputationScore: Updated reputation score
+        """
+        try:
+            reputation = cls.get_or_create_reputation(user_id)
+            old_level = reputation.reputation_level
+            
+            reputation.update_reputation(correct)
+            
+            # Award currency based on accuracy
+            if correct:
+                VirtualCurrencyService.add_currency(
+                    user_id=user_id,
+                    amount=int(25 * float(reputation.trust_multiplier)),
+                    transaction_type='accurate_report',
+                    description='Accurate report verification bonus',
+                    metadata={'trust_multiplier': float(reputation.trust_multiplier)}
+                )
+            
+            # Check for level up
+            if reputation.reputation_level != old_level:
+                NotificationService.create_notification(
+                    user_id=user_id,
+                    notification_type='reputation',
+                    title='Reputation Level Up!',
+                    message=f'You reached {reputation.get_reputation_level_display()} level!',
+                    data={
+                        'old_level': old_level,
+                        'new_level': reputation.reputation_level,
+                        'trust_multiplier': float(reputation.trust_multiplier)
+                    }
+                )
+            
+            logger.info(f"Updated reputation for user {user_id}: {reputation.reputation_level}")
+            return reputation
+            
+        except Exception as e:
+            logger.error(f"Error updating reputation: {e}")
+            raise ValidationError(str(e))
+    
+    @classmethod
+    def get_reputation_stats(cls, user_id: str) -> Dict:
+        """
+        Get user's reputation statistics.
+        
+        Args:
+            user_id: ID of the user
+            
+        Returns:
+            Dictionary with reputation stats
+        """
+        try:
+            reputation = cls.get_or_create_reputation(user_id)
+            
+            return {
+                'total_reports': reputation.total_reports,
+                'correct_reports': reputation.correct_reports,
+                'reputation_level': reputation.reputation_level,
+                'reputation_level_display': reputation.get_reputation_level_display(),
+                'trust_multiplier': float(reputation.trust_multiplier),
+                'accuracy_rate': reputation.accuracy_rate,
+                'last_updated': reputation.last_updated.isoformat() if reputation.last_updated else None
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting reputation stats: {e}")
+            return {
+                'total_reports': 0,
+                'correct_reports': 0,
+                'reputation_level': 'bronze',
+                'trust_multiplier': 1.00,
+                'accuracy_rate': 0
+            }

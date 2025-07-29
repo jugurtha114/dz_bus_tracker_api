@@ -11,6 +11,9 @@ from .views import (
     LeaderboardViewSet,
     ChallengeViewSet,
     RewardViewSet,
+    VirtualCurrencyViewSet,
+    ReputationViewSet,
+    WaitingListViewSet,
 )
 
 router = DefaultRouter()
@@ -20,6 +23,9 @@ router.register(r'transactions', PointTransactionViewSet, basename='transaction'
 router.register(r'leaderboard', LeaderboardViewSet, basename='leaderboard')
 router.register(r'challenges', ChallengeViewSet, basename='challenge')
 router.register(r'rewards', RewardViewSet, basename='reward')
+router.register(r'virtual-currency', VirtualCurrencyViewSet, basename='virtualcurrency')
+router.register(r'reputation', ReputationViewSet, basename='reputation')
+router.register(r'waiting-list', WaitingListViewSet, basename='waiting-list')
 
 app_name = 'gamification'
 

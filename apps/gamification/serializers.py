@@ -18,6 +18,7 @@ from .models import (
     Reward,
     UserReward,
 )
+from apps.tracking.models import VirtualCurrency, CurrencyTransaction, ReputationScore
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -317,3 +318,195 @@ class CompleteTriSerializer(serializers.Serializer):
         min_value=0,
         help_text=_("Distance traveled in km")
     )
+
+
+class VirtualCurrencySerializer(serializers.ModelSerializer):
+    """
+    Serializer for VirtualCurrency model.
+    """
+    user = UserBriefSerializer(read_only=True)
+    
+    class Meta:
+        model = VirtualCurrency
+        fields = [
+            'id', 'user', 'balance', 'lifetime_earned', 'lifetime_spent',
+            'last_transaction', 'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class CurrencyTransactionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for CurrencyTransaction model.
+    """
+    user = UserBriefSerializer(read_only=True)
+    display_amount = serializers.SerializerMethodField()
+    transaction_type_display = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = CurrencyTransaction
+        fields = [
+            'id', 'user', 'amount', 'transaction_type', 'description',
+            'balance_after', 'metadata', 'created_at',
+            'display_amount', 'transaction_type_display'
+        ]
+        read_only_fields = ['id', 'user', 'created_at']
+    
+    @extend_schema_field(str)
+    def get_display_amount(self, obj):
+        """Get formatted display amount."""
+        sign = "+" if obj.amount >= 0 else ""
+        return f"{sign}{obj.amount} coins"
+    
+    @extend_schema_field(str)
+    def get_transaction_type_display(self, obj):
+        """Get human-readable transaction type."""
+        return obj.get_transaction_type_display()
+
+
+class ReputationScoreSerializer(serializers.ModelSerializer):
+    """
+    Serializer for ReputationScore model.
+    """
+    user = UserBriefSerializer(read_only=True)
+    accuracy_rate = serializers.ReadOnlyField()
+    reputation_level_display = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = ReputationScore
+        fields = [
+            'id', 'user', 'total_reports', 'correct_reports',
+            'reputation_level', 'reputation_level_display', 
+            'trust_multiplier', 'accuracy_rate', 'last_updated',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = [
+            'id', 'user', 'created_at', 'updated_at', 'last_updated'
+        ]
+    
+    @extend_schema_field(str)
+    def get_reputation_level_display(self, obj):
+        """Get human-readable reputation level."""
+        return obj.get_reputation_level_display()
+
+
+class WaitingListJoinSerializer(serializers.Serializer):
+    """
+    Serializer for joining a bus waiting list.
+    """
+    bus_id = serializers.UUIDField(
+        help_text=_("ID of the bus to wait for")
+    )
+    stop_id = serializers.CharField(
+        help_text=_("ID of the stop where user is waiting")
+    )
+
+    def validate_bus_id(self, value):
+        """Validate bus exists."""
+        from apps.buses.models import Bus
+        try:
+            Bus.objects.get(id=value)
+        except Bus.DoesNotExist:
+            raise serializers.ValidationError(_("Bus not found"))
+        return value
+
+    def validate_stop_id(self, value):
+        """Validate stop exists."""
+        from apps.lines.models import Stop
+        try:
+            Stop.objects.get(id=value)
+        except Stop.DoesNotExist:
+            raise serializers.ValidationError(_("Stop not found"))
+        return value
+
+
+class WaitingCountReportSerializer(serializers.Serializer):
+    """
+    Serializer for reporting waiting passenger count.
+    """
+    stop_id = serializers.CharField(
+        help_text=_("ID of the stop")
+    )
+    bus_id = serializers.UUIDField(
+        help_text=_("ID of the bus"),
+        required=False,
+        allow_null=True
+    )
+    reported_count = serializers.IntegerField(
+        min_value=0,
+        max_value=500,
+        help_text=_("Number of people waiting")
+    )
+    confidence_level = serializers.ChoiceField(
+        choices=['low', 'medium', 'high'],
+        default='medium',
+        help_text=_("Reporter's confidence in the count")
+    )
+    reporter_latitude = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=7,
+        required=False,
+        allow_null=True,
+        help_text=_("Reporter's current latitude")
+    )
+    reporter_longitude = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=7,
+        required=False,
+        allow_null=True,
+        help_text=_("Reporter's current longitude")
+    )
+
+    def validate_stop_id(self, value):
+        """Validate stop exists."""
+        from apps.lines.models import Stop
+        try:
+            Stop.objects.get(id=value)
+        except Stop.DoesNotExist:
+            raise serializers.ValidationError(_("Stop not found"))
+        return value
+
+    def validate_bus_id(self, value):
+        """Validate bus exists if provided."""
+        if value:
+            from apps.buses.models import Bus
+            try:
+                Bus.objects.get(id=value)
+            except Bus.DoesNotExist:
+                raise serializers.ValidationError(_("Bus not found"))
+        return value
+
+    def validate(self, attrs):
+        """Cross-field validation."""
+        # Validate location if provided
+        lat = attrs.get('reporter_latitude')
+        lon = attrs.get('reporter_longitude')
+        
+        if (lat is not None and lon is None) or (lat is None and lon is not None):
+            raise serializers.ValidationError(
+                _("Both latitude and longitude must be provided together")
+            )
+        
+        # Validate location bounds if provided
+        if lat is not None and lon is not None:
+            if not (-90 <= lat <= 90):
+                raise serializers.ValidationError(
+                    _("Latitude must be between -90 and 90 degrees")
+                )
+            if not (-180 <= lon <= 180):
+                raise serializers.ValidationError(
+                    _("Longitude must be between -180 and 180 degrees")
+                )
+        
+        return attrs
+
+
+class WaitingListResponseSerializer(serializers.Serializer):
+    """
+    Serializer for waiting list operation responses.
+    """
+    success = serializers.BooleanField()
+    message = serializers.CharField()
+    coins_earned = serializers.IntegerField(required=False)
+    waiting_list_id = serializers.UUIDField(required=False)
+    report_id = serializers.UUIDField(required=False)
