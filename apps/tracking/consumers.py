@@ -72,6 +72,8 @@ class TrackingConsumer(AsyncWebsocketConsumer):
                 await self.handle_bus_subscription(data)
             elif message_type == 'subscribe_to_line':
                 await self.handle_line_subscription(data)
+            elif message_type == 'subscribe':
+                await self.handle_generic_subscription(data)
             elif message_type == 'heartbeat':
                 await self.handle_heartbeat()
             else:
@@ -142,6 +144,64 @@ class TrackingConsumer(AsyncWebsocketConsumer):
             'line_id': line_id
         }))
 
+    async def handle_generic_subscription(self, data):
+        """
+        Handle generic subscription requests (notifications, user-specific updates).
+        """
+        channel = data.get('channel', '')
+        user_id = data.get('user_id', '')
+        
+        # Verify user is authenticated for personal subscriptions
+        if channel == 'notifications' and user_id:
+            if isinstance(self.user, AnonymousUser):
+                await self.send(text_data=json.dumps({
+                    'type': 'error',
+                    'message': 'Authentication required for notification subscriptions'
+                }))
+                return
+            
+            # Verify user can only subscribe to their own notifications
+            if str(self.user.id) != user_id:
+                await self.send(text_data=json.dumps({
+                    'type': 'error',
+                    'message': 'Can only subscribe to your own notifications'
+                }))
+                return
+            
+            # Add to user-specific notification group
+            notification_group = f"notifications_{user_id}"
+            await self.channel_layer.group_add(
+                notification_group,
+                self.channel_name
+            )
+            
+            await self.send(text_data=json.dumps({
+                'type': 'subscription_confirmed',
+                'subscription': 'notifications',
+                'channel': channel,
+                'user_id': user_id
+            }))
+            return
+        
+        # Handle other subscription types
+        if channel in ['general', 'system']:
+            # Add to general/system updates group
+            await self.channel_layer.group_add(
+                f"{channel}_updates",
+                self.channel_name
+            )
+            
+            await self.send(text_data=json.dumps({
+                'type': 'subscription_confirmed',
+                'subscription': channel,
+                'channel': channel
+            }))
+        else:
+            await self.send(text_data=json.dumps({
+                'type': 'error',
+                'message': f'Unknown subscription channel: {channel}'
+            }))
+
     async def handle_heartbeat(self):
         """
         Handle heartbeat ping.
@@ -203,5 +263,19 @@ class TrackingConsumer(AsyncWebsocketConsumer):
             'type': 'notification',
             'title': event['title'],
             'message': event['message'],
+            'timestamp': event['timestamp']
+        }))
+
+    async def user_notification(self, event):
+        """
+        Handle user-specific notification messages from group.
+        """
+        await self.send(text_data=json.dumps({
+            'type': 'user_notification',
+            'notification_id': event.get('notification_id'),
+            'title': event['title'],
+            'message': event['message'],
+            'notification_type': event.get('notification_type', 'info'),
+            'data': event.get('data', {}),
             'timestamp': event['timestamp']
         }))
