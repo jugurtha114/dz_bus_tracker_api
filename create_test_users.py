@@ -16,7 +16,7 @@ User = get_user_model()
 
 # Create driver user
 email = "rachid.driver@dzbus.com"
-password = "99999999"
+password = "99999999."
 
 try:
     # Try to get existing user
@@ -41,7 +41,7 @@ print(f"✅ Password set for {email}")
 
 # Create admin user
 admin_email = "jugu@jugu.com"
-admin_password = "99999999"
+admin_password = "99999999."
 
 try:
     admin_user = User.objects.get(email=admin_email)

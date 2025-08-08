@@ -91,7 +91,7 @@ def test_driver_apis():
     tester = APITester()
     
     # Authenticate as driver
-    if not tester.authenticate("rachid.driver@dzbus.com", "99999999"):
+    if not tester.authenticate("rachid.driver@dzbus.com", "99999999."):
         return
     
     print("\n" + "="*60)
@@ -125,7 +125,7 @@ def test_admin_apis():
     tester = APITester()
     
     # Authenticate as admin
-    if not tester.authenticate("jugu@jugu.com", "99999999"):
+    if not tester.authenticate("jugu@jugu.com", "99999999."):
         return
     
     print("\n" + "="*60)

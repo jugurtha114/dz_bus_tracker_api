@@ -13,7 +13,7 @@ def authenticate_admin():
     global ADMIN_TOKEN
     response = requests.post(f"{BASE_URL}/token/", json={
         "email": "jugu@jugu.com",
-        "password": "99999999"
+        "password": "99999999."
     })
     
     if response.status_code == 200:
