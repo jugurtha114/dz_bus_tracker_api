@@ -25,6 +25,12 @@ celery
 django-celery-beat
 redis
 
+# ASGI Server
+uvicorn[standard]
+gunicorn
+channels
+channels-redis
+
 # Images & Media
 Pillow
 whitenoise
