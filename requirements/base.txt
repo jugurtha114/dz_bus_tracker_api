@@ -8,7 +8,6 @@ djangorestframework-simplejwt==5.3.0
 drf-nested-routers==0.94.2
 django-filter
 django-cors-headers
-django-storages
 django-environ
 django-redis
 django-allauth
@@ -20,7 +19,7 @@ psycopg[binary]
 # Authentication
 dj-rest-auth
 
-# Celery
+# Celery & Redis
 celery
 django-celery-beat
 redis
@@ -33,12 +32,6 @@ channels-redis
 
 # Images & Media
 Pillow
-whitenoise
-
-
-# Validation
-django-phonenumber-field[phonenumberslite]
-phonenumberslite
 
 # Geolocation
 geopy
@@ -50,6 +43,8 @@ sentry-sdk
 firebase-admin
 twilio
 
+# Storage (for production)
+django-storages[s3]
+
 # i18n
 Babel
-django-modeltranslation
