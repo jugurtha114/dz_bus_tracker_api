@@ -3,7 +3,6 @@ URL configuration for the drivers API.
 """
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
-from rest_framework_nested.routers import NestedSimpleRouter
 
 from .views import DriverRatingViewSet, DriverViewSet
 from apps.api.v1.accounts.auth_views import register_driver
@@ -12,9 +11,9 @@ from apps.api.v1.accounts.auth_views import register_driver
 router = DefaultRouter()
 router.register(r'drivers', DriverViewSet, basename='driver')
 
-# Nested routers
-driver_router = NestedSimpleRouter(router, r'drivers', lookup='driver')
-driver_router.register(r'ratings', DriverRatingViewSet, basename='driver-ratings')
+# Separate router for ratings (temporary fix until nested routers are working)
+ratings_router = DefaultRouter()
+ratings_router.register(r'ratings', DriverRatingViewSet, basename='driver-ratings')
 
 urlpatterns = [
     # Driver registration
@@ -22,5 +21,5 @@ urlpatterns = [
     
     # Router URLs
     path('', include(router.urls)),
-    path('', include(driver_router.urls)),
+    path('drivers/<uuid:driver_pk>/', include(ratings_router.urls)),
 ]

@@ -10,7 +10,19 @@ SECRET_KEY = env(
     "DJANGO_SECRET_KEY",
     default="django-insecure-6$kx%y(j9vh2^9d^c+rk3iz!5_7@f7x!kfs$rp47jv-0=*n1+g",
 )
-ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "192.168.114.253"]
+ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1", "192.168.114.253", "192.168.8.250", "*"]
+
+# DATABASES - PostgreSQL for development (use container on port 5433)
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env.str('DB_NAME', 'postgres'),
+        'USER': env.str('DB_USER', 'postgres'),
+        'PASSWORD': env.str('DB_PASSWORD', 'postgres'),
+        'HOST': env.str('DB_HOST', 'localhost'),
+        'PORT': env.str('DB_PORT', '5433'),
+    }
+}
 
 # CACHES
 CACHES = {
@@ -38,7 +50,7 @@ DEBUG_TOOLBAR_CONFIG = {
     ],
     "SHOW_TEMPLATE_CONTEXT": True,
 }
-INTERNAL_IPS = ["127.0.0.1", "10.0.2.2", "192.168.114.253"]
+INTERNAL_IPS = ["127.0.0.1", "10.0.2.2", "192.168.114.253", "*"]
 
 # Celery
 CELERY_TASK_ALWAYS_EAGER = True
@@ -46,7 +58,7 @@ CELERY_TASK_ALWAYS_EAGER = True
 # CORS
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOWED_ORIGINS = [
-    "http://192.168.114.253:8007",
+    "http://192.168.114.253:8007", "http://192.168.8.250:8007", "http://localhost:3000", "http://127.0.0.1:3000"
 ]
 # django-extensions
 INSTALLED_APPS += ["django_extensions"]  # noqa F405
