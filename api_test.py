@@ -88,7 +88,7 @@ def _minimal_png() -> bytes:
 # Main Tester Class
 # ─────────────────────────────────────────────────────────────────────────────
 class DZBusTrackerAPITester:
-    """Orchestrates all API integration tests in 14 phases."""
+    """Orchestrates all API integration tests in 15 phases."""
 
     def __init__(
         self,
@@ -1213,8 +1213,330 @@ class DZBusTrackerAPITester:
         self.request(self.passenger_session, "GET", "/api/v1/offline/logs/summary/", 200,
                      "Offline — logs summary")
 
-    def phase_14_cleanup_and_edge_cases(self):
-        self._phase(14, "Cleanup & Edge Cases")
+    def phase_14_cross_role_permissions(self):
+        self._phase(14, "Cross-Role Permission Boundaries")
+
+        # ── Group E: Response Data Validation ────────────────────────────
+        # Use admin session for read-only validation where possible to avoid
+        # passenger burst rate-limit (60/min) accumulated across phases 3-13.
+
+        resp = self.request(self.admin_session, "GET",
+                            f"/api/v1/accounts/users/{self.ids.get('passenger_user_id', '')}/",
+                            200,
+                            "Validate — passenger profile has correct user_type")
+        if resp:
+            user_type = resp.get("user_type", resp.get("role", ""))
+            if user_type == "passenger":
+                self._write("    ✓ user_type == 'passenger'")
+            else:
+                self._write(f"    ⚠ user_type = '{user_type}' (expected 'passenger')")
+
+        resp = self.request(self.driver_session, "GET",
+                            "/api/v1/accounts/users/me/", 200,
+                            "Validate — driver /me/ has correct user_type")
+        if resp:
+            user_type = resp.get("user_type", resp.get("role", ""))
+            if user_type == "driver":
+                self._write("    ✓ user_type == 'driver'")
+            else:
+                self._write(f"    ⚠ user_type = '{user_type}' (expected 'driver')")
+
+        resp = self.request(self.admin_session, "GET",
+                            "/api/v1/lines/stops/", 200,
+                            "Validate — stops list has results")
+        if resp:
+            results = resp.get("results", resp if isinstance(resp, list) else [])
+            count = len(results)
+            if count >= 1:
+                self._write(f"    ✓ stops count = {count} (>= 1)")
+            else:
+                self._write(f"    ⚠ stops count = {count} (expected >= 1)")
+
+        if self.ids.get("line_1"):
+            resp = self.request(self.admin_session, "GET",
+                                f"/api/v1/lines/lines/{self.ids['line_1']}/", 200,
+                                "Validate — line detail has name and id")
+            if resp:
+                has_name = "name" in resp
+                has_id = "id" in resp
+                if has_name and has_id:
+                    self._write("    ✓ line detail has 'name' and 'id'")
+                else:
+                    self._write(f"    ⚠ line detail missing fields: name={has_name}, id={has_id}")
+
+        resp = self.request(self.driver_session, "GET",
+                            "/api/v1/tracking/trips/history/", 200,
+                            "Validate — driver trip history returns list")
+        if resp:
+            results = resp.get("results", resp if isinstance(resp, list) else [])
+            self._write(f"    ✓ trip history returned {len(results)} entries")
+
+        resp = self.request(self.anon_session, "GET",
+                            "/api/v1/tracking/active-buses/", 200,
+                            "Validate — active-buses returns valid structure")
+        if resp is not None:
+            self._write("    ✓ active-buses returned valid response")
+
+        # ── Group A: Driver → Admin-only actions (expect 403) ────────────
+        self.request(self.driver_session, "POST", "/api/v1/lines/stops/", 403,
+                     "Driver — create stop (admin-only)",
+                     json_body={"name": "Unauthorized Stop", "latitude": "36.75", "longitude": "3.05"})
+
+        self.request(self.driver_session, "POST", "/api/v1/lines/lines/", 403,
+                     "Driver — create line (admin-only)",
+                     json_body={"name": "Unauthorized Line", "code": "X99"})
+
+        self.request(self.driver_session, "POST", "/api/v1/lines/schedules/", 403,
+                     "Driver — create schedule (admin-only)",
+                     json_body={"line": self.ids.get("line_1", ""), "day_of_week": "monday",
+                                "departure_time": "08:00", "arrival_time": "09:00"})
+
+        if self.ids.get("line_1"):
+            self.request(self.driver_session, "POST",
+                         f"/api/v1/lines/lines/{self.ids['line_1']}/add_stop/", 403,
+                         "Driver — add stop to line (admin-only)",
+                         json_body={"stop_id": self.ids.get("stop_1", ""), "order": 99})
+
+            self.request(self.driver_session, "POST",
+                         f"/api/v1/lines/lines/{self.ids['line_1']}/remove_stop/", 403,
+                         "Driver — remove stop from line (admin-only)",
+                         json_body={"stop_id": self.ids.get("stop_1", "")})
+
+            self.request(self.driver_session, "POST",
+                         f"/api/v1/lines/lines/{self.ids['line_1']}/add_schedule/", 403,
+                         "Driver — add schedule to line (admin-only)",
+                         json_body={"day_of_week": "friday", "departure_time": "10:00",
+                                    "arrival_time": "11:00"})
+
+        if self.ids.get("driver_id"):
+            self.request(self.driver_session, "POST",
+                         f"/api/v1/drivers/drivers/{self.ids['driver_id']}/approve/", 403,
+                         "Driver — self-approve (admin-only)")
+
+            self.request(self.driver_session, "POST",
+                         f"/api/v1/drivers/drivers/{self.ids['driver_id']}/reject/", 403,
+                         "Driver — reject driver (admin-only)")
+
+        if self.ids.get("bus_1"):
+            self.request(self.driver_session, "POST",
+                         f"/api/v1/buses/buses/{self.ids['bus_1']}/approve/", 403,
+                         "Driver — approve bus (admin-only)")
+
+            self.request(self.driver_session, "POST",
+                         f"/api/v1/buses/buses/{self.ids['bus_1']}/activate/", 403,
+                         "Driver — activate bus (admin-only)")
+
+            self.request(self.driver_session, "POST",
+                         f"/api/v1/buses/buses/{self.ids['bus_1']}/deactivate/", 403,
+                         "Driver — deactivate bus (admin-only)")
+
+        self.request(self.driver_session, "POST", "/api/v1/notifications/notifications/", 403,
+                     "Driver — create notification (admin-only)",
+                     json_body={"title": "Unauthorized", "message": "test",
+                                "notification_type": "system"})
+
+        self.request(self.driver_session, "POST", "/api/v1/tracking/bus-lines/", 403,
+                     "Driver — create bus-line (admin-only)",
+                     json_body={"bus": self.ids.get("bus_1", ""),
+                                "line": self.ids.get("line_1", "")})
+
+        if self.ids.get("trip_1"):
+            self.request(self.driver_session, "DELETE",
+                         f"/api/v1/tracking/trips/{self.ids['trip_1']}/", 403,
+                         "Driver — delete trip (admin-only)")
+
+        if self.ids.get("anomaly_1"):
+            self.request(self.driver_session, "POST",
+                         f"/api/v1/tracking/anomalies/{self.ids['anomaly_1']}/resolve/", 403,
+                         "Driver — resolve anomaly (admin-only)")
+
+        if self.ids.get("passenger_user_id"):
+            self.request(self.driver_session, "DELETE",
+                         f"/api/v1/accounts/users/{self.ids['passenger_user_id']}/", 403,
+                         "Driver — delete user (admin-only)")
+
+        # ── Group B: Passenger → Admin-only actions (expect 403) ─────────
+        self.request(self.passenger_session, "POST", "/api/v1/lines/lines/", 403,
+                     "Passenger — create line (admin-only)",
+                     json_body={"name": "Unauthorized Line", "code": "X98"})
+
+        self.request(self.passenger_session, "POST", "/api/v1/lines/schedules/", 403,
+                     "Passenger — create schedule (admin-only)",
+                     json_body={"line": self.ids.get("line_1", ""), "day_of_week": "tuesday",
+                                "departure_time": "08:00", "arrival_time": "09:00"})
+
+        if self.ids.get("stop_1"):
+            self.request(self.passenger_session, "PUT",
+                         f"/api/v1/lines/stops/{self.ids['stop_1']}/", 403,
+                         "Passenger — update stop (admin-only)",
+                         json_body={"name": "Hacked Stop", "latitude": "36.75",
+                                    "longitude": "3.05"})
+
+            self.request(self.passenger_session, "DELETE",
+                         f"/api/v1/lines/stops/{self.ids['stop_1']}/", 403,
+                         "Passenger — delete stop (admin-only)")
+
+        if self.ids.get("line_1"):
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/lines/lines/{self.ids['line_1']}/add_stop/", 403,
+                         "Passenger — add stop to line (admin-only)",
+                         json_body={"stop_id": self.ids.get("stop_1", ""), "order": 99})
+
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/lines/lines/{self.ids['line_1']}/remove_stop/", 403,
+                         "Passenger — remove stop from line (admin-only)",
+                         json_body={"stop_id": self.ids.get("stop_1", "")})
+
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/lines/lines/{self.ids['line_1']}/add_schedule/", 403,
+                         "Passenger — add schedule to line (admin-only)",
+                         json_body={"day_of_week": "friday", "departure_time": "10:00",
+                                    "arrival_time": "11:00"})
+
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/lines/lines/{self.ids['line_1']}/activate/", 403,
+                         "Passenger — activate line (admin-only)")
+
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/lines/lines/{self.ids['line_1']}/deactivate/", 403,
+                         "Passenger — deactivate line (admin-only)")
+
+        if self.ids.get("driver_id"):
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/drivers/drivers/{self.ids['driver_id']}/reject/", 403,
+                         "Passenger — reject driver (admin-only)")
+
+        if self.ids.get("bus_1"):
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/buses/buses/{self.ids['bus_1']}/approve/", 403,
+                         "Passenger — approve bus (admin-only)")
+
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/buses/buses/{self.ids['bus_1']}/activate/", 403,
+                         "Passenger — activate bus (admin-only)")
+
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/buses/buses/{self.ids['bus_1']}/deactivate/", 403,
+                         "Passenger — deactivate bus (admin-only)")
+
+        self.request(self.passenger_session, "POST", "/api/v1/tracking/bus-lines/", 403,
+                     "Passenger — create bus-line (admin-only)",
+                     json_body={"bus": self.ids.get("bus_1", ""),
+                                "line": self.ids.get("line_1", "")})
+
+        if self.ids.get("trip_1"):
+            self.request(self.passenger_session, "DELETE",
+                         f"/api/v1/tracking/trips/{self.ids['trip_1']}/", 403,
+                         "Passenger — delete trip (admin-only)")
+
+        if self.ids.get("anomaly_1"):
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/tracking/anomalies/{self.ids['anomaly_1']}/resolve/", 403,
+                         "Passenger — resolve anomaly (admin-only)")
+
+        if self.ids.get("driver_user_id"):
+            self.request(self.passenger_session, "DELETE",
+                         f"/api/v1/accounts/users/{self.ids['driver_user_id']}/", 403,
+                         "Passenger — delete user (admin-only)")
+
+        # ── Group C: Passenger → Driver-only actions (expect 403) ────────
+        self.request(self.passenger_session, "POST", "/api/v1/tracking/locations/", 403,
+                     "Passenger — GPS update (driver-only)",
+                     json_body={"latitude": "36.75", "longitude": "3.05"})
+
+        self.request(self.passenger_session, "POST", "/api/v1/tracking/passenger-counts/", 403,
+                     "Passenger — passenger count (driver-only)",
+                     json_body={"count": 10})
+
+        self.request(self.passenger_session, "POST",
+                     "/api/v1/tracking/bus-lines/start_tracking/", 403,
+                     "Passenger — start tracking (driver-only)",
+                     json_body={"line_id": self.ids.get("line_1", "")})
+
+        self.request(self.passenger_session, "POST",
+                     "/api/v1/tracking/bus-lines/stop_tracking/", 403,
+                     "Passenger — stop tracking (driver-only)")
+
+        if self.ids.get("bus_1"):
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/buses/buses/{self.ids['bus_1']}/update_location/", 403,
+                         "Passenger — bus location (driver-only)",
+                         json_body={"latitude": "36.75", "longitude": "3.05"})
+
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/buses/buses/{self.ids['bus_1']}/update_passenger_count/", 403,
+                         "Passenger — bus passenger count (driver-only)",
+                         json_body={"passenger_count": 10})
+
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/buses/buses/{self.ids['bus_1']}/start_tracking/", 403,
+                         "Passenger — bus start tracking (driver-only)")
+
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/buses/buses/{self.ids['bus_1']}/stop_tracking/", 403,
+                         "Passenger — bus stop tracking (driver-only)")
+
+        self.request(self.passenger_session, "POST",
+                     "/api/v1/tracking/locations/estimate_arrival/", 403,
+                     "Passenger — estimate arrival (driver-only)",
+                     json_body={"stop_id": self.ids.get("stop_1", "")})
+
+        if self.ids.get("waiting_report_1"):
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/tracking/waiting-reports/{self.ids['waiting_report_1']}/verify/",
+                         403,
+                         "Passenger — verify report (driver-only)",
+                         json_body={"is_accurate": True})
+
+        # ── Group D: Anonymous → Authenticated-only endpoints (expect 401)
+        self.request(self.anon_session, "GET", "/api/v1/lines/lines/", 401,
+                     "Anon — list lines (auth required)")
+
+        self.request(self.anon_session, "GET", "/api/v1/lines/stops/", 401,
+                     "Anon — list stops (auth required)")
+
+        self.request(self.anon_session, "GET", "/api/v1/lines/schedules/", 401,
+                     "Anon — list schedules (auth required)")
+
+        self.request(self.anon_session, "GET", "/api/v1/drivers/drivers/", 401,
+                     "Anon — list drivers (auth required)")
+
+        self.request(self.anon_session, "GET", "/api/v1/notifications/notifications/", 401,
+                     "Anon — list notifications (auth required)")
+
+        self.request(self.anon_session, "GET", "/api/v1/tracking/locations/", 401,
+                     "Anon — list locations (auth required)")
+
+        self.request(self.anon_session, "GET", "/api/v1/tracking/passenger-counts/", 401,
+                     "Anon — list passenger counts (auth required)")
+
+        self.request(self.anon_session, "GET", "/api/v1/tracking/waiting-passengers/", 401,
+                     "Anon — list waiting passengers (auth required)")
+
+        self.request(self.anon_session, "GET", "/api/v1/tracking/bus-waiting-lists/", 401,
+                     "Anon — list waiting lists (auth required)")
+
+        self.request(self.anon_session, "GET", "/api/v1/tracking/waiting-reports/", 401,
+                     "Anon — list waiting reports (auth required)")
+
+        self.request(self.anon_session, "POST", "/api/v1/lines/stops/", 401,
+                     "Anon — create stop (auth required)",
+                     json_body={"name": "Anon Stop", "latitude": "36.75", "longitude": "3.05"})
+
+        self.request(self.anon_session, "POST", "/api/v1/buses/buses/", 401,
+                     "Anon — create bus (auth required)",
+                     json_body={"plate_number": "99999-999-99"})
+
+        self.request(self.anon_session, "POST", "/api/v1/tracking/locations/", 401,
+                     "Anon — create location (auth required)",
+                     json_body={"latitude": "36.75", "longitude": "3.05"})
+
+        self.request(self.anon_session, "POST", "/api/v1/notifications/notifications/", 401,
+                     "Anon — create notification (auth required)",
+                     json_body={"title": "Anon", "message": "test"})
+
+    def phase_15_cleanup_and_edge_cases(self):
+        self._phase(15, "Cleanup & Edge Cases")
 
         # Logout
         if self.ids.get("passenger_refresh"):
@@ -1297,7 +1619,8 @@ class DZBusTrackerAPITester:
             (11, self.phase_11_gamification),
             (12, self.phase_12_notifications),
             (13, self.phase_13_offline_mode),
-            (14, self.phase_14_cleanup_and_edge_cases),
+            (14, self.phase_14_cross_role_permissions),
+            (15, self.phase_15_cleanup_and_edge_cases),
         ]
 
         self._write(f"\n{'=' * 78}")
@@ -1314,8 +1637,8 @@ class DZBusTrackerAPITester:
             for num, fn in phases:
                 if self.phase is not None and num != self.phase:
                     continue
-                if self.skip_cleanup and num == 14:
-                    self._write("\n  [SKIPPED] Phase 14 (cleanup) — --skip-cleanup flag set")
+                if self.skip_cleanup and num == 15:
+                    self._write("\n  [SKIPPED] Phase 15 (cleanup) — --skip-cleanup flag set")
                     continue
 
                 # For single-phase runs, we need auth setup first
@@ -1368,12 +1691,12 @@ Examples:
         help="Admin password",
     )
     parser.add_argument(
-        "--phase", type=int, default=None, choices=range(1, 15),
-        help="Run only a specific phase (1-14)",
+        "--phase", type=int, default=None, choices=range(1, 16),
+        help="Run only a specific phase (1-15)",
     )
     parser.add_argument(
         "--skip-cleanup", action="store_true",
-        help="Skip phase 14 (cleanup/edge cases) — keep test data",
+        help="Skip phase 15 (cleanup/edge cases) — keep test data",
     )
     parser.add_argument(
         "--timeout", type=int, default=30,

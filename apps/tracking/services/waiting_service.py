@@ -288,7 +288,8 @@ class WaitingReportService(BaseService):
                 trust_multiplier=float(reputation.trust_multiplier),
                 location_verified=location_verified,
                 stop_id=stop_id,
-                reported_count=reported_count
+                reported_count=reported_count,
+                reporter_id=reporter_id
             )
             
             # Create report
@@ -390,7 +391,8 @@ class WaitingReportService(BaseService):
         trust_multiplier: float,
         location_verified: bool,
         stop_id: str,
-        reported_count: int
+        reported_count: int,
+        reporter_id: str = None
     ) -> float:
         """Calculate confidence score for a report."""
         # Base score from confidence level
@@ -408,7 +410,7 @@ class WaitingReportService(BaseService):
         recent_reports = WaitingCountReport.objects.filter(
             stop_id=stop_id,
             created_at__gte=timezone.now() - timedelta(minutes=30)
-        ).exclude(reporter_id=stop_id)  # Exclude same reporter
+        ).exclude(reporter_id=reporter_id)  # Exclude same reporter
         
         if recent_reports.exists():
             avg_count = recent_reports.aggregate(avg=Avg('reported_count'))['avg']
