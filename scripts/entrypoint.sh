@@ -55,12 +55,6 @@ collect_static() {
     fi
 }
 
-# Function to create development users (driver, passenger, admin)
-create_dev_users() {
-    echo "Seeding development users..."
-    python manage.py create_dev_users
-}
-
 # Function to load sample data for development
 load_sample_data() {
     if [ "$DEBUG" = "1" ] || [ "$DEBUG" = "True" ]; then
@@ -117,9 +111,8 @@ wait_for_redis
 run_migrations
 collect_static
 
-# Create dev users (only for web service)
+# Load sample data (only for web service)
 if [ "${1:-web}" = "web" ]; then
-    create_dev_users
     load_sample_data
 fi
 
