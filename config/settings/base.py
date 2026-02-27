@@ -77,7 +77,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    # "apps.core.middleware.RequestLogMiddleware",  # temporarily disabled for development
+    "apps.core.middleware.DebugRequestLogMiddleware",
     # Add the allauth middleware here
     "allauth.account.middleware.AccountMiddleware",
 ]
@@ -305,6 +305,10 @@ LOGGING = {
             "format": "{levelname} {message}",
             "style": "{",
         },
+        "debug_request": {
+            "format": "{message}",
+            "style": "{",
+        },
     },
     "handlers": {
         "console": {
@@ -318,6 +322,11 @@ LOGGING = {
             "filename": str(ROOT_DIR / "logs/django.log"),
             "formatter": "verbose",
         },
+        "debug_console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "debug_request",
+        },
     },
     "loggers": {
         "django": {
@@ -329,6 +338,11 @@ LOGGING = {
             "handlers": ["console", "file"],
             "level": "INFO",
             "propagate": True,
+        },
+        "apps.core.middleware": {
+            "handlers": ["debug_console"],
+            "level": "DEBUG" if DEBUG else "WARNING",
+            "propagate": False,
         },
     },
 }
