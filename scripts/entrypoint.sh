@@ -8,24 +8,31 @@ set -e
 # Function to wait for database
 wait_for_db() {
     echo "Waiting for database to be ready..."
-    
+
     while ! pg_isready -h $DB_HOST -p $DB_PORT -U $DB_USER; do
         echo "Database is unavailable - sleeping"
         sleep 1
     done
-    
+
     echo "Database is ready!"
 }
 
-# Function to wait for Redis
+# Function to wait for Redis (uses Python since redis-cli is not in the image)
 wait_for_redis() {
     echo "Waiting for Redis to be ready..."
-    
-    while ! redis-cli -h redis -p 6379 ping > /dev/null 2>&1; do
+
+    while ! python -c "
+import redis, sys
+try:
+    r = redis.Redis(host='redis', port=6379, socket_connect_timeout=2)
+    r.ping()
+except Exception:
+    sys.exit(1)
+" 2>/dev/null; do
         echo "Redis is unavailable - sleeping"
         sleep 1
     done
-    
+
     echo "Redis is ready!"
 }
 
@@ -48,29 +55,10 @@ collect_static() {
     fi
 }
 
-# Function to create superuser if it doesn't exist
-create_superuser() {
-    echo "Creating superuser if it doesn't exist..."
-    python manage.py shell << EOF
-from django.contrib.auth import get_user_model
-from django.db import IntegrityError
-
-User = get_user_model()
-
-try:
-    if not User.objects.filter(is_superuser=True).exists():
-        User.objects.create_superuser(
-            email='admin@dzbustracker.com',
-            password='admin123',
-            first_name='Admin',
-            last_name='User'
-        )
-        print("Superuser created: admin@dzbustracker.com / admin123")
-    else:
-        print("Superuser already exists")
-except IntegrityError:
-    print("Superuser creation failed - user may already exist")
-EOF
+# Function to create development users (driver, passenger, admin)
+create_dev_users() {
+    echo "Seeding development users..."
+    python manage.py create_dev_users
 }
 
 # Function to load sample data for development
@@ -88,11 +76,11 @@ EOF
 start_service() {
     case "$1" in
         "web")
-            echo "Starting Django web server..."
+            echo "Starting ASGI web server..."
             if [ "$DEBUG" = "1" ] || [ "$DEBUG" = "True" ]; then
-                python manage.py runserver 0.0.0.0:8000
+                uvicorn config.asgi:application --host 0.0.0.0 --port 8007 --reload
             else
-                gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 config.wsgi:application
+                gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8007 --workers 3 --timeout 120
             fi
             ;;
         "celery")
@@ -108,11 +96,11 @@ start_service() {
             celery -A celery_app flower --port=5555
             ;;
         *)
-            echo "Starting Django web server (default)..."
+            echo "Starting ASGI web server (default)..."
             if [ "$DEBUG" = "1" ] || [ "$DEBUG" = "True" ]; then
-                python manage.py runserver 0.0.0.0:8000
+                uvicorn config.asgi:application --host 0.0.0.0 --port 8007 --reload
             else
-                gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 config.wsgi:application
+                gunicorn config.asgi:application -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8007 --workers 3 --timeout 120
             fi
             ;;
     esac
@@ -129,9 +117,9 @@ wait_for_redis
 run_migrations
 collect_static
 
-# Create superuser (only for web service)
+# Create dev users (only for web service)
 if [ "${1:-web}" = "web" ]; then
-    create_superuser
+    create_dev_users
     load_sample_data
 fi
 

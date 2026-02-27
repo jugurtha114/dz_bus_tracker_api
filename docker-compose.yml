@@ -35,7 +35,8 @@ services:
       context: .
       target: development
     container_name: dz_bus_tracker_web
-    command: uvicorn config.asgi:application --host 0.0.0.0 --port 8007 --reload
+    entrypoint: /app/scripts/entrypoint.sh
+    command: ["web"]
     volumes:
       - .:/app
       - media_files:/app/media
