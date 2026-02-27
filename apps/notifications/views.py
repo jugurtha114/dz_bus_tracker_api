@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from apps.api.pagination import StandardResultsSetPagination
 from apps.api.permissions import IsOwnerOrReadOnly
+from apps.core.permissions import IsAdmin
 from .models import DeviceToken, Notification, NotificationPreference, NotificationSchedule
 from .serializers import (
     DeviceTokenSerializer,
@@ -70,7 +71,13 @@ class NotificationViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     filterset_class = NotificationFilter
-    
+
+    def get_permissions(self):
+        """Only admins can create notifications."""
+        if self.action == 'create':
+            return [IsAdmin()]
+        return [IsAuthenticated()]
+
     def get_queryset(self):
         """Get notifications for the current user."""
         return Notification.objects.filter(

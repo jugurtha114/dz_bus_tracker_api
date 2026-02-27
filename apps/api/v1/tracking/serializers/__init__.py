@@ -47,9 +47,11 @@ class BusLineSerializer(BaseSerializer):
         """
         Get bus details if expand_bus is True.
         """
-        expand = self.context.get('request').query_params.get('expand_bus', False)
-        if expand and expand.lower() in ['true', '1', 'yes']:
-            return BusSerializer(obj.bus).data
+        request = self.context.get('request')
+        if request:
+            expand = request.query_params.get('expand_bus', False)
+            if expand and expand.lower() in ['true', '1', 'yes']:
+                return BusSerializer(obj.bus).data
         return None
 
     @extend_schema_field(dict)
@@ -57,9 +59,11 @@ class BusLineSerializer(BaseSerializer):
         """
         Get line details if expand_line is True.
         """
-        expand = self.context.get('request').query_params.get('expand_line', False)
-        if expand and expand.lower() in ['true', '1', 'yes']:
-            return LineSerializer(obj.line).data
+        request = self.context.get('request')
+        if request:
+            expand = request.query_params.get('expand_line', False)
+            if expand and expand.lower() in ['true', '1', 'yes']:
+                return LineSerializer(obj.line).data
         return None
 
 
@@ -139,9 +143,11 @@ class WaitingPassengersSerializer(BaseSerializer):
         """
         Get stop details if expand_stop is True.
         """
-        expand = self.context.get('request').query_params.get('expand_stop', False)
-        if expand and expand.lower() in ['true', '1', 'yes']:
-            return StopSerializer(obj.stop).data
+        request = self.context.get('request')
+        if request:
+            expand = request.query_params.get('expand_stop', False)
+            if expand and expand.lower() in ['true', '1', 'yes']:
+                return StopSerializer(obj.stop).data
         return None
 
 
@@ -181,9 +187,11 @@ class TripSerializer(BaseSerializer):
         """
         Get bus details if expand_bus is True.
         """
-        expand = self.context.get('request').query_params.get('expand_bus', False)
-        if expand and expand.lower() in ['true', '1', 'yes']:
-            return BusSerializer(obj.bus).data
+        request = self.context.get('request')
+        if request:
+            expand = request.query_params.get('expand_bus', False)
+            if expand and expand.lower() in ['true', '1', 'yes']:
+                return BusSerializer(obj.bus).data
         return None
 
     @extend_schema_field(dict)
@@ -191,9 +199,11 @@ class TripSerializer(BaseSerializer):
         """
         Get driver details if expand_driver is True.
         """
-        expand = self.context.get('request').query_params.get('expand_driver', False)
-        if expand and expand.lower() in ['true', '1', 'yes']:
-            return DriverSerializer(obj.driver).data
+        request = self.context.get('request')
+        if request:
+            expand = request.query_params.get('expand_driver', False)
+            if expand and expand.lower() in ['true', '1', 'yes']:
+                return DriverSerializer(obj.driver).data
         return None
 
     @extend_schema_field(dict)
@@ -201,9 +211,11 @@ class TripSerializer(BaseSerializer):
         """
         Get line details if expand_line is True.
         """
-        expand = self.context.get('request').query_params.get('expand_line', False)
-        if expand and expand.lower() in ['true', '1', 'yes']:
-            return LineSerializer(obj.line).data
+        request = self.context.get('request')
+        if request:
+            expand = request.query_params.get('expand_line', False)
+            if expand and expand.lower() in ['true', '1', 'yes']:
+                return LineSerializer(obj.line).data
         return None
 
 
@@ -546,8 +558,8 @@ class WaitingListSummarySerializer(serializers.Serializer):
     stop_name = serializers.CharField()
     waiting_count = serializers.IntegerField()
     latest_report_count = serializers.IntegerField()
-    latest_report_time = serializers.DateTimeField()
-    estimated_arrival = serializers.DateTimeField()
+    latest_report_time = serializers.DateTimeField(allow_null=True)
+    estimated_arrival = serializers.DateTimeField(allow_null=True)
     confidence_score = serializers.FloatField()
 
 

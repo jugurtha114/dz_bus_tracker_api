@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from apps.api.viewsets import BaseModelViewSet
 from apps.core.permissions import IsAdmin, IsAdminOrReadOnly
 from apps.lines.models import Line, LineStop, Schedule, Stop
-from apps.lines.services import LineService, StopService
+from apps.lines.services import LineService, ScheduleService, StopService
 
 from .filters import LineFilter, ScheduleFilter, StopFilter
 from .serializers import (
@@ -256,7 +256,7 @@ class LineViewSet(BaseModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         # Create schedule
-        schedule = LineService.create_schedule(
+        schedule = ScheduleService.create_schedule(
             line_id=line.id,
             **serializer.validated_data
         )

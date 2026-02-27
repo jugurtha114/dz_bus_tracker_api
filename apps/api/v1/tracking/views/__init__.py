@@ -292,6 +292,8 @@ class LocationUpdateViewSet(BaseModelViewSet):
         """
         Create a location update for the driver's bus.
         """
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+
         # Get bus ID from driver
         from apps.drivers.selectors import get_driver_by_user
         driver = get_driver_by_user(self.request.user.id)
@@ -301,10 +303,7 @@ class LocationUpdateViewSet(BaseModelViewSet):
         buses = get_buses_by_driver(driver.id)
 
         if not buses:
-            return Response(
-                {'detail': 'No buses found for this driver'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise DRFValidationError({'detail': 'No buses found for this driver'})
 
         # Use the first bus (can be enhanced to select a specific bus)
         bus = buses.first()
@@ -324,12 +323,11 @@ class LocationUpdateViewSet(BaseModelViewSet):
             line_id = None
 
         # Create location update
-        LocationUpdateService.record_location_update(
+        location = LocationUpdateService.record_location_update(
             bus_id=bus.id,
-            trip_id=trip_id,
-            line_id=line_id,
             **serializer.validated_data
         )
+        serializer.instance = location
 
     @action(detail=False, methods=['post'])
     def estimate_arrival(self, request):
@@ -440,6 +438,8 @@ class PassengerCountViewSet(BaseModelViewSet):
         """
         Create a passenger count for the driver's bus.
         """
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+
         # Get bus ID from driver
         from apps.drivers.selectors import get_driver_by_user
         driver = get_driver_by_user(self.request.user.id)
@@ -449,35 +449,17 @@ class PassengerCountViewSet(BaseModelViewSet):
         buses = get_buses_by_driver(driver.id)
 
         if not buses:
-            return Response(
-                {'detail': 'No buses found for this driver'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            raise DRFValidationError({'detail': 'No buses found for this driver'})
 
         # Use the first bus (can be enhanced to select a specific bus)
         bus = buses.first()
 
-        # Get active bus-line and trip
-        try:
-            bus_line = BusLine.objects.get(
-                bus=bus,
-                is_active=True,
-                tracking_status='active'
-            )
-
-            trip_id = bus_line.trip_id
-            line_id = bus_line.line_id
-        except BusLine.DoesNotExist:
-            trip_id = None
-            line_id = None
-
-        # Create passenger count
-        PassengerCountService.update_passenger_count(
+        # Create passenger count (service handles trip/line internally)
+        passenger_count = PassengerCountService.update_passenger_count(
             bus_id=bus.id,
-            trip_id=trip_id,
-            line_id=line_id,
             **serializer.validated_data
         )
+        serializer.instance = passenger_count
 
 class WaitingPassengersViewSet(BaseModelViewSet):
     """
@@ -777,6 +759,8 @@ class AnomalyViewSet(BaseModelViewSet):
         """
         Create an anomaly for the driver's bus.
         """
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+
         # Get bus ID and trip ID based on user type
         if self.request.user.user_type == 'driver':
             # Get bus ID from driver
@@ -788,10 +772,7 @@ class AnomalyViewSet(BaseModelViewSet):
             buses = get_buses_by_driver(driver.id)
 
             if not buses:
-                return Response(
-                    {'detail': 'No buses found for this driver'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                raise DRFValidationError({'detail': 'No buses found for this driver'})
 
             # Use the first bus
             bus = buses.first()
@@ -804,10 +785,7 @@ class AnomalyViewSet(BaseModelViewSet):
             # Admin must specify bus ID
             bus_id = self.request.data.get('bus_id')
             if not bus_id:
-                return Response(
-                    {'detail': 'Bus ID is required'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                raise DRFValidationError({'detail': 'Bus ID is required'})
 
             # Get bus
             from apps.buses.selectors import get_bus_by_id
@@ -817,11 +795,15 @@ class AnomalyViewSet(BaseModelViewSet):
             trip_id = self.request.data.get('trip_id')
 
         # Create anomaly
-        AnomalyService.create_anomaly(
+        validated = serializer.validated_data.copy()
+        anomaly = AnomalyService.create_anomaly(
             bus_id=bus.id,
+            anomaly_type=validated.pop('type'),
+            description=validated.pop('description'),
             trip_id=trip_id,
-            **serializer.validated_data
+            **validated
         )
+        serializer.instance = anomaly
 
     @action(detail=True, methods=['post'])
     def resolve(self, request, pk=None):
@@ -860,7 +842,7 @@ class BusWaitingListViewSet(BaseModelViewSet):
     
     def get_permissions(self):
         """Get permissions based on action."""
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve', 'summary']:
             return [IsAuthenticated()]
         if self.action in ['create', 'join', 'leave']:
             return [IsAuthenticated()]
@@ -1005,10 +987,19 @@ class WaitingCountReportViewSet(BaseModelViewSet):
     
     def perform_create(self, serializer):
         """Create a waiting count report."""
-        WaitingReportService.create_report(
+        validated = serializer.validated_data.copy()
+        # Convert model instances to IDs for service layer
+        stop = validated.pop('stop')
+        bus = validated.pop('bus', None)
+        line = validated.pop('line', None)
+        report = WaitingReportService.create_report(
             reporter_id=str(self.request.user.id),
-            **serializer.validated_data
+            stop_id=str(stop.id),
+            bus_id=str(bus.id) if bus else None,
+            line_id=str(line.id) if line else None,
+            **validated
         )
+        serializer.instance = report
     
     @action(detail=True, methods=['post'])
     def verify(self, request, pk=None):

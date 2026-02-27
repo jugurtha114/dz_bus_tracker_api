@@ -3,6 +3,7 @@ Service functions for the lines app.
 """
 import logging
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 from apps.core.exceptions import ValidationError

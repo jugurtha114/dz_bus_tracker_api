@@ -59,9 +59,11 @@ class BusSerializer(BaseSerializer):
         """
         Get driver details if expand_driver is True.
         """
-        expand = self.context.get('request').query_params.get('expand_driver', False)
-        if expand and expand.lower() in ['true', '1', 'yes']:
-            return DriverSerializer(obj.driver).data
+        request = self.context.get('request')
+        if request:
+            expand = request.query_params.get('expand_driver', False)
+            if expand and expand.lower() in ['true', '1', 'yes']:
+                return DriverSerializer(obj.driver).data
         return None
 
     @extend_schema_field(dict)
@@ -69,13 +71,15 @@ class BusSerializer(BaseSerializer):
         """
         Get current location if expand_location is True.
         """
-        expand = self.context.get('request').query_params.get('expand_location', False)
-        if expand and expand.lower() in ['true', '1', 'yes']:
-            try:
-                location = obj.locations.latest('created_at')
-                return BusLocationSerializer(location).data
-            except BusLocation.DoesNotExist:
-                return None
+        request = self.context.get('request')
+        if request:
+            expand = request.query_params.get('expand_location', False)
+            if expand and expand.lower() in ['true', '1', 'yes']:
+                try:
+                    location = obj.locations.latest('created_at')
+                    return BusLocationSerializer(location).data
+                except BusLocation.DoesNotExist:
+                    return None
         return None
 
 

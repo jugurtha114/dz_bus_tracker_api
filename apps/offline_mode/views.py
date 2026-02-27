@@ -34,12 +34,13 @@ from .services import OfflineModeService
 class CacheConfigurationViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for cache configuration.
-    
+
     Only staff can manage configurations.
     """
     queryset = CacheConfiguration.objects.all()
     serializer_class = CacheConfigurationSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = []  # Exempt offline/cache config from burst throttling
     
     def get_queryset(self):
         """Filter to active configuration for non-staff."""
@@ -67,6 +68,7 @@ class UserCacheViewSet(viewsets.GenericViewSet):
     """
     serializer_class = UserCacheSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = []  # Exempt offline/cache operations from burst throttling
     
     def get_object(self):
         """Get user's cache."""
@@ -130,6 +132,7 @@ class CachedDataViewSet(viewsets.GenericViewSet):
     """
     serializer_class = CachedDataSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = []  # Exempt offline/cache operations from burst throttling
     pagination_class = StandardResultsSetPagination
     
     def get_queryset(self):
@@ -215,6 +218,7 @@ class SyncQueueViewSet(viewsets.ModelViewSet):
     """
     serializer_class = SyncQueueSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = []  # Exempt offline/sync operations from burst throttling
     pagination_class = StandardResultsSetPagination
     
     def get_queryset(self):
@@ -300,6 +304,7 @@ class OfflineLogViewSet(viewsets.ReadOnlyModelViewSet):
     """
     serializer_class = OfflineLogSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = []  # Exempt read-only logs from burst throttling
     pagination_class = StandardResultsSetPagination
     
     def get_queryset(self):

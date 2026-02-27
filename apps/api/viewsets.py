@@ -52,6 +52,26 @@ class BaseModelViewSet(
 
         return queryset
 
+    def create(self, request, *args, **kwargs):
+        """
+        Override create to return response using the default (read) serializer
+        so that the response always includes id and other read-only fields.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        # Use the read serializer if instance is available
+        if serializer.instance is not None:
+            read_serializer = self.serializer_class(
+                serializer.instance,
+                context=self.get_serializer_context()
+            )
+            response_data = read_serializer.data
+        else:
+            response_data = serializer.data
+        headers = self.get_success_headers(response_data)
+        return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
+
     @transaction.atomic
     def perform_create(self, serializer):
         """

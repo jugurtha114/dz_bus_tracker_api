@@ -66,9 +66,11 @@ class LineStopSerializer(BaseSerializer):
         """
         Get stop details if expand_stop is True.
         """
-        expand = self.context.get('request').query_params.get('expand_stop', False)
-        if expand and expand.lower() in ['true', '1', 'yes']:
-            return StopSerializer(obj.stop).data
+        request = self.context.get('request')
+        if request:
+            expand = request.query_params.get('expand_stop', False)
+            if expand and expand.lower() in ['true', '1', 'yes']:
+                return StopSerializer(obj.stop).data
         return None
 
 
@@ -130,14 +132,16 @@ class LineSerializer(BaseSerializer):
         """
         Get stops for this line if expand_stops is True.
         """
-        expand = self.context.get('request').query_params.get('expand_stops', False)
-        if expand and expand.lower() in ['true', '1', 'yes']:
-            line_stops = obj.line_stops.all().order_by('order')
-            return LineStopSerializer(
-                line_stops,
-                many=True,
-                context=self.context
-            ).data
+        request = self.context.get('request')
+        if request:
+            expand = request.query_params.get('expand_stops', False)
+            if expand and expand.lower() in ['true', '1', 'yes']:
+                line_stops = obj.line_stops.all().order_by('order')
+                return LineStopSerializer(
+                    line_stops,
+                    many=True,
+                    context=self.context
+                ).data
         return None
 
     @extend_schema_field(list)
@@ -145,10 +149,12 @@ class LineSerializer(BaseSerializer):
         """
         Get schedules for this line if expand_schedules is True.
         """
-        expand = self.context.get('request').query_params.get('expand_schedules', False)
-        if expand and expand.lower() in ['true', '1', 'yes']:
-            schedules = obj.schedules.all().order_by('day_of_week', 'start_time')
-            return ScheduleSerializer(schedules, many=True).data
+        request = self.context.get('request')
+        if request:
+            expand = request.query_params.get('expand_schedules', False)
+            if expand and expand.lower() in ['true', '1', 'yes']:
+                schedules = obj.schedules.all().order_by('day_of_week', 'start_time')
+                return ScheduleSerializer(schedules, many=True).data
         return None
 
 

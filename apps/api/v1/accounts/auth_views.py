@@ -85,7 +85,7 @@ def register_driver(request):
     """
     Register a new driver with their driver information.
     """
-    from apps.drivers.serializers import DriverRegistrationSerializer
+    from apps.api.v1.drivers.serializers import DriverRegistrationSerializer
     from apps.drivers.models import Driver
     
     serializer = DriverRegistrationSerializer(data=request.data)

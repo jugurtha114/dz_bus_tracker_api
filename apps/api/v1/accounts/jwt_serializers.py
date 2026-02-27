@@ -3,6 +3,7 @@ JWT serializers that accept email instead of username.
 """
 from django.contrib.auth import authenticate
 from rest_framework import serializers
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 
@@ -34,10 +35,10 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
             )
             
             if not user:
-                raise serializers.ValidationError('Invalid credentials')
-            
+                raise AuthenticationFailed('Invalid credentials')
+
             if not user.is_active:
-                raise serializers.ValidationError('Account is disabled')
+                raise AuthenticationFailed('Account is disabled')
             
             # Generate token
             refresh = self.get_token(user)

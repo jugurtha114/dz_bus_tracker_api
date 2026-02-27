@@ -235,13 +235,20 @@ def estimate_arrival_time(bus_id, stop_id):
         from apps.lines.models import Stop
         stop = Stop.objects.get(id=stop_id)
 
-        # Get current speed
-        speed = location.speed if hasattr(location, "speed") else None
+        # Handle both dict (from cache) and model instance
+        if isinstance(location, dict):
+            lat = location.get("latitude")
+            lon = location.get("longitude")
+            speed = location.get("speed")
+        else:
+            lat = location.latitude
+            lon = location.longitude
+            speed = location.speed if hasattr(location, "speed") else None
 
         # Calculate ETA
         return calculate_eta(
-            float(location.latitude),
-            float(location.longitude),
+            float(lat),
+            float(lon),
             float(stop.latitude),
             float(stop.longitude),
             float(speed) if speed else None

@@ -2,8 +2,8 @@
 Service functions for the tracking app.
 """
 import logging
-import uuid
 from datetime import timedelta
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.db import transaction
 from django.db.models import Avg, Sum, Max
@@ -144,9 +144,6 @@ class BusLineService(BaseService):
             # Get driver
             driver = bus.driver
 
-            # Generate trip ID
-            trip_id = uuid.uuid4()
-
             # Create trip
             trip = create_object(Trip, {
                 "bus": bus,
@@ -158,7 +155,7 @@ class BusLineService(BaseService):
 
             # Update bus-line assignment
             bus_line.tracking_status = BUS_TRACKING_STATUS_ACTIVE
-            bus_line.trip_id = trip_id
+            bus_line.trip_id = str(trip.id)
             bus_line.start_time = trip.start_time
             bus_line.end_time = None
             bus_line.save(update_fields=[
@@ -239,7 +236,7 @@ class BusLineService(BaseService):
             max_passengers = PassengerCount.objects.filter(
                 trip_id=trip.id
             ).aggregate(
-                max=models.Max("count")
+                max=Max("count")
             )["max"] or 0
 
             # Count stops visited
@@ -349,7 +346,7 @@ class LocationUpdateService(BaseService):
                 if nearest_stop:
                     location_data["nearest_stop"] = nearest_stop
                     # Convert to meters
-                    location_data["distance_to_stop"] = min_distance * 1000
+                    location_data["distance_to_stop"] = Decimal(str(round(min_distance * 1000, 2))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
             # Create location update
             location = create_object(LocationUpdate, location_data)
@@ -470,7 +467,7 @@ class PassengerCountService(BaseService):
                 line = trip.line
 
             # Calculate occupancy rate
-            occupancy_rate = min(count / bus.capacity, 1.0) if bus.capacity > 0 else 0
+            occupancy_rate = Decimal(str(round(min(count / bus.capacity, 1.0), 2))).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP) if bus.capacity > 0 else Decimal('0.00')
 
             # Create passenger count data
             passenger_data = {

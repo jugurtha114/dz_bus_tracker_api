@@ -59,7 +59,7 @@ class UserViewSet(BaseModelViewSet):
         """
         Get permissions based on action.
         """
-        if self.action == 'me':
+        if self.action in ['me', 'logout']:
             return [IsAuthenticated()]
         if self.action in ['create', 'reset_password_request', 'reset_password_confirm']:
             return [AllowAny()]
@@ -176,7 +176,7 @@ class UserViewSet(BaseModelViewSet):
             updated_serializer = self.get_serializer(updated_user)
             return Response(updated_serializer.data)
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], throttle_classes=[])
     def logout(self, request):
         """
         Invalidate the refresh token.

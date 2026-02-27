@@ -84,12 +84,7 @@ def get_bus_location(bus_id):
     Returns:
         Latest BusLocation object or None
     """
-    # Check cache first
-    cached_location = get_cached_bus_location(bus_id)
-    if cached_location:
-        return cached_location
-
-    # If not in cache, get from database
+    # Always return a model instance from DB (cache stores dicts, not instances)
     try:
         return BusLocation.objects.filter(bus_id=bus_id).latest()
     except BusLocation.DoesNotExist:

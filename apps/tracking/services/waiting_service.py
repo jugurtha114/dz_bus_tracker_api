@@ -189,13 +189,18 @@ class WaitingListService(BaseService):
                     stop_id=stop_id
                 ).order_by('-created_at').first()
                 
+                # Get stop name
+                stop = get_stop_by_id(stop_id)
+
                 summary = {
                     'bus_id': str(item['bus_id']),
                     'bus_license_plate': bus.license_plate,
                     'stop_id': stop_id,
+                    'stop_name': stop.name if stop else '',
                     'waiting_count': item['waiting_count'],
                     'latest_report_count': latest_report.reported_count if latest_report else 0,
                     'latest_report_time': latest_report.created_at if latest_report else None,
+                    'estimated_arrival': None,
                     'confidence_score': float(latest_report.confidence_score) if latest_report else 0.5
                 }
                 summaries.append(summary)
@@ -585,7 +590,7 @@ class VirtualCurrencyService(BaseService):
                 sign = "+" if amount >= 0 else ""
                 NotificationService.create_notification(
                     user_id=user_id,
-                    notification_type='currency',
+                    notification_type='reward',
                     title=f'{sign}{amount} coins earned!' if amount > 0 else f'{amount} coins deducted',
                     message=description,
                     data={
