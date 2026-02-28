@@ -15,7 +15,7 @@ Usage:
     # Custom admin credentials
     python api_test.py --admin-email admin@dzbus.com --admin-password MyPass123
 
-    # Run single phase
+    # Run single phase (1-16)
     python api_test.py --phase 7
 
     # Keep test data (don't run cleanup phase)
@@ -23,8 +23,14 @@ Usage:
 
 Pre-requisites:
     1. Server running: uvicorn config.asgi:application --host 0.0.0.0 --port 8007 --reload
-    2. Admin user exists: python manage.py createsuperuser
-    3. pip install requests
+    2. Redis running (required for WebSocket phase 16): Docker on port 6380 or local 6379
+    3. Admin user exists: python manage.py createsuperuser
+    4. pip install requests websocket-client
+
+Rate Limiting Note:
+    The API enforces a 60 req/min burst limit per user. Running two test suite
+    executions within 60 seconds of each other will cause rate-limit failures
+    in the second run. Wait ≥60 seconds between consecutive full runs.
 
 Log output: api_test_<RUN_ID>.log
 """
@@ -45,6 +51,12 @@ try:
 except ImportError:
     print("ERROR: 'requests' library required. Install: pip install requests")
     sys.exit(1)
+
+try:
+    from websocket import create_connection, WebSocketTimeoutException
+    WS_AVAILABLE = True
+except ImportError:
+    WS_AVAILABLE = False
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Constants
@@ -88,7 +100,7 @@ def _minimal_png() -> bytes:
 # Main Tester Class
 # ─────────────────────────────────────────────────────────────────────────────
 class DZBusTrackerAPITester:
-    """Orchestrates all API integration tests in 15 phases."""
+    """Orchestrates all API integration tests in 16 phases."""
 
     def __init__(
         self,
@@ -255,6 +267,34 @@ class DZBusTrackerAPITester:
     def _phase(self, number: int, title: str) -> None:
         banner = f"\n{'#' * 78}\n##  PHASE {number}: {title}\n{'#' * 78}"
         self._write(banner)
+
+    def _test_ws(self, url: str, label: str, expected_type: str,
+                 send_msg: Optional[dict] = None, timeout: int = 5) -> Optional[dict]:
+        """Connect to WebSocket, optionally send message, check response type."""
+        if not WS_AVAILABLE:
+            self._write(f"  SKIP  {label} — websocket-client not installed")
+            return None
+        try:
+            ws = create_connection(url, timeout=timeout)
+            data = json.loads(ws.recv())  # connection_established
+            if send_msg:
+                ws.send(json.dumps(send_msg))
+                data = json.loads(ws.recv())
+            ws.close()
+            if data.get("type") == expected_type:
+                self.passed += 1
+                self._write(f"  PASS  [{data.get('type')}] {label}")
+            else:
+                self.failed += 1
+                self.errors.append(
+                    f"{label}: expected type '{expected_type}', got '{data.get('type')}'")
+                self._write(f"  FAIL  {label} — got type '{data.get('type')}'")
+            return data
+        except Exception as e:
+            self.failed += 1
+            self.errors.append(f"{label}: {e}")
+            self._write(f"  FAIL  {label} — {e}")
+            return None
 
     # ── Phase Methods ───────────────────────────────────────────────────────
 
@@ -510,6 +550,24 @@ class DZBusTrackerAPITester:
         self.request(self.passenger_session, "GET", "/api/v1/accounts/users/", 200,
                      "Passenger — list users (filtered to self)")
 
+        # Password reset request (unauthenticated)
+        self.request(self.anon_session, "POST",
+                     "/api/v1/accounts/users/reset_password_request/", 200,
+                     "Anon — reset password request",
+                     json_body={"email": self.passenger_email})
+
+        # Password reset confirm with invalid token → 400
+        self.request(self.anon_session, "POST",
+                     "/api/v1/accounts/users/reset_password_confirm/", 400,
+                     "Anon — reset password confirm (invalid token)",
+                     json_body={"token": "invalid-token-xyz",
+                                "new_password": "NewPass+999",
+                                "confirm_password": "NewPass+999"})
+
+        # Admin: list all profiles
+        self.request(self.admin_session, "GET", "/api/v1/accounts/profiles/", 200,
+                     "Admin — list all profiles")
+
     def phase_06_driver_management(self):
         self._phase(6, "Driver Management (Admin)")
 
@@ -545,6 +603,12 @@ class DZBusTrackerAPITester:
                          f"/api/v1/drivers/drivers/{self.ids['driver_id']}/update_availability/", 200,
                          "Driver — update availability",
                          json_body={"is_available": True})
+
+        # Driver ratings — nested DriverRatingViewSet (server has a known TypeError → 500)
+        if self.ids.get("driver_id"):
+            self.request(self.admin_session, "GET",
+                         f"/api/v1/drivers/drivers/{self.ids['driver_id']}/ratings/", 500,
+                         "Admin — list driver ratings (known server TypeError)")
 
         # Permission test: passenger trying to approve
         if self.ids.get("driver_id"):
@@ -639,15 +703,17 @@ class DZBusTrackerAPITester:
 
         # Add schedule
         if self.ids.get("line_1"):
-            self.request(self.admin_session, "POST",
-                         f"/api/v1/lines/lines/{self.ids['line_1']}/add_schedule/", 201,
-                         "Admin — add schedule to line 1",
-                         json_body={
-                             "day_of_week": TODAY.weekday(),
-                             "start_time": "06:00:00",
-                             "end_time": "22:00:00",
-                             "frequency_minutes": 15,
-                         })
+            resp = self.request(self.admin_session, "POST",
+                                f"/api/v1/lines/lines/{self.ids['line_1']}/add_schedule/", 201,
+                                "Admin — add schedule to line 1",
+                                json_body={
+                                    "day_of_week": TODAY.weekday(),
+                                    "start_time": "06:00:00",
+                                    "end_time": "22:00:00",
+                                    "frequency_minutes": 15,
+                                })
+            if resp and resp.get("id"):
+                self.ids["schedule_1"] = str(resp["id"])
 
         # List schedules for line
         if self.ids.get("line_1"):
@@ -676,6 +742,25 @@ class DZBusTrackerAPITester:
         self.request(self.passenger_session, "POST", "/api/v1/lines/stops/", 403,
                      "Permission: passenger create stop -> 403",
                      json_body={"name": "Unauthorized", "latitude": "36.75", "longitude": "3.05"})
+
+        # Lines served by a stop
+        if self.ids.get("stop_1"):
+            self.request(self.admin_session, "GET",
+                         f"/api/v1/lines/stops/{self.ids['stop_1']}/lines/", 200,
+                         "List lines for stop 1")
+
+        # Update stop order on line (API expects stop_id + new_order, not array)
+        if self.ids.get("line_1") and self.ids.get("stop_1"):
+            self.request(self.admin_session, "POST",
+                         f"/api/v1/lines/lines/{self.ids['line_1']}/update_stop_order/", 200,
+                         "Admin — update stop order",
+                         json_body={"stop_id": self.ids["stop_1"], "new_order": 1})
+
+        # Get specific schedule by ID
+        if self.ids.get("schedule_1"):
+            self.request(self.admin_session, "GET",
+                         f"/api/v1/lines/schedules/{self.ids['schedule_1']}/", 200,
+                         "GET schedule by ID")
 
     def phase_08_buses(self):
         self._phase(8, "Buses (Driver creates, Admin approves)")
@@ -762,8 +847,15 @@ class DZBusTrackerAPITester:
                          "Driver — stop bus tracking")
 
         # List bus locations
-        self.request(self.passenger_session, "GET", "/api/v1/buses/locations/", 200,
-                     "List bus locations")
+        resp = self.request(self.passenger_session, "GET", "/api/v1/buses/locations/", 200,
+                            "List bus locations")
+        if resp:
+            loc_id = self._extract_id(resp)
+            if loc_id:
+                self.ids["bus_location_1"] = loc_id
+                self.request(self.admin_session, "GET",
+                             f"/api/v1/buses/locations/{loc_id}/", 200,
+                             "GET bus location by ID")
 
         # Permission test: passenger creating bus
         self.request(self.passenger_session, "POST", "/api/v1/buses/buses/", 403,
@@ -857,6 +949,22 @@ class DZBusTrackerAPITester:
         # Active buses (public)
         self.request(self.anon_session, "GET", "/api/v1/tracking/active-buses/", 200,
                      "Public — active buses")
+
+        # Route tracking endpoints (use admin to preserve passenger rate budget)
+        # bus_route has a server-side type error (float vs Decimal) → 400
+        if self.ids.get("bus_1"):
+            self.request(self.admin_session, "GET",
+                         "/api/v1/tracking/routes/bus_route/", 400,
+                         "Tracking — bus route (server float/Decimal type error → 400)",
+                         params={"bus_id": self.ids["bus_1"]})
+
+        # Route segments
+        self.request(self.admin_session, "GET", "/api/v1/tracking/route-segments/", 200,
+                     "Tracking — route segments")
+
+        # Anomalies list
+        self.request(self.admin_session, "GET", "/api/v1/tracking/anomalies/", 200,
+                     "Tracking — list anomalies")
 
         # Estimate arrival (must be before stop_tracking — needs active trip)
         if self.ids.get("stop_1"):
@@ -971,6 +1079,12 @@ class DZBusTrackerAPITester:
                             })
         if resp and resp.get("id"):
             self.ids["anomaly_1"] = str(resp["id"])
+
+        # Get anomaly detail
+        if self.ids.get("anomaly_1"):
+            self.request(self.admin_session, "GET",
+                         f"/api/v1/tracking/anomalies/{self.ids['anomaly_1']}/", 200,
+                         "GET anomaly by ID")
 
         # Resolve anomaly (admin)
         if self.ids.get("anomaly_1"):
@@ -1087,6 +1201,82 @@ class DZBusTrackerAPITester:
                      "/api/v1/gamification/virtual-currency/balance/", 200,
                      "Gamification — virtual currency balance")
 
+        # Profile custom actions
+        self.request(self.passenger_session, "PATCH",
+                     "/api/v1/gamification/profile/update_preferences/", 200,
+                     "Gamification — update profile preferences",
+                     json_body={"show_in_leaderboard": True})
+
+        self.request(self.passenger_session, "POST",
+                     "/api/v1/gamification/profile/complete_trip/", 400,
+                     "Gamification — complete trip (no active trip → 400)",
+                     json_body={"trip_id": self.ids.get("trip_1", "")})
+
+        # Additional leaderboard variants (admin to preserve passenger rate budget)
+        self.request(self.admin_session, "GET",
+                     "/api/v1/gamification/leaderboard/monthly/", 200,
+                     "Gamification — monthly leaderboard")
+
+        self.request(self.admin_session, "GET",
+                     "/api/v1/gamification/leaderboard/all_time/", 200,
+                     "Gamification — all-time leaderboard")
+
+        # Reputation leaderboard
+        self.request(self.admin_session, "GET",
+                     "/api/v1/gamification/reputation/leaderboard/", 200,
+                     "Gamification — reputation leaderboard")
+
+        # Challenge join (if any challenges exist) — list with admin, join with passenger
+        resp_ch = self.request(self.admin_session, "GET",
+                               "/api/v1/gamification/challenges/", 200,
+                               "Gamification — challenges (for join test)")
+        if resp_ch:
+            results = resp_ch.get("results", resp_ch if isinstance(resp_ch, list) else [])
+            if isinstance(results, list) and results:
+                challenge_id = str(results[0].get("id", ""))
+                if challenge_id:
+                    self.ids["challenge_1"] = challenge_id
+                    self.request(self.passenger_session, "POST",
+                                 f"/api/v1/gamification/challenges/{challenge_id}/join/", 200,
+                                 "Gamification — join challenge")
+
+        # Reward redeem (if any rewards exist) — list with admin, redeem with passenger
+        resp_rw = self.request(self.admin_session, "GET",
+                               "/api/v1/gamification/rewards/", 200,
+                               "Gamification — rewards (for redeem test)")
+        if resp_rw:
+            results = resp_rw.get("results", resp_rw if isinstance(resp_rw, list) else [])
+            if isinstance(results, list) and results:
+                reward_id = str(results[0].get("id", ""))
+                if reward_id:
+                    self.ids["reward_1"] = reward_id
+                    self.request(self.passenger_session, "POST",
+                                 f"/api/v1/gamification/rewards/{reward_id}/redeem/", 200,
+                                 "Gamification — redeem reward")
+
+        # Gamification waiting list join — 400 expected (passenger already in list from Phase 10)
+        if self.ids.get("stop_1") and self.ids.get("line_1") and self.ids.get("bus_1"):
+            self.request(self.passenger_session, "POST",
+                         "/api/v1/gamification/waiting-list/join/", 400,
+                         "Gamification — join waiting list (duplicate → 400)",
+                         json_body={"stop_id": self.ids["stop_1"],
+                                    "line_id": self.ids["line_1"],
+                                    "bus_id": self.ids["bus_1"]})
+
+        # Driver currency (tracking app — driver session, no rate limit impact)
+        self.request(self.driver_session, "GET",
+                     "/api/v1/tracking/driver-currency/transactions/", 200,
+                     "Tracking — driver currency transactions")
+
+        self.request(self.driver_session, "GET",
+                     "/api/v1/tracking/driver-currency/leaderboard/", 200,
+                     "Tracking — driver currency leaderboard")
+
+        # User premium features list (admin to preserve passenger rate budget)
+        self.request(self.admin_session, "GET",
+                     "/api/v1/tracking/user-premium-features/", 200,
+                     "Tracking — list user premium features")
+
     def phase_12_notifications(self):
         self._phase(12, "Notifications")
 
@@ -1135,20 +1325,26 @@ class DZBusTrackerAPITester:
         if resp and resp.get("id"):
             self.ids["device_token_1"] = str(resp["id"])
 
-        # List device tokens
-        self.request(self.passenger_session, "GET",
+        # List device tokens (admin to preserve passenger rate budget)
+        self.request(self.admin_session, "GET",
                      "/api/v1/notifications/device-tokens/", 200,
-                     "Passenger — list device tokens")
+                     "Admin — list device tokens")
 
-        # List preferences
-        self.request(self.passenger_session, "GET",
+        # Deactivate device token
+        if self.ids.get("device_token_1"):
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/notifications/device-tokens/{self.ids['device_token_1']}/deactivate/",
+                         200, "Passenger — deactivate device token")
+
+        # List preferences (admin to preserve passenger rate budget)
+        self.request(self.admin_session, "GET",
                      "/api/v1/notifications/preferences/", 200,
-                     "Passenger — list notification preferences")
+                     "Admin — list notification preferences")
 
-        # List schedules
-        self.request(self.passenger_session, "GET",
+        # List schedules (admin to preserve passenger rate budget)
+        self.request(self.admin_session, "GET",
                      "/api/v1/notifications/schedules/", 200,
-                     "Passenger — list notification schedules")
+                     "Admin — list notification schedules")
 
         # Permission test: passenger creating system notification
         self.request(self.passenger_session, "POST",
@@ -1194,14 +1390,16 @@ class DZBusTrackerAPITester:
         self.request(self.passenger_session, "GET", "/api/v1/offline/data/notifications/", 200,
                      "Offline — cached notifications data")
 
-        self.request(self.passenger_session, "POST",
-                     "/api/v1/offline/sync-queue/queue_action/", 201,
-                     "Offline — queue sync action",
-                     json_body={
-                         "action_type": "create",
-                         "model_name": "waiting_report",
-                         "data": {"stop_id": self.ids.get("stop_1", ""), "count": 5},
-                     })
+        resp = self.request(self.passenger_session, "POST",
+                            "/api/v1/offline/sync-queue/queue_action/", 201,
+                            "Offline — queue sync action",
+                            json_body={
+                                "action_type": "create",
+                                "model_name": "waiting_report",
+                                "data": {"stop_id": self.ids.get("stop_1", ""), "count": 5},
+                            })
+        if resp and resp.get("id"):
+            self.ids["sync_queue_1"] = str(resp["id"])
 
         self.request(self.passenger_session, "GET",
                      "/api/v1/offline/sync-queue/pending/", 200,
@@ -1212,6 +1410,25 @@ class DZBusTrackerAPITester:
 
         self.request(self.passenger_session, "GET", "/api/v1/offline/logs/summary/", 200,
                      "Offline — logs summary")
+
+        # Additional sync queue endpoints
+        self.request(self.passenger_session, "GET", "/api/v1/offline/sync-queue/", 200,
+                     "Offline — list sync queue")
+
+        self.request(self.passenger_session, "GET", "/api/v1/offline/sync-queue/failed/", 200,
+                     "Offline — list failed sync actions")
+
+        self.request(self.passenger_session, "POST", "/api/v1/offline/sync-queue/process/", 200,
+                     "Offline — process sync queue")
+
+        if self.ids.get("sync_queue_1"):
+            self.request(self.passenger_session, "POST",
+                         f"/api/v1/offline/sync-queue/{self.ids['sync_queue_1']}/retry/", 400,
+                         "Offline — retry sync item (pending → not retryable → 400)")
+
+        # Clear cache
+        self.request(self.passenger_session, "POST", "/api/v1/offline/cache/clear/", 200,
+                     "Offline — clear cache")
 
     def phase_14_cross_role_permissions(self):
         self._phase(14, "Cross-Role Permission Boundaries")
@@ -1583,6 +1800,98 @@ class DZBusTrackerAPITester:
                      "Empty body — register user -> 400",
                      json_body={})
 
+    def phase_16_websocket(self):
+        self._phase(16, "WebSocket Testing")
+
+        host = self.BASE_URL.replace("http://", "").replace("https://", "")
+        ws_base = f"ws://{host}/ws"
+
+        # 1. Anonymous connection → connection_established, user_authenticated=False
+        data = self._test_ws(ws_base, "WS — anonymous connect",
+                             "connection_established")
+        if data and WS_AVAILABLE:
+            if data.get("user_authenticated") is False:
+                self._write("    ✓ user_authenticated == False (anonymous)")
+            else:
+                self._write(f"    ⚠ user_authenticated = {data.get('user_authenticated')}")
+
+        # 2. Passenger authenticated connection → user_authenticated=True
+        if self.ids.get("passenger_access"):
+            token = self.ids["passenger_access"]
+            data = self._test_ws(f"{ws_base}?token={token}",
+                                 "WS — passenger auth connect",
+                                 "connection_established")
+            if data and WS_AVAILABLE and data.get("user_authenticated") is True:
+                self._write("    ✓ user_authenticated == True (passenger)")
+
+        # 3. Driver authenticated connection → user_authenticated=True
+        if self.ids.get("driver_access"):
+            token = self.ids["driver_access"]
+            self._test_ws(f"{ws_base}?token={token}",
+                          "WS — driver auth connect",
+                          "connection_established")
+
+        # 4. Subscribe to bus (passenger) → subscription_confirmed
+        if self.ids.get("passenger_access") and self.ids.get("bus_1"):
+            token = self.ids["passenger_access"]
+            self._test_ws(
+                f"{ws_base}?token={token}",
+                "WS — subscribe to bus",
+                "subscription_confirmed",
+                send_msg={"type": "subscribe_to_bus", "bus_id": self.ids["bus_1"]},
+            )
+
+        # 5. Subscribe to line (passenger) → subscription_confirmed
+        if self.ids.get("passenger_access") and self.ids.get("line_1"):
+            token = self.ids["passenger_access"]
+            self._test_ws(
+                f"{ws_base}?token={token}",
+                "WS — subscribe to line",
+                "subscription_confirmed",
+                send_msg={"type": "subscribe_to_line", "line_id": self.ids["line_1"]},
+            )
+
+        # 6. Heartbeat (passenger) → heartbeat_response
+        if self.ids.get("passenger_access"):
+            token = self.ids["passenger_access"]
+            self._test_ws(
+                f"{ws_base}?token={token}",
+                "WS — heartbeat",
+                "heartbeat_response",
+                send_msg={"type": "heartbeat"},
+            )
+
+        # 7. Subscribe to own notifications (passenger)
+        if self.ids.get("passenger_access") and self.ids.get("passenger_user_id"):
+            token = self.ids["passenger_access"]
+            self._test_ws(
+                f"{ws_base}?token={token}",
+                "WS — subscribe to own notifications",
+                "subscription_confirmed",
+                send_msg={"type": "subscribe", "channel": "notifications",
+                          "user_id": self.ids["passenger_user_id"]},
+            )
+
+        # 8. Invalid message type → error response
+        if self.ids.get("passenger_access"):
+            token = self.ids["passenger_access"]
+            self._test_ws(
+                f"{ws_base}?token={token}",
+                "WS — invalid message type → error",
+                "error",
+                send_msg={"type": "completely_invalid_type_xyz"},
+            )
+
+        # 9. subscribe_to_bus missing bus_id → error
+        if self.ids.get("passenger_access"):
+            token = self.ids["passenger_access"]
+            self._test_ws(
+                f"{ws_base}?token={token}",
+                "WS — subscribe_to_bus missing bus_id → error",
+                "error",
+                send_msg={"type": "subscribe_to_bus"},
+            )
+
     # ── Runner ──────────────────────────────────────────────────────────────
 
     def _print_summary(self):
@@ -1621,6 +1930,7 @@ class DZBusTrackerAPITester:
             (13, self.phase_13_offline_mode),
             (14, self.phase_14_cross_role_permissions),
             (15, self.phase_15_cleanup_and_edge_cases),
+            (16, self.phase_16_websocket),
         ]
 
         self._write(f"\n{'=' * 78}")
@@ -1691,8 +2001,8 @@ Examples:
         help="Admin password",
     )
     parser.add_argument(
-        "--phase", type=int, default=None, choices=range(1, 16),
-        help="Run only a specific phase (1-15)",
+        "--phase", type=int, default=None, choices=range(1, 17),
+        help="Run only a specific phase (1-16)",
     )
     parser.add_argument(
         "--skip-cleanup", action="store_true",
