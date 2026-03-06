@@ -1007,6 +1007,9 @@ class DZBusTrackerAPITester:
                      "/api/v1/tracking/bus-lines/stop_tracking/", 200,
                      "Driver — stop tracking on bus-line")
 
+        # Seed an additional driver trip cycle for richer performance stats
+        self._seed_driver_activity()
+
     def phase_10_waiting_system(self):
         self._phase(10, "Waiting System & Reports")
 
@@ -1124,6 +1127,10 @@ class DZBusTrackerAPITester:
 
     def phase_11_gamification(self):
         self._phase(11, "Gamification & Reputation")
+
+        # Seed additional passenger activity now that all stops/buses/lines exist,
+        # ensuring phase_11 assertions see non-trivial currency/reputation state.
+        self._seed_passenger_activity()
 
         # ── Tracking-level gamification ──
         self.request(self.passenger_session, "GET", "/api/v1/tracking/reputation/", 200,
@@ -5000,6 +5007,148 @@ class DZBusTrackerAPITester:
                 self.ids["driver_refresh"] = resp_relogin.get("refresh", self.ids.get("driver_refresh"))
                 self.passed += 1
                 self._write("  PASS  Phase 40 — driver re-login successful, session restored")
+
+    # ── Seeding Helpers ─────────────────────────────────────────────────────
+
+    def _seed_passenger_activity(self) -> None:
+        """Seed realistic passenger activity for richer gamification/notification state.
+
+        Called at the START of phase_11 after all prerequisite data (stops, buses,
+        lines, waiting reports) has been created by phases 7–10. Adds an additional
+        waiting report and device token so phase_11/12 assertions see non-trivial state.
+        """
+        self._write("\n  [seed] Seeding passenger activity...")
+
+        if not self.ids.get("passenger_access"):
+            self._write("  [seed] No passenger token — skipping passenger seed")
+            return
+
+        stop_id = self.ids.get("stop_1")
+        bus_id = self.ids.get("bus_1")
+        line_id = self.ids.get("line_1")
+
+        # Register a web device token (phase_12 registers android; this adds a second)
+        self.request(self.passenger_session, "POST",
+                     "/api/v1/notifications/device-tokens/", 201,
+                     "Seed: passenger web device token",
+                     json_body={
+                         "token": f"pass-web-seed-{RUN_ID}",
+                         "device_type": "web",
+                     })
+
+        # Add a second waiting count report for richer reputation/coin data
+        if stop_id and bus_id and line_id:
+            self.request(self.passenger_session, "POST",
+                         "/api/v1/tracking/waiting-reports/", 201,
+                         "Seed: passenger extra waiting count report",
+                         json_body={
+                             "stop": stop_id,
+                             "bus": bus_id,
+                             "line": line_id,
+                             "reported_count": 6,
+                             "confidence_level": "medium",
+                             "reporter_latitude": ALGIERS_POSTE["latitude"],
+                             "reporter_longitude": ALGIERS_POSTE["longitude"],
+                         })
+
+        # Update notification preferences (creates preference record)
+        self.request(self.passenger_session, "PATCH",
+                     "/api/v1/accounts/profiles/update_notification_preferences/", 200,
+                     "Seed: passenger notification preferences",
+                     json_body={
+                         "push_notifications_enabled": True,
+                         "email_notifications_enabled": True,
+                         "sms_notifications_enabled": False,
+                     })
+
+        self._write("  [seed] Passenger activity seeded")
+
+    def _seed_driver_activity(self) -> None:
+        """Seed an additional driver trip cycle for richer performance/currency state.
+
+        Called at the END of phase_09 after the bus-line assignment exists and the
+        initial trip from phase_09 is complete. Creates one more trip so the driver
+        has ≥2 trips in their history for phase_11 performance stats.
+        """
+        self._write("\n  [seed] Seeding driver activity...")
+
+        driver_id = self.ids.get("driver_id")
+        bus_id = self.ids.get("bus_1")
+        line_id = self.ids.get("line_1")
+        stop_1 = self.ids.get("stop_1")
+        stop_3 = self.ids.get("stop_3") or self.ids.get("stop_2") or stop_1
+
+        if not (driver_id and bus_id):
+            self._write("  [seed] Missing driver or bus ID — skipping driver seed")
+            return
+
+        # Register an android device token (before phase_12 registers one)
+        self.request(self.driver_session, "POST",
+                     "/api/v1/notifications/device-tokens/", 201,
+                     "Seed: driver android device token",
+                     json_body={
+                         "token": f"drv-android-seed-{RUN_ID}",
+                         "device_type": "android",
+                     })
+
+        # Update driver availability to active
+        self.request(self.driver_session, "POST",
+                     f"/api/v1/drivers/drivers/{driver_id}/update_availability/", 200,
+                     "Seed: driver availability active",
+                     json_body={"is_available": True})
+
+        if not (line_id and stop_1):
+            self._write("  [seed] No line/stop for trip seed — partial seed only")
+            return
+
+        # Re-start tracking (phase_09 stopped it — this creates a second trip cycle)
+        start_resp = self.request(self.driver_session, "POST",
+                                  "/api/v1/tracking/bus-lines/start_tracking/", 200,
+                                  "Seed: driver re-start tracking",
+                                  json_body={"line_id": line_id})
+
+        # Create a seed trip
+        trip_resp = self.request(self.driver_session, "POST",
+                                 "/api/v1/tracking/trips/", 201,
+                                 "Seed: driver second trip",
+                                 json_body={
+                                     "bus": bus_id,
+                                     "line": line_id,
+                                     "driver": driver_id,
+                                     "start_stop": stop_1,
+                                     "start_time": datetime.utcnow().isoformat() + "Z",
+                                     "notes": f"Seed trip 2 {RUN_ID}",
+                                 })
+        seed_trip_id = None
+        if trip_resp and trip_resp.get("id"):
+            seed_trip_id = str(trip_resp["id"])
+            self.ids["seed_trip_id"] = seed_trip_id
+
+        # Two GPS updates (simulates in-progress driving)
+        for lat, lon in [("36.7550", "3.0570"), ("36.7590", "3.0545")]:
+            self.request(self.driver_session, "POST",
+                         "/api/v1/tracking/locations/", 201,
+                         f"Seed: driver GPS ({lat},{lon})",
+                         json_body={
+                             "latitude": lat,
+                             "longitude": lon,
+                             "speed": "32.0",
+                             "accuracy": "6.0",
+                         })
+
+        # End the seed trip
+        if seed_trip_id:
+            self.request(self.driver_session, "POST",
+                         f"/api/v1/tracking/trips/{seed_trip_id}/end/", 200,
+                         "Seed: driver end second trip",
+                         json_body={"end_stop": stop_3})
+
+        # Stop tracking
+        self.request(self.driver_session, "POST",
+                     "/api/v1/tracking/bus-lines/stop_tracking/", 200,
+                     "Seed: driver stop tracking after seed trip")
+
+        self._write("  [seed] Driver activity seeded")
 
     # ── Runner ──────────────────────────────────────────────────────────────
 
