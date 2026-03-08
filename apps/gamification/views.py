@@ -237,6 +237,17 @@ class LeaderboardViewSet(viewsets.GenericViewSet):
         leaderboard = GamificationService.get_leaderboard('all_time', limit=100)
         return Response(leaderboard)
     
+    @action(detail=False, methods=['post'], url_path='refresh')
+    def refresh_leaderboards(self, request):
+        """Admin-only: recompute all leaderboards."""
+        if not request.user.is_staff:
+            return Response({'detail': 'Admin only.'}, status=status.HTTP_403_FORBIDDEN)
+        try:
+            GamificationService.update_leaderboards()
+            return Response({'status': 'leaderboards updated'})
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=False, methods=['get'])
     def my_rank(self, request):
         """Get current user's rank in all leaderboards."""
@@ -269,22 +280,43 @@ class LeaderboardViewSet(viewsets.GenericViewSet):
         return Response(ranks)
 
 
-class ChallengeViewSet(viewsets.ReadOnlyModelViewSet):
+class ChallengeViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for challenges.
+    ViewSet for challenges. Read-only for all users; create allowed for staff only.
     """
     queryset = Challenge.objects.filter(is_active=True)
     serializer_class = ChallengeSerializer
     permission_classes = [IsAuthenticated]
     pagination_class = StandardResultsSetPagination
     filterset_class = ChallengeFilter
-    
+
     def get_queryset(self):
         """Get active challenges."""
         from django.utils import timezone
         return super().get_queryset().filter(
             end_date__gte=timezone.now()
         ).order_by('-start_date')
+
+    def create(self, request, *args, **kwargs):
+        """Admin-only: create a challenge."""
+        if not request.user.is_staff:
+            return Response({'detail': 'Admin only.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if not request.user.is_staff:
+            return Response({'detail': 'Admin only.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
+    def partial_update(self, request, *args, **kwargs):
+        if not request.user.is_staff:
+            return Response({'detail': 'Admin only.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().partial_update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        if not request.user.is_staff:
+            return Response({'detail': 'Admin only.'}, status=status.HTTP_403_FORBIDDEN)
+        return super().destroy(request, *args, **kwargs)
     
     @action(detail=True, methods=['post'])
     def join(self, request, pk=None):
