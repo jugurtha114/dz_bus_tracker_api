@@ -61,7 +61,12 @@ fi
 # Start services
 # ---------------------------------------------------------------------------
 echo "Starting DZ Bus Tracker services..."
-docker compose up -d
+docker compose up -d || {
+  echo ""
+  echo "WARNING: One or more services failed to start (see above)." >&2
+  echo "This is often a port conflict on the host. Continuing to check API health..." >&2
+  echo ""
+}
 
 # ---------------------------------------------------------------------------
 # Wait for web service to become healthy
