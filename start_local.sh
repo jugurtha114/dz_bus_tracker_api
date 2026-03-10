@@ -17,7 +17,7 @@ for arg in "$@"; do
     --build) BUILD=true ;;
     *)
       echo "Usage: $0 [--build] [stop]"
-      echo "  (no args)  Start all services in detached mode"
+      echo "  (no args)  Start all services (logs streamed to terminal)"
       echo "  --build    Rebuild Docker images before starting"
       echo "  stop       Bring all services down"
       exit 1
@@ -30,7 +30,7 @@ done
 # ---------------------------------------------------------------------------
 if $STOP; then
   echo "Stopping DZ Bus Tracker services..."
-  docker compose down
+  docker compose down --remove-orphans
   echo "All services stopped."
   exit 0
 fi
@@ -58,50 +58,10 @@ if $BUILD; then
 fi
 
 # ---------------------------------------------------------------------------
-# Start services
-# ---------------------------------------------------------------------------
-echo "Starting DZ Bus Tracker services..."
-docker compose up -d || {
-  echo ""
-  echo "WARNING: One or more services failed to start (see above)." >&2
-  echo "This is often a port conflict on the host. Continuing to check API health..." >&2
-  echo ""
-}
-
-# ---------------------------------------------------------------------------
-# Wait for web service to become healthy
-# ---------------------------------------------------------------------------
-HEALTH_URL="http://localhost:8007/api/health/"
-TIMEOUT=90   # seconds to wait
-INTERVAL=3   # seconds between polls
-elapsed=0
-
-echo "Waiting for API to become ready (up to ${TIMEOUT}s)..."
-
-while true; do
-  if curl --fail --silent --max-time 5 "$HEALTH_URL" > /dev/null 2>&1; then
-    echo "API is ready."
-    break
-  fi
-
-  elapsed=$((elapsed + INTERVAL))
-  if [ "$elapsed" -ge "$TIMEOUT" ]; then
-    echo ""
-    echo "WARNING: API did not respond within ${TIMEOUT}s." >&2
-    echo "Check logs with: docker compose logs web" >&2
-    echo ""
-    break
-  fi
-
-  printf "."
-  sleep "$INTERVAL"
-done
-
-# ---------------------------------------------------------------------------
-# Status summary
+# Status summary (shown before logs stream)
 # ---------------------------------------------------------------------------
 echo ""
-echo "DZ Bus Tracker is running"
+echo "DZ Bus Tracker — starting services (Ctrl+C to stop)"
 echo "-----------------------------------------"
 echo "  API:        http://localhost:8007"
 echo "  Admin:      http://localhost:8007/admin/"
@@ -110,6 +70,9 @@ echo "  Flower:     http://localhost:5556"
 echo "  PostgreSQL: localhost:5433"
 echo "  Redis:      localhost:6380"
 echo "-----------------------------------------"
-echo "To stop:  bash start_local.sh stop"
-echo "     or:  docker compose down"
-echo "Logs:     docker compose logs -f [web|celery|postgres|redis]"
+echo ""
+
+# ---------------------------------------------------------------------------
+# Start services — foreground so all logs stream to terminal
+# ---------------------------------------------------------------------------
+docker compose up
