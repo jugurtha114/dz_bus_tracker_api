@@ -38,6 +38,8 @@ geopy
 
 # Monitoring
 sentry-sdk
+flower
+whitenoise
 
 # Notifications
 firebase-admin

@@ -79,15 +79,15 @@ start_service() {
             ;;
         "celery")
             echo "Starting Celery worker..."
-            celery -A celery_app worker --loglevel=info --concurrency=4
+            celery -A config.celery worker --loglevel=info --concurrency=4
             ;;
         "celery-beat")
             echo "Starting Celery beat scheduler..."
-            celery -A celery_app beat --loglevel=info
+            celery -A config.celery beat --loglevel=info
             ;;
         "flower")
             echo "Starting Flower monitoring..."
-            celery -A celery_app flower --port=5555
+            celery -A config.celery flower --port=5555
             ;;
         *)
             echo "Starting ASGI web server (default)..."
