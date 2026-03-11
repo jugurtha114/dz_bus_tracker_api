@@ -1,5 +1,5 @@
 # Core dependencies
-setuptools
+setuptools<80.0.0
 
 # Django & DRF
 Django==5.2.4
