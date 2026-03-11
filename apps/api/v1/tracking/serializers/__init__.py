@@ -486,18 +486,15 @@ class WaitingCountReportCreateSerializer(BaseSerializer):
 
     def validate(self, data):
         """Validate the report data."""
-        # Ensure either bus or line is provided
-        if not data.get('bus') and not data.get('line'):
-            raise serializers.ValidationError(
-                "Either 'bus' or 'line' must be specified"
-            )
-        
+        # bus and line are both optional — a stop-only report is valid
+        # (CLEAN-6: relaxed from requiring bus OR line)
+
         # Validate reported count is reasonable
         if data.get('reported_count', 0) > 200:
             raise serializers.ValidationError(
                 "Reported count seems unreasonably high"
             )
-        
+
         return data
 
 
