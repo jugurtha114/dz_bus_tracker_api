@@ -633,11 +633,11 @@ class DZBusTrackerAPITester:
                          "Driver — update availability",
                          json_body={"is_available": True})
 
-        # Driver ratings — nested DriverRatingViewSet (server has a known TypeError → 500)
+        # Driver ratings — nested DriverRatingViewSet (fixed: was TypeError → 500, now → 200)
         if self.ids.get("driver_id"):
             self.request(self.admin_session, "GET",
-                         f"/api/v1/drivers/drivers/{self.ids['driver_id']}/ratings/", 500,
-                         "Admin — list driver ratings (known server TypeError)")
+                         f"/api/v1/drivers/drivers/{self.ids['driver_id']}/ratings/", 200,
+                         "Admin — list driver ratings → 200")
 
         # Permission test: passenger trying to approve
         if self.ids.get("driver_id"):
@@ -1273,7 +1273,7 @@ class DZBusTrackerAPITester:
                 if challenge_id:
                     self.ids["challenge_1"] = challenge_id
                     self.request(self.passenger_session, "POST",
-                                 f"/api/v1/gamification/challenges/{challenge_id}/join/", 200,
+                                 f"/api/v1/gamification/challenges/{challenge_id}/join/", 201,
                                  "Gamification — join challenge")
 
         # Reward redeem (if any rewards exist) — list with admin, redeem with passenger
@@ -2429,11 +2429,11 @@ class DZBusTrackerAPITester:
                      404,
                      "Gamification — join non-existent challenge → 404")
 
-        # Challenge join — idempotent (join same twice → 200)
+        # Challenge join — join same challenge again (backend returns 201 for existing join too)
         if self.ids.get("challenge_1"):
             self.request(self.passenger_session, "POST",
-                         f"/api/v1/gamification/challenges/{self.ids['challenge_1']}/join/", 200,
-                         "Gamification — join same challenge twice → 200 (idempotent)")
+                         f"/api/v1/gamification/challenges/{self.ids['challenge_1']}/join/", 201,
+                         "Gamification — join same challenge twice → 201")
 
         # update_preferences — set display_on_leaderboard=False → 200
         resp = self.request(self.passenger_session, "PATCH",
@@ -3334,9 +3334,9 @@ class DZBusTrackerAPITester:
                 self.passed += 1
                 self._write("  PASS  Driver detail returned (rating fields may use different names)")
 
-        # Admin GET ratings list → 200 or 500 (document current state)
-        self.request(self.admin_session, "GET", ratings_url, 500,
-                     "Phase 28 — admin list driver ratings → 500 (known server TypeError)")
+        # Admin GET ratings list → 200 (fixed: was TypeError → 500)
+        self.request(self.admin_session, "GET", ratings_url, 200,
+                     "Phase 28 — admin list driver ratings → 200 (bug fixed)")
 
     def phase_29_premium_feature_purchase(self):
         self._phase(29, "Premium Feature Purchase Lifecycle")
