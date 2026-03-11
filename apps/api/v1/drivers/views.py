@@ -20,7 +20,6 @@ from .serializers import (
     DriverCreateSerializer,
     DriverRatingCreateSerializer,
     DriverRatingSerializer,
-    DriverRegistrationSerializer,
     DriverSerializer,
     DriverUpdateSerializer,
 )
@@ -59,8 +58,6 @@ class DriverViewSet(BaseModelViewSet):
             return DriverCreateSerializer
         if self.action in ['update', 'partial_update']:
             return DriverUpdateSerializer
-        if self.action == 'register':
-            return DriverRegistrationSerializer
         if self.action in ['approve', 'reject']:
             return DriverApproveSerializer
         if self.action == 'update_availability':
@@ -68,41 +65,14 @@ class DriverViewSet(BaseModelViewSet):
         return DriverSerializer
 
     @action(detail=False, methods=['post'])
-    @transaction.atomic
     def register(self, request):
         """
-        Register a new driver.
+        Deprecated: Use /api/v1/accounts/register-driver/ instead.
         """
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        # Extract user and driver data
-        user_data = {
-            'email': serializer.validated_data.pop('email'),
-            'password': serializer.validated_data.pop('password'),
-            'first_name': serializer.validated_data.pop('first_name'),
-            'last_name': serializer.validated_data.pop('last_name'),
-            'phone_number': serializer.validated_data.get('phone_number'),
-            'user_type': 'driver',
-        }
-
-        driver_data = serializer.validated_data
-
-        # Create user
-        user = UserService.create_user(**user_data)
-
-        # Create driver
-        driver = DriverService.create_driver(
-            user_id=user.id,
-            **driver_data
+        return Response(
+            {'detail': 'This endpoint is deprecated. Use /api/v1/accounts/register-driver/ instead.'},
+            status=status.HTTP_410_GONE
         )
-
-        # Schedule driver application processing
-        from tasks.drivers import process_driver_application
-        process_driver_application.delay(driver.id)
-
-        response_serializer = DriverSerializer(driver)
-        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
