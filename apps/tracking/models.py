@@ -970,17 +970,18 @@ class PremiumFeature(BaseModel):
     """
     Model for premium features that can be purchased with virtual currency.
     """
+    # NOTE: Only passenger/general feature types are listed here.
+    # Driver-targeted feature types (fuel_optimization, earnings_tracker,
+    # schedule_optimizer, maintenance_alerts, competition_stats) were removed
+    # in Phase 3 cleanup to keep premium features passenger-focused.
+    # Any existing DB rows with the removed feature_type values remain valid;
+    # they simply will not appear as purchasable options in the UI.
     FEATURE_TYPES = [
         ('route_analytics', _('Advanced Route Analytics')),
         ('performance_insights', _('Detailed Performance Insights')),
         ('passenger_feedback', _('Real-time Passenger Feedback')),
         ('priority_support', _('Priority Customer Support')),
         ('custom_dashboard', _('Customizable Dashboard')),
-        ('fuel_optimization', _('Fuel Optimization Tips')),
-        ('earnings_tracker', _('Advanced Earnings Tracker')),
-        ('schedule_optimizer', _('Smart Schedule Optimizer')),
-        ('maintenance_alerts', _('Predictive Maintenance Alerts')),
-        ('competition_stats', _('Driver Competition Statistics')),
     ]
 
     TARGET_USERS = [
