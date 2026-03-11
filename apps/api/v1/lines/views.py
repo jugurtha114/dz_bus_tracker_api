@@ -100,13 +100,22 @@ class StopViewSet(BaseModelViewSet):
         # Sort by distance
         sorted_stops = sorted(stops, key=lambda x: getattr(x, 'distance', float('inf')))
 
-        # Add distance to response
+        # Apply pagination
+        page = self.paginate_queryset(sorted_stops)
+        if page is not None:
+            response_data = []
+            for stop in page:
+                stop_data = StopSerializer(stop, context={'request': request}).data
+                stop_data['distance'] = getattr(stop, 'distance', None)
+                response_data.append(stop_data)
+            return self.get_paginated_response(response_data)
+
+        # Fallback (no pagination configured)
         response_data = []
         for stop in sorted_stops:
-            stop_data = StopSerializer(stop).data
+            stop_data = StopSerializer(stop, context={'request': request}).data
             stop_data['distance'] = getattr(stop, 'distance', None)
             response_data.append(stop_data)
-
         return Response(response_data)
 
 
