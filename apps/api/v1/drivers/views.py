@@ -41,7 +41,7 @@ class DriverViewSet(BaseModelViewSet):
         """
         if self.action in ['register']:
             return [AllowAny()]
-        if self.action in ['list', 'retrieve']:
+        if self.action in ['list', 'retrieve', 'ratings']:
             return [IsAuthenticated()]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsDriverOrAdmin()]
@@ -149,12 +149,14 @@ class DriverViewSet(BaseModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        DriverService.update_availability(
+        updated_driver = DriverService.update_availability(
             driver_id=driver.id,
             is_available=serializer.validated_data['is_available']
         )
-
-        return Response({'detail': 'Availability updated'})
+        # Refresh from DB to get latest state
+        updated_driver.refresh_from_db()
+        response_serializer = DriverSerializer(updated_driver)
+        return Response(response_serializer.data)
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def profile(self, request):
@@ -171,14 +173,29 @@ class DriverViewSet(BaseModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=['get', 'post'])
     def ratings(self, request, pk=None):
         """
-        Get ratings for a driver.
+        GET: Get ratings for a driver.
+        POST: Submit a rating for a driver.
         """
         driver = self.get_object()
 
-        # Get ratings for this driver
+        if request.method == 'POST':
+            serializer = DriverRatingCreateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            driver_rating = DriverRatingService.rate_driver(
+                driver_id=str(driver.id),
+                user_id=str(request.user.id),
+                rating=serializer.validated_data['rating'],
+                comment=serializer.validated_data.get('comment', '')
+            )
+
+            response_serializer = DriverRatingSerializer(driver_rating)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+        # GET: list ratings
         ratings = DriverRating.objects.filter(driver=driver).order_by('-created_at')
 
         # Apply filtering via FilterSet
@@ -229,16 +246,14 @@ class DriverRatingViewSet(BaseModelViewSet):
         """
         Create a driver rating.
         """
-        driver_id = self.kwargs.get('driver_pk')
-        if not driver_id:
-            return Response(
-                {'detail': 'Driver ID is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        driver = serializer.validated_data.get('driver')
+        if not driver:
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            raise DRFValidationError({'driver': 'Driver is required'})
 
         DriverRatingService.rate_driver(
-            driver_id=driver_id,
-            user_id=self.request.user.id,
+            driver_id=str(driver.id),
+            user_id=str(self.request.user.id),
             rating=serializer.validated_data['rating'],
             comment=serializer.validated_data.get('comment', '')
         )
