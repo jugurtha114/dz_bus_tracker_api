@@ -454,6 +454,11 @@ class PassengerCountViewSet(BaseModelViewSet):
         # Use the first bus (can be enhanced to select a specific bus)
         bus = buses.first()
 
+        # Validate passenger count against bus capacity
+        count = serializer.validated_data.get('count', 0)
+        if bus and bus.capacity and count > bus.capacity * 2:
+            raise DRFValidationError({'count': f'Passenger count ({count}) exceeds maximum allowed ({bus.capacity * 2}).'})
+
         # Create passenger count (service handles trip/line internally)
         passenger_count = PassengerCountService.update_passenger_count(
             bus_id=bus.id,
