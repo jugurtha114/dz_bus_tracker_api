@@ -6,9 +6,8 @@ import logging
 
 from apps.core.constants import BUS_STATUS_ACTIVE
 from apps.core.selectors import get_object_or_404
-from apps.core.utils.cache import get_cached_bus_location, get_cached_bus_passengers
 
-from .models import Bus, BusLocation
+from .models import Bus
 
 logger = logging.getLogger(__name__)
 
@@ -72,60 +71,6 @@ def get_active_buses(driver_id=None):
         queryset = queryset.filter(driver_id=driver_id)
 
     return queryset
-
-
-def get_bus_location(bus_id):
-    """
-    Get the latest location of a bus.
-
-    Args:
-        bus_id: ID of the bus
-
-    Returns:
-        Latest BusLocation object or None
-    """
-    # Always return a model instance from DB (cache stores dicts, not instances)
-    try:
-        return BusLocation.objects.filter(bus_id=bus_id).latest()
-    except BusLocation.DoesNotExist:
-        return None
-
-
-def get_bus_location_history(bus_id, limit=10):
-    """
-    Get location history of a bus.
-
-    Args:
-        bus_id: ID of the bus
-        limit: Maximum number of locations to return
-
-    Returns:
-        Queryset of BusLocation objects
-    """
-    return BusLocation.objects.filter(bus_id=bus_id).order_by('-created_at')[:limit]
-
-
-def get_bus_passenger_count(bus_id):
-    """
-    Get the current passenger count of a bus.
-
-    Args:
-        bus_id: ID of the bus
-
-    Returns:
-        Current passenger count
-    """
-    # Check cache first
-    cached_count = get_cached_bus_passengers(bus_id)
-    if cached_count is not None:
-        return cached_count
-
-    # If not in cache, get from database
-    try:
-        location = BusLocation.objects.filter(bus_id=bus_id).latest()
-        return location.passenger_count
-    except BusLocation.DoesNotExist:
-        return 0
 
 
 def search_buses(query, line_id=None):

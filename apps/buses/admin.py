@@ -4,7 +4,7 @@ Admin configuration for the buses app.
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
-from .models import Bus, BusLocation
+from .models import Bus
 
 
 @admin.register(Bus)
@@ -45,49 +45,6 @@ class BusAdmin(admin.ModelAdmin):
                 "photo",
                 "features",
                 "description",
-            ),
-        }),
-    )
-
-
-@admin.register(BusLocation)
-class BusLocationAdmin(admin.ModelAdmin):
-    """
-    Admin configuration for the BusLocation model.
-    """
-    list_display = (
-        "bus",
-        "latitude",
-        "longitude",
-        "speed",
-        "heading",
-        "is_tracking_active",
-        "passenger_count",
-        "created_at",
-    )
-    list_filter = ("is_tracking_active", "created_at")
-    search_fields = ("bus__license_plate",)
-    raw_id_fields = ("bus",)
-    fieldsets = (
-        (None, {
-            "fields": (
-                "bus",
-                "is_tracking_active",
-                "passenger_count",
-            ),
-        }),
-        (_("Location"), {
-            "fields": (
-                "latitude",
-                "longitude",
-                "altitude",
-                "accuracy",
-            ),
-        }),
-        (_("Movement"), {
-            "fields": (
-                "speed",
-                "heading",
             ),
         }),
     )

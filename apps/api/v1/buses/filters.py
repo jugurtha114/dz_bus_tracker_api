@@ -3,8 +3,8 @@ Filters for the buses API.
 """
 from django_filters import rest_framework as filters
 
-from apps.api.filters import BaseFilterSet, GeoLocationFilterMixin, SearchFilterMixin
-from apps.buses.models import Bus, BusLocation
+from apps.api.filters import BaseFilterSet, SearchFilterMixin
+from apps.buses.models import Bus
 
 
 class BusFilter(BaseFilterSet, SearchFilterMixin):
@@ -33,25 +33,3 @@ class BusFilter(BaseFilterSet, SearchFilterMixin):
             'min_capacity', 'max_capacity', 'year', 'min_year', 'max_year',
         ]
         search_fields = ['license_plate', 'manufacturer', 'model', 'description']
-
-
-class BusLocationFilter(BaseFilterSet, GeoLocationFilterMixin):
-    """
-    Filter for bus locations.
-    """
-    bus_id = filters.UUIDFilter(field_name='bus__id')
-    min_speed = filters.NumberFilter(field_name='speed', lookup_expr='gte')
-    max_speed = filters.NumberFilter(field_name='speed', lookup_expr='lte')
-    is_tracking_active = filters.BooleanFilter(field_name='is_tracking_active')
-    min_passenger_count = filters.NumberFilter(field_name='passenger_count', lookup_expr='gte')
-    max_passenger_count = filters.NumberFilter(field_name='passenger_count', lookup_expr='lte')
-    created_after = filters.IsoDateTimeFilter(field_name='created_at', lookup_expr='gte')
-    created_before = filters.IsoDateTimeFilter(field_name='created_at', lookup_expr='lte')
-
-    class Meta:
-        model = BusLocation
-        fields = [
-            'bus_id', 'min_speed', 'max_speed', 'is_tracking_active',
-            'min_passenger_count', 'max_passenger_count',
-            'created_after', 'created_before',
-        ]
