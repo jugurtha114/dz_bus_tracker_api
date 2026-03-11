@@ -318,13 +318,24 @@ class WaitingReportService(BaseService):
             reputation.total_reports += 1
             reputation.save()
             
-            # Award base coins for reporting
+            # Award base coins for reporting with diminishing returns for multiple reporters
             base_reward = 50
             multiplier = float(reputation.trust_multiplier)
             proximity_bonus = 20 if location_verified else 0
             early_adopter_bonus = cls._calculate_early_adopter_bonus(stop_id, bus_id)
-            
-            total_reward = int((base_reward * multiplier) + proximity_bonus + early_adopter_bonus)
+
+            # Diminishing returns for multiple reporters at same stop in last 10 minutes
+            reporter_count = WaitingCountReport.objects.filter(
+                stop_id=stop_id,
+                created_at__gte=timezone.now() - timedelta(minutes=10)
+            ).exclude(reporter=user).count()
+
+            diminishing_factors = [1.0, 0.7, 0.4, 0.2]
+            diminishing_factor = diminishing_factors[min(reporter_count, len(diminishing_factors) - 1)]
+
+            total_reward = int(((base_reward * multiplier) + proximity_bonus + early_adopter_bonus) * diminishing_factor)
+            # Ensure minimum reward of 5 coins
+            total_reward = max(total_reward, 5)
             
             VirtualCurrencyService.add_currency(
                 user_id=reporter_id,
