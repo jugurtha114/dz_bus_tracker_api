@@ -23,6 +23,8 @@ class Stop(BaseModel):
         decimal_places=7,
     )
     address = models.CharField(_("address"), max_length=255, blank=True)
+    wilaya = models.CharField(_("wilaya"), max_length=100, blank=True, default='')
+    commune = models.CharField(_("commune"), max_length=100, blank=True, default='')
     is_active = models.BooleanField(_("active"), default=True)
     description = models.TextField(_("description"), blank=True)
     features = models.JSONField(
@@ -69,6 +71,12 @@ class Line(BaseModel):
         help_text=_("Average frequency in minutes"),
         null=True,
         blank=True,
+    )
+    fare_dza = models.PositiveIntegerField(
+        _("fare (DZA)"),
+        null=True,
+        blank=True,
+        help_text=_("Fare in Algerian Dinars"),
     )
     stops = models.ManyToManyField(
         Stop,

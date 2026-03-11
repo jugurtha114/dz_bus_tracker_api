@@ -19,9 +19,9 @@ class BusSerializer(BaseSerializer):
         model = Bus
         fields = [
             'id', 'license_plate', 'driver', 'driver_details', 'model',
-            'manufacturer', 'year', 'capacity', 'status', 'is_air_conditioned',
-            'photo', 'features', 'description', 'is_active', 'is_approved',
-            'created_at', 'updated_at',
+            'manufacturer', 'year', 'capacity', 'status', 'bus_type',
+            'is_air_conditioned', 'photo', 'features', 'description',
+            'is_active', 'is_approved', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -47,7 +47,8 @@ class BusCreateSerializer(BaseSerializer):
         model = Bus
         fields = [
             'license_plate', 'driver', 'model', 'manufacturer', 'year',
-            'capacity', 'is_air_conditioned', 'photo', 'features', 'description',
+            'capacity', 'bus_type', 'is_air_conditioned', 'photo', 'features',
+            'description',
         ]
 
 
@@ -59,7 +60,7 @@ class BusUpdateSerializer(BaseSerializer):
     class Meta:
         model = Bus
         fields = [
-            'model', 'manufacturer', 'year', 'capacity', 'status',
+            'model', 'manufacturer', 'year', 'capacity', 'status', 'bus_type',
             'is_air_conditioned', 'photo', 'features', 'description',
             'is_active',
         ]
@@ -79,4 +80,4 @@ class BusBriefSerializer(BaseSerializer):
     """
     class Meta:
         model = Bus
-        fields = ['id', 'bus_number', 'license_plate', 'status']
+        fields = ['id', 'bus_number', 'license_plate', 'status', 'bus_type']

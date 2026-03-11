@@ -14,10 +14,12 @@ class StopFilter(BaseFilterSet, SearchFilterMixin, GeoLocationFilterMixin):
     name = filters.CharFilter(field_name='name', lookup_expr='icontains')
     is_active = filters.BooleanFilter(field_name='is_active')
     line_id = filters.UUIDFilter(field_name='lines__id')
+    wilaya = filters.CharFilter(field_name='wilaya', lookup_expr='icontains')
+    commune = filters.CharFilter(field_name='commune', lookup_expr='icontains')
 
     class Meta:
         model = Stop
-        fields = ['name', 'is_active', 'line_id']
+        fields = ['name', 'is_active', 'line_id', 'wilaya', 'commune']
         search_fields = ['name', 'address', 'description']
 
 
@@ -31,10 +33,13 @@ class LineFilter(BaseFilterSet, SearchFilterMixin):
     stop_id = filters.UUIDFilter(field_name='stops__id')
     min_frequency = filters.NumberFilter(field_name='frequency', lookup_expr='gte')
     max_frequency = filters.NumberFilter(field_name='frequency', lookup_expr='lte')
+    max_fare = filters.NumberFilter(field_name='fare_dza', lookup_expr='lte')
+    min_fare = filters.NumberFilter(field_name='fare_dza', lookup_expr='gte')
 
     class Meta:
         model = Line
-        fields = ['code', 'name', 'is_active', 'stop_id', 'min_frequency', 'max_frequency']
+        fields = ['code', 'name', 'is_active', 'stop_id', 'min_frequency', 'max_frequency',
+                  'min_fare', 'max_fare']
         search_fields = ['code', 'name', 'description']
 
 

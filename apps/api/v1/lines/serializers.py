@@ -16,8 +16,8 @@ class StopSerializer(BaseSerializer):
         model = Stop
         fields = [
             'id', 'name', 'latitude', 'longitude', 'address',
-            'is_active', 'description', 'features', 'photo',
-            'created_at', 'updated_at',
+            'wilaya', 'commune', 'is_active', 'description', 'features',
+            'photo', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
 
@@ -30,7 +30,7 @@ class StopCreateSerializer(BaseSerializer):
         model = Stop
         fields = [
             'name', 'latitude', 'longitude', 'address',
-            'description', 'features', 'photo',
+            'wilaya', 'commune', 'description', 'features', 'photo',
         ]
 
 
@@ -42,7 +42,7 @@ class StopUpdateSerializer(BaseSerializer):
         model = Stop
         fields = [
             'name', 'latitude', 'longitude', 'address',
-            'is_active', 'description', 'features', 'photo',
+            'wilaya', 'commune', 'is_active', 'description', 'features', 'photo',
         ]
 
 
@@ -122,7 +122,7 @@ class LineSerializer(BaseSerializer):
         model = Line
         fields = [
             'id', 'name', 'code', 'description', 'is_active',
-            'color', 'frequency', 'stops', 'schedules',
+            'color', 'frequency', 'fare_dza', 'stops', 'schedules',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -165,7 +165,7 @@ class LineCreateSerializer(BaseSerializer):
     class Meta:
         model = Line
         fields = [
-            'name', 'code', 'description', 'color', 'frequency',
+            'name', 'code', 'description', 'color', 'frequency', 'fare_dza',
         ]
 
 
@@ -176,7 +176,7 @@ class LineUpdateSerializer(BaseSerializer):
     class Meta:
         model = Line
         fields = [
-            'name', 'description', 'is_active', 'color', 'frequency',
+            'name', 'description', 'is_active', 'color', 'frequency', 'fare_dza',
         ]
 
 

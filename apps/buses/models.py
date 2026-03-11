@@ -14,6 +14,13 @@ class Bus(BaseModel):
     """
     Model for buses.
     """
+    BUS_TYPE_CHOICES = [
+        ('microbus', _('Microbus')),
+        ('city_bus', _('City Bus')),
+        ('articulated', _('Articulated Bus')),
+        ('minibus', _('Minibus')),
+    ]
+
     license_plate = models.CharField(
         _("license plate"),
         max_length=15,
@@ -43,6 +50,12 @@ class Bus(BaseModel):
         max_length=20,
         choices=BUS_STATUS_CHOICES,
         default=BUS_STATUS_ACTIVE,
+    )
+    bus_type = models.CharField(
+        _("bus type"),
+        max_length=20,
+        choices=BUS_TYPE_CHOICES,
+        default='city_bus',
     )
     is_air_conditioned = models.BooleanField(_("air conditioned"), default=False)
     photo = models.ImageField(
