@@ -1345,8 +1345,9 @@ class DriverPerformanceScoreViewSet(ReadOnlyModelViewSet):
             # Get earnings summary
             earnings_summary = DriverCurrencyService.get_driver_earnings_summary(request.user)
             
+            perf_data = DriverPerformanceScoreSerializer(performance).data
             data = {
-                'performance_score': DriverPerformanceScoreSerializer(performance).data,
+                **perf_data,  # Flatten performance fields to top level
                 'virtual_currency': VirtualCurrencySerializer(currency).data if currency else None,
                 'active_premium_features': UserPremiumFeatureSerializer(active_features, many=True).data,
                 'recent_transactions': DriverCurrencyTransactionSerializer(recent_transactions, many=True).data,
