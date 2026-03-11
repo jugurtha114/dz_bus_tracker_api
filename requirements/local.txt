@@ -1,32 +1,30 @@
 -r base.txt
 
 # Debugging
-django-debug-toolbar==5.0.0
-django-extensions==3.2.3
-ipython==9.0.2
+django-debug-toolbar==6.2.0
+django-extensions==4.1
+ipython==9.11.0
 
 # Testing
-pytest==8.3.3
-pytest-django==4.8.0
-pytest-cov==6.0.0
+pytest==9.0.2
+pytest-django==4.12.0
+pytest-cov==7.0.0
 factory-boy==3.3.3
-coverage==7.10.2
-freezegun==1.5.4
+coverage==7.13.4
+freezegun==1.5.5
 mock==5.2.0
 
 # Code quality
-ruff==0.12.8
-black==24.4.1
+ruff==0.15.5
+black==26.3.0
 flake8==7.3.0
-mypy==1.15.0
-django-stubs #==5.1.2
-djangorestframework-stubs==3.16.1
+mypy==1.19.1
+django-stubs
+djangorestframework-stubs==3.16.8
 
 # Documentation
-sphinx==8.3.0
-sphinx-rtd-theme==3.0.2
-
+sphinx==9.1.0
+sphinx-rtd-theme==3.1.0
 
 # Local development
 watchdog==6.0.0
-

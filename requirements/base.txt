@@ -1,17 +1,18 @@
 # Core dependencies
+# setuptools<80 keeps pkg_resources available for legacy third-party packages
 setuptools<80.0.0
 
 # Django & DRF
-Django==5.2.4
-djangorestframework==3.16
-djangorestframework-simplejwt==5.3.0
-drf-nested-routers==0.94.2
+Django==5.2.12
+djangorestframework==3.16.1
+djangorestframework-simplejwt==5.5.1
+drf-nested-routers==0.95.0
 django-filter
 django-cors-headers
 django-environ
 django-redis
 django-allauth
-drf-spectacular==0.27.0
+drf-spectacular==0.29.0
 
 # Database
 psycopg[binary]

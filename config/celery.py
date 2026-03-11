@@ -5,7 +5,6 @@ import os
 
 from celery import Celery
 from celery.schedules import crontab
-from django.conf import settings
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.local")
@@ -32,95 +31,90 @@ def setup_periodic_tasks(sender, **kwargs):
     # Clean old location data every day at midnight
     sender.add_periodic_task(
         crontab(hour=0, minute=0),
-        "tasks.tracking.clean_old_location_data.s",
+        sender.signature("apps.tracking.tasks.clean_old_location_data"),
+        name="clean-old-location-data-daily",
     )
 
-    # Clean inactive buses every hour
-    sender.add_periodic_task(
-        crontab(minute=0),
-        "tasks.buses.clean_inactive_buses.s",
-    )
-
-    # Update driver stats every day at 1 AM
-    sender.add_periodic_task(
-        crontab(hour=1, minute=0),
-        "tasks.drivers.update_driver_stats.s",
-    )
-
-    # Generate daily reports at 2 AM
-    sender.add_periodic_task(
-        crontab(hour=2, minute=0),
-        "tasks.periodic.generate_daily_reports.s",
-    )
-    
     # Process scheduled notifications every minute
     sender.add_periodic_task(
-        60.0,  # Every 60 seconds
-        "notifications.process_scheduled",
+        60.0,
+        sender.signature("notifications.process_scheduled"),
+        name="process-scheduled-notifications",
     )
-    
+
     # Check for arrival notifications every 2 minutes
     sender.add_periodic_task(
-        120.0,  # Every 120 seconds
-        "notifications.check_arrival_notifications",
+        120.0,
+        sender.signature("notifications.check_arrival_notifications"),
+        name="check-arrival-notifications",
     )
-    
+
     # Send trip updates every minute
     sender.add_periodic_task(
-        60.0,  # Every 60 seconds
-        "notifications.send_trip_updates",
+        60.0,
+        sender.signature("notifications.send_trip_updates"),
+        name="send-trip-updates",
     )
-    
+
     # Clean up old notifications daily at 3 AM
     sender.add_periodic_task(
         crontab(hour=3, minute=0),
-        "notifications.cleanup_old_notifications",
+        sender.signature("notifications.cleanup_old_notifications"),
+        name="cleanup-old-notifications-daily",
     )
-    
+
     # Update leaderboards every hour
     sender.add_periodic_task(
-        crontab(minute=0),  # Every hour at minute 0
-        "gamification.update_leaderboards",
+        crontab(minute=0),
+        sender.signature("gamification.update_leaderboards"),
+        name="update-leaderboards-hourly",
     )
-    
+
     # Check challenge completion daily at 1 AM
     sender.add_periodic_task(
         crontab(hour=1, minute=0),
-        "gamification.check_challenge_completion",
+        sender.signature("gamification.check_challenge_completion"),
+        name="check-challenge-completion-daily",
     )
-    
+
     # Award daily bonus at 2 AM
     sender.add_periodic_task(
         crontab(hour=2, minute=0),
-        "gamification.award_daily_bonus",
+        sender.signature("gamification.award_daily_bonus"),
+        name="award-daily-bonus",
     )
-    
+
     # Auto-sync offline caches every 30 minutes
     sender.add_periodic_task(
-        1800.0,  # Every 30 minutes
-        "offline_mode.check_auto_sync",
+        1800.0,
+        sender.signature("offline_mode.check_auto_sync"),
+        name="check-auto-sync",
     )
-    
+
     # Clean expired cache daily at 4 AM
     sender.add_periodic_task(
         crontab(hour=4, minute=0),
-        "offline_mode.clean_expired_cache",
+        sender.signature("offline_mode.clean_expired_cache"),
+        name="clean-expired-cache-daily",
     )
-    
+
     # Process sync queues every 10 minutes
     sender.add_periodic_task(
-        600.0,  # Every 10 minutes
-        "offline_mode.process_sync_queues",
+        600.0,
+        sender.signature("offline_mode.process_sync_queues"),
+        name="process-sync-queues",
     )
-    
-    # Update cache statistics every hour
+
+    # Update cache statistics every hour at :30
     sender.add_periodic_task(
-        crontab(minute=30),  # Every hour at :30
-        "offline_mode.update_cache_statistics",
+        crontab(minute=30),
+        sender.signature("offline_mode.update_cache_statistics"),
+        name="update-cache-statistics-hourly",
     )
-    
-    # Clean up old logs weekly
+
+    # Clean up old logs weekly on Sunday at 5 AM
     sender.add_periodic_task(
-        crontab(day_of_week=0, hour=5, minute=0),  # Sunday at 5 AM
-        "offline_mode.cleanup_old_logs",
+        crontab(day_of_week=0, hour=5, minute=0),
+        sender.signature("offline_mode.cleanup_old_logs"),
+        name="cleanup-old-logs-weekly",
     )
