@@ -63,27 +63,6 @@ def setup_periodic_tasks(sender, **kwargs):
         name="cleanup-old-notifications-daily",
     )
 
-    # Update leaderboards every hour
-    sender.add_periodic_task(
-        crontab(minute=0),
-        sender.signature("gamification.update_leaderboards"),
-        name="update-leaderboards-hourly",
-    )
-
-    # Check challenge completion daily at 1 AM
-    sender.add_periodic_task(
-        crontab(hour=1, minute=0),
-        sender.signature("gamification.check_challenge_completion"),
-        name="check-challenge-completion-daily",
-    )
-
-    # Award daily bonus at 2 AM
-    sender.add_periodic_task(
-        crontab(hour=2, minute=0),
-        sender.signature("gamification.award_daily_bonus"),
-        name="award-daily-bonus",
-    )
-
     # Auto-sync offline caches every 30 minutes
     sender.add_periodic_task(
         1800.0,

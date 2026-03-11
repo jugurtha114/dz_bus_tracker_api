@@ -22,11 +22,10 @@ urlpatterns = [
 
     # Notifications API
     path('notifications/', include('apps.api.v1.notifications.urls')),
-    
-    # Gamification API
-    path('gamification/', include('apps.gamification.urls')),
+
+    # Offline mode API
     path('offline/', include('apps.offline_mode.urls')),
-    
+
     # Trip history shortcut - redirects to the tracking trips history endpoint
     path('trips/history/', RedirectView.as_view(
         url='/api/v1/tracking/trips/history/',

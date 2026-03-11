@@ -61,7 +61,6 @@ LOCAL_APPS = [
     "apps.lines.apps.LinesConfig",
     "apps.notifications.apps.NotificationsConfig",
     "apps.tracking.apps.TrackingConfig",
-    "apps.gamification.apps.GamificationConfig",
     "apps.offline_mode.apps.OfflineModeConfig",
 ]
 
