@@ -58,11 +58,11 @@ class RouteService:
                     'message': 'Bus is not on an active trip'
                 }
             
-            # Get remaining stops
+            # Get remaining stops (convert Decimal to float for math operations)
             remaining_stops = cls._get_remaining_stops(
                 active_trip.line,
-                latest_location.latitude,
-                latest_location.longitude,
+                float(latest_location.latitude),
+                float(latest_location.longitude),
                 destination_stop_id
             )
             

@@ -181,9 +181,10 @@ class DriverViewSet(BaseModelViewSet):
         # Get ratings for this driver
         ratings = DriverRating.objects.filter(driver=driver).order_by('-created_at')
 
-        # Apply filtering if needed
-        filter_backend = DriverRatingFilter()
-        ratings = filter_backend.filter_queryset(request, ratings, self)
+        # Apply filtering via FilterSet
+        filterset = DriverRatingFilter(request.query_params, queryset=ratings)
+        if filterset.is_valid():
+            ratings = filterset.qs
 
         # Apply pagination
         page = self.paginate_queryset(ratings)

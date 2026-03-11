@@ -626,6 +626,9 @@ class TripViewSet(BaseModelViewSet):
         # End the trip
         TripService.end_trip(trip.id)
 
+        # Refresh instance so is_completed reflects the committed state
+        trip.refresh_from_db()
+
         # Return updated trip
         serializer = self.get_serializer(trip)
         return Response(serializer.data)
