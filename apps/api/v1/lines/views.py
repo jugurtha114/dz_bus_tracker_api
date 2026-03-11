@@ -132,7 +132,7 @@ class LineViewSet(BaseModelViewSet):
         """
         Get permissions based on action.
         """
-        if self.action in ['list', 'retrieve', 'stops', 'schedules']:
+        if self.action in ['list', 'retrieve', 'stops', 'schedules', 'journey']:
             return [IsAuthenticated()]
         return [IsAdminOrReadOnly()]
 
@@ -321,6 +321,33 @@ class LineViewSet(BaseModelViewSet):
 
         serializer = self.get_serializer(lines, many=True)
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def journey(self, request):
+        """
+        Find route options between two stops.
+
+        Query params:
+          - from_stop (UUID): departure stop ID
+          - to_stop (UUID): destination stop ID
+        """
+        from_stop_id = request.query_params.get('from_stop')
+        to_stop_id = request.query_params.get('to_stop')
+
+        if not from_stop_id or not to_stop_id:
+            return Response(
+                {'detail': 'Both from_stop and to_stop parameters are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        from apps.lines.services import JourneyService
+        routes = JourneyService.find_routes(from_stop_id, to_stop_id)
+
+        return Response({
+            'from_stop': from_stop_id,
+            'to_stop': to_stop_id,
+            'routes': routes,
+        })
 
 
 class ScheduleViewSet(BaseModelViewSet):

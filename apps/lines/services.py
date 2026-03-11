@@ -532,3 +532,208 @@ class ScheduleService(BaseService):
         except Exception as e:
             logger.error(f"Error deleting schedule: {e}")
             raise ValidationError(str(e))
+
+
+class JourneyService(BaseService):
+    """
+    Service for journey planning between stops.
+    """
+
+    @classmethod
+    def find_routes(cls, from_stop_id, to_stop_id):
+        """
+        Find route options between two stops.
+
+        Searches for direct routes (same line) and one-transfer routes.
+
+        Args:
+            from_stop_id: UUID of the departure stop
+            to_stop_id: UUID of the destination stop
+
+        Returns:
+            List of route option dicts (up to 10 results).
+        """
+        results = []
+
+        # Find line-stops containing from_stop and to_stop
+        from_line_stops = LineStop.objects.filter(
+            stop_id=from_stop_id, is_active=True
+        ).select_related('line', 'stop')
+
+        to_line_stops = LineStop.objects.filter(
+            stop_id=to_stop_id, is_active=True
+        ).select_related('line', 'stop')
+
+        # Build lookup dicts keyed by line_id
+        from_by_line = {ls.line_id: ls for ls in from_line_stops}
+        to_by_line = {ls.line_id: ls for ls in to_line_stops}
+
+        from_line_ids = set(from_by_line.keys())
+        to_line_ids = set(to_by_line.keys())
+        direct_line_ids = from_line_ids & to_line_ids
+
+        # Direct routes
+        for line_id in direct_line_ids:
+            from_ls = from_by_line[line_id]
+            to_ls = to_by_line[line_id]
+
+            # Direction check: boarding stop must come before alighting stop
+            if from_ls.order >= to_ls.order:
+                continue
+
+            stops_count = to_ls.order - from_ls.order
+            eta_minutes = cls._get_eta_minutes(line_id, from_stop_id)
+
+            results.append({
+                'route_type': 'direct',
+                'line': {
+                    'id': str(from_ls.line.id),
+                    'code': from_ls.line.code,
+                    'name': from_ls.line.name,
+                },
+                'board_at': {
+                    'id': str(from_ls.stop.id),
+                    'name': from_ls.stop.name,
+                },
+                'alight_at': {
+                    'id': str(to_ls.stop.id),
+                    'name': to_ls.stop.name,
+                },
+                'stops_count': stops_count,
+                'eta_minutes': eta_minutes,
+            })
+
+        # One-transfer routes
+        seen_pairs = set()
+        for from_ls in from_line_stops:
+            from_line_id = from_ls.line_id
+            if from_line_id in direct_line_ids:
+                continue
+
+            # Stops on the first line that come after the boarding stop
+            transfer_stop_ids = list(
+                LineStop.objects.filter(
+                    line_id=from_line_id,
+                    order__gt=from_ls.order,
+                    is_active=True,
+                ).values_list('stop_id', flat=True)
+            )
+
+            if not transfer_stop_ids:
+                continue
+
+            for to_ls in to_line_stops:
+                to_line_id = to_ls.line_id
+                if to_line_id == from_line_id:
+                    continue
+
+                pair_key = (from_line_id, to_line_id)
+                if pair_key in seen_pairs:
+                    continue
+
+                # Find the earliest transfer stop on the second line
+                # that is also on the first line after from_stop
+                # and comes before the alighting stop on the second line
+                transfer_on_to_line = LineStop.objects.filter(
+                    line_id=to_line_id,
+                    stop_id__in=transfer_stop_ids,
+                    order__lt=to_ls.order,
+                    is_active=True,
+                ).order_by('order').first()
+
+                if transfer_on_to_line:
+                    seen_pairs.add(pair_key)
+                    from_line = from_ls.line
+                    to_line = to_ls.line
+                    transfer_stop = transfer_on_to_line.stop
+
+                    results.append({
+                        'route_type': 'one_transfer',
+                        'first_leg': {
+                            'line': {
+                                'id': str(from_line.id),
+                                'code': from_line.code,
+                                'name': from_line.name,
+                            },
+                            'board_at': {
+                                'id': str(from_ls.stop.id),
+                                'name': from_ls.stop.name,
+                            },
+                            'alight_at': {
+                                'id': str(transfer_stop.id),
+                                'name': transfer_stop.name,
+                            },
+                        },
+                        'transfer_at': {
+                            'id': str(transfer_stop.id),
+                            'name': transfer_stop.name,
+                        },
+                        'second_leg': {
+                            'line': {
+                                'id': str(to_line.id),
+                                'code': to_line.code,
+                                'name': to_line.name,
+                            },
+                            'board_at': {
+                                'id': str(transfer_stop.id),
+                                'name': transfer_stop.name,
+                            },
+                            'alight_at': {
+                                'id': str(to_ls.stop.id),
+                                'name': to_ls.stop.name,
+                            },
+                        },
+                        'eta_minutes': cls._get_eta_minutes(str(from_ls.line_id), from_stop_id),
+                    })
+
+        return results[:10]
+
+    @classmethod
+    def _get_eta_minutes(cls, line_id, stop_id):
+        """
+        Estimate minutes until next bus arrives at a stop.
+
+        Uses the nearest stop recorded in the latest LocationUpdate of the
+        active trip on the given line and multiplies stops-away by 3 minutes.
+
+        Returns None when no active trip or location data is available.
+        """
+        try:
+            from apps.tracking.models import Trip, LocationUpdate
+
+            active_trip = Trip.objects.filter(
+                line_id=line_id,
+                is_completed=False,
+            ).first()
+
+            if not active_trip:
+                return None
+
+            latest_location = LocationUpdate.objects.filter(
+                trip_id=active_trip.id
+            ).order_by('-created_at').first()
+
+            if not latest_location or not latest_location.nearest_stop:
+                return None
+
+            try:
+                bus_stop_order = LineStop.objects.get(
+                    line_id=line_id,
+                    stop=latest_location.nearest_stop,
+                ).order
+                target_stop_order = LineStop.objects.get(
+                    line_id=line_id,
+                    stop_id=stop_id,
+                ).order
+            except LineStop.DoesNotExist:
+                return None
+
+            stops_away = target_stop_order - bus_stop_order
+            if stops_away <= 0:
+                return None
+
+            # Assume roughly 3 minutes per stop
+            return stops_away * 3
+
+        except Exception:
+            return None
