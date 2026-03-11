@@ -37,3 +37,10 @@ class StrictUserRateThrottle(UserRateThrottle):
     Stricter throttle for authenticated users.
     """
     scope = 'user'
+
+
+class SyncRateThrottle(UserRateThrottle):
+    """
+    Throttle for offline sync operations.
+    """
+    scope = 'sync'

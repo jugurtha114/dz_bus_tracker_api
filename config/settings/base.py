@@ -186,6 +186,7 @@ REST_FRAMEWORK = {
         "anon": "30/min",
         "user": "60/min",
         "location_updates": "100/min",
+        "sync": "200/min",
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
