@@ -587,6 +587,16 @@ class TripViewSet(BaseModelViewSet):
 
         return queryset.select_related('bus', 'driver', 'line', 'start_stop', 'end_stop')
 
+    def perform_create(self, serializer):
+        """
+        Create a trip, enforcing no concurrent active trips on the same bus.
+        """
+        from rest_framework.exceptions import ValidationError as DRFValidationError
+        bus = serializer.validated_data.get('bus')
+        if bus and Trip.objects.filter(bus=bus, is_completed=False).exists():
+            raise DRFValidationError({'bus': 'This bus already has an active trip.'})
+        super().perform_create(serializer)
+
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
         """
