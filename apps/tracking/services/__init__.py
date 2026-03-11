@@ -645,12 +645,16 @@ class TripService(BaseService):
 
                     prev_update = update
 
-                trip_data["distance"] = total_distance
+                # Clamp distance to fit max_digits=10, decimal_places=2
+                total_distance_clamped = min(total_distance, 9999999.99)
+                trip_data["distance"] = Decimal(str(round(total_distance_clamped, 2)))
 
             if "average_speed" not in trip_data and trip_data.get("distance") and trip_data.get("end_time"):
                 duration = (trip_data["end_time"] - trip.start_time).total_seconds() / 3600
                 if duration > 0:
-                    trip_data["average_speed"] = trip_data["distance"] / duration
+                    avg_speed = trip_data["distance"] / Decimal(str(duration))
+                    # Clamp to max_digits=5, decimal_places=2 (max 999.99)
+                    trip_data["average_speed"] = min(avg_speed, Decimal('250.00'))
 
             if "max_passengers" not in trip_data:
                 max_passengers = PassengerCount.objects.filter(
