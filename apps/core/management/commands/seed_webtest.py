@@ -85,15 +85,7 @@ class Command(BaseCommand):
             self._seed_waiting_reports(pass_user, stops)
             self.stdout.write('  ✓ Waiting reports seeded for fixed passenger')
 
-        # ── 8. Seed achievements if none exist ───────────────────────────────
-        self._ensure_achievements()
-        self.stdout.write('  ✓ Achievements ensured')
-
-        # ── 9. Seed challenges ───────────────────────────────────────────────
-        self._ensure_challenges()
-        self.stdout.write('  ✓ Challenges ensured')
-
-        # ── 10. Seed anomalies for the fixed driver's bus ────────────────────
+        # ── 8. Seed anomalies for the fixed driver's bus ────────────────────
         if drv_driver:
             from apps.buses.selectors import get_buses_by_driver
             buses = get_buses_by_driver(drv_driver.id)
@@ -101,21 +93,109 @@ class Command(BaseCommand):
                 self._seed_anomalies(buses.first())
                 self.stdout.write('  ✓ Anomalies seeded')
 
-        # ── 11. Update gamification profile + leaderboard ────────────────────
-        if pass_user:
-            self._update_gamification_profile(pass_user)
-            self.stdout.write('  ✓ Gamification profile updated for passenger')
+        # ── 9. Advance live bus GPS along the route ───────────────────────
+        if live_driver and line and stops:
+            from apps.buses.models import Bus as BusModel
+            live_bus_qs = BusModel.objects.filter(license_plate='FIXLIV-001')
+            if live_bus_qs.exists():
+                self._advance_bus_gps(live_bus_qs.first(), stops)
+                self.stdout.write('  ✓ Live bus GPS advanced along route')
 
-        from apps.gamification.services import GamificationService
-        try:
-            GamificationService.update_leaderboards()
-            self.stdout.write('  ✓ Leaderboards updated')
-        except Exception as e:
-            self.stdout.write(self.style.WARNING(f'  ! Leaderboard update: {e}'))
+        # ── 10. Seed notifications for fixed passenger ────────────────────────
+        if pass_user:
+            self._seed_notifications(pass_user, drv_driver)
+            self.stdout.write('  ✓ Notifications seeded for fixed passenger')
 
         self.stdout.write(self.style.SUCCESS('Seed complete!'))
 
     # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _advance_bus_gps(self, bus, stops):
+        """Push a fresh GPS location that advances along the route each call.
+
+        The bus cycles through 3 positions: approaching stop-0, halfway to
+        stop-0, and close to stop-0.  Using the current LocationUpdate count
+        mod 3 to determine position so each run moves the bus forward.
+        """
+        from apps.tracking.models import LocationUpdate, Trip, BusLine
+        import math
+
+        # Positions: start→alpha stop, interpolated
+        start = (36.7372, 3.0869)
+        stop_alpha = (float(stops[0].latitude), float(stops[0].longitude))
+        stop_beta  = (float(stops[1].latitude), float(stops[1].longitude))
+
+        # Count existing GPS updates to determine step (cycles 0-5)
+        count = LocationUpdate.objects.filter(bus=bus).count()
+        step = count % 8  # 8-step cycle
+
+        def lerp(a, b, t):
+            return (a[0] + (b[0]-a[0])*t, a[1] + (b[1]-a[1])*t)
+
+        if step < 4:
+            # Approaching stop_alpha (0% → 75%)
+            t = step / 4.0 * 0.75
+            pos = lerp(start, stop_alpha, t)
+        else:
+            # Approaching stop_beta (stop_alpha → 75% to beta)
+            t = (step - 4) / 4.0 * 0.75
+            pos = lerp(stop_alpha, stop_beta, t)
+
+        lat, lon = pos
+        # Speed decreases as it approaches a stop
+        speed = 35.0 - (step % 4) * 5.0  # 35, 30, 25, 20 km/h
+
+        active_trip = Trip.objects.filter(bus=bus, end_time__isnull=True).first()
+        try:
+            LocationUpdate.objects.create(
+                bus=bus,
+                trip_id=active_trip.id if active_trip else None,
+                latitude=str(round(lat, 7)),
+                longitude=str(round(lon, 7)),
+                speed=str(speed),
+                heading='315.0',  # Northwest toward Algiers centre
+            )
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f'    GPS advance: {e}'))
+
+    def _seed_notifications(self, user, drv_driver=None):
+        """Create realistic notification records for the passenger user."""
+        from apps.notifications.models import Notification
+        now = timezone.now()
+        notifications = [
+            ('bus_arrival', 'Bus arriving soon',
+             'Bus FIXLIV-001 on FixedTest Line 01 will arrive at Stop Alpha in ~4 minutes.',
+             False, now - timedelta(minutes=3)),
+            ('achievement', 'Achievement Unlocked!',
+             'You earned the "Reporter" badge for submitting 5 waiting reports. +150 coins!',
+             True,  now - timedelta(hours=1)),
+            ('system', 'Welcome to DZ Bus Tracker',
+             'Track buses in real time, report waiting counts, and earn coins for your contributions!',
+             True,  now - timedelta(days=1)),
+            ('tracking', 'Bus delayed',
+             'Bus FIXLIV-001 is running ~8 minutes late on FixedTest Line 01 due to traffic.',
+             False, now - timedelta(minutes=30)),
+            ('reward', 'Coins credited',
+             'You received 50 coins for your accurate waiting count report at Stop Beta.',
+             True,  now - timedelta(hours=3)),
+        ]
+        for ntype, title, msg, is_read, created in notifications:
+            if Notification.objects.filter(user=user, title=title).exists():
+                continue
+            try:
+                n = Notification(
+                    user=user,
+                    notification_type=ntype,
+                    title=title,
+                    message=msg,
+                    channel='push',
+                    is_read=is_read,
+                )
+                n.save()
+                # Manually set created_at using update to get historical timestamps
+                Notification.objects.filter(pk=n.pk).update(created_at=created)
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f'    Notification "{title[:30]}": {e}'))
 
     def _ensure_passenger(self, email: str, password: str):
         """Create or return existing passenger user."""
@@ -366,74 +446,6 @@ class Command(BaseCommand):
                 )
             except Exception as e:
                 self.stdout.write(self.style.WARNING(f'    Waiting report {i}: {e}'))
-
-    def _update_gamification_profile(self, user):
-        """Ensure gamification profile exists with points."""
-        from apps.gamification.services import GamificationService
-        try:
-            profile = GamificationService.get_or_create_profile(str(user.id))
-            # Ensure profile is visible on leaderboard
-            profile.display_on_leaderboard = True
-            profile.save()
-        except Exception as e:
-            self.stdout.write(self.style.WARNING(f'    Gamification profile: {e}'))
-
-    def _ensure_achievements(self):
-        """Create achievement definitions if none exist."""
-        from apps.gamification.models import Achievement
-        if Achievement.objects.count() > 0:
-            return
-        achievements = [
-            ('First Trip', 'Complete your first trip', 'directions_bus', 'trips', 1, 50, 'common'),
-            ('5 Trips',    'Complete 5 trips',         'directions_bus', 'trips', 5, 100, 'common'),
-            ('10 Trips',   'Complete 10 trips',        'directions_bus', 'trips', 10, 200, 'uncommon'),
-            ('50 Trips',   'Complete 50 trips',        'star',           'trips', 50, 500, 'rare'),
-            ('Early Bird', 'Report waiting at dawn',   'wb_sunny',       'social', 1, 75, 'common'),
-            ('Reporter',   'Submit 5 waiting reports', 'record_voice_over', 'social', 5, 150, 'common'),
-            ('10km Rider', 'Travel 10km by bus',       'map',            'distance', 10, 100, 'common'),
-            ('Eco Hero',   'Save 1kg CO2',             'eco',            'eco', 1, 200, 'uncommon'),
-            ('Level 5',    'Reach level 5',            'grade',          'level', 5, 500, 'rare'),
-        ]
-        for name, desc, icon, atype, threshold, pts, rarity in achievements:
-            Achievement.objects.get_or_create(
-                name=name,
-                defaults={
-                    'description': desc, 'icon': icon,
-                    'achievement_type': atype, 'threshold_value': threshold,
-                    'points_reward': pts, 'rarity': rarity,
-                    'is_active': True,
-                }
-            )
-
-    def _ensure_challenges(self):
-        """Create active challenges if none exist."""
-        from apps.gamification.models import Challenge
-        now = timezone.now()
-        active = Challenge.objects.filter(is_active=True, end_date__gte=now).count()
-        if active >= 2:
-            return
-        challenges = [
-            ('Weekly Commuter', 'Take 7 trips this week', 'individual',
-             now - timedelta(days=1), now + timedelta(days=6), 7, 300),
-            ('Community Reporter', 'Submit 10 waiting reports this month', 'community',
-             now - timedelta(days=2), now + timedelta(days=28), 10, 500),
-            ('Eco Warrior', 'Save 5kg of CO2 this month', 'eco',
-             now, now + timedelta(days=30), 5, 400),
-        ]
-        for name, desc, ctype, start, end, target, pts in challenges:
-            Challenge.objects.get_or_create(
-                name=name,
-                defaults={
-                    'description': desc,
-                    'challenge_type': ctype,
-                    'start_date': start,
-                    'end_date': end,
-                    'target_value': target,
-                    'points_reward': pts,
-                    'is_active': True,
-                    'is_completed': False,
-                }
-            )
 
     def _seed_anomalies(self, bus):
         """Create anomaly records for the given bus."""
