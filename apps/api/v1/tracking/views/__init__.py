@@ -589,12 +589,21 @@ class TripViewSet(BaseModelViewSet):
 
     def perform_create(self, serializer):
         """
-        Create a trip, enforcing no concurrent active trips on the same bus.
+        Create a trip, enforcing no concurrent active trips on the same bus
+        and verifying the requesting driver owns the bus.
         """
-        from rest_framework.exceptions import ValidationError as DRFValidationError
+        from rest_framework.exceptions import ValidationError as DRFValidationError, PermissionDenied
         bus = serializer.validated_data.get('bus')
+
+        # Check for existing active trip on this bus
         if bus and Trip.objects.filter(bus=bus, is_completed=False).exists():
             raise DRFValidationError({'bus': 'This bus already has an active trip.'})
+
+        # Check driver owns this bus (skip for admins)
+        if bus and hasattr(self.request.user, 'driver'):
+            if bus.driver != self.request.user.driver:
+                raise PermissionDenied('You are not authorized to use this bus.')
+
         super().perform_create(serializer)
 
     @action(detail=True, methods=['get'])
