@@ -249,6 +249,14 @@ class WaitingReportService(BaseService):
         try:
             user = get_user_by_id(reporter_id)
             stop = get_stop_by_id(stop_id)
+
+            # Verify stop is on the specified line
+            if line_id:
+                from apps.lines.selectors import get_line_by_id
+                from apps.lines.models import LineStop
+                line = get_line_by_id(line_id)
+                if not LineStop.objects.filter(line=line, stop=stop).exists():
+                    raise ValidationError(f"Stop '{stop.name}' is not on line '{line.code}'.")
             
             # Check rate limiting (max 1 report per 10 minutes per stop)
             recent_reports = WaitingCountReport.objects.filter(
