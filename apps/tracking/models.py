@@ -408,6 +408,14 @@ class Anomaly(BaseModel):
     resolved = models.BooleanField(_("resolved"), default=False)
     resolved_at = models.DateTimeField(_("resolved at"), null=True, blank=True)
     resolution_notes = models.TextField(_("resolution notes"), blank=True)
+    reported_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reported_anomalies',
+        verbose_name=_('reported by'),
+    )
 
     class Meta:
         verbose_name = _("anomaly")
@@ -441,14 +449,14 @@ class RouteSegment(BaseModel):
     duration = models.IntegerField(
         help_text=_('Estimated duration in minutes')
     )
-    
+
     class Meta:
         db_table = 'tracking_route_segments'
         unique_together = ['from_stop', 'to_stop']
         indexes = [
             models.Index(fields=['from_stop', 'to_stop']),
         ]
-    
+
     def __str__(self):
         return f"{self.from_stop} -> {self.to_stop}"
 
@@ -575,7 +583,7 @@ class ReputationScore(BaseModel):
     def update_reputation(self):
         """Update reputation level based on accuracy rate."""
         accuracy = self.accuracy_rate
-        
+
         if accuracy >= 95:
             self.reputation_level = 'platinum'
             self.trust_multiplier = 2.00
@@ -588,7 +596,7 @@ class ReputationScore(BaseModel):
         else:
             self.reputation_level = 'bronze'
             self.trust_multiplier = 0.50
-        
+
         self.save()
 
 
@@ -763,7 +771,7 @@ class VirtualCurrency(BaseModel):
         else:
             self.balance += amount  # amount is negative for spending/penalties
             self.lifetime_spent += abs(amount)
-        
+
         self.last_transaction = timezone.now()
         self.save()
 
@@ -792,7 +800,7 @@ class CurrencyTransaction(BaseModel):
         ('reward_purchase', _('Reward Purchase')),
         ('penalty', _('Penalty')),
         ('admin_adjustment', _('Admin Adjustment')),
-        
+
         # Driver transactions
         ('on_time_performance', _('On-Time Performance Bonus')),
         ('excellent_service', _('Excellent Service Rating')),
@@ -866,7 +874,7 @@ class DriverPerformanceScore(BaseModel):
     """
     PERFORMANCE_LEVELS = [
         ('rookie', _('Rookie')),
-        ('experienced', _('Experienced')), 
+        ('experienced', _('Experienced')),
         ('expert', _('Expert')),
         ('master', _('Master')),
     ]
@@ -950,19 +958,19 @@ class DriverPerformanceScore(BaseModel):
     def update_performance_level(self):
         """Update performance level based on metrics."""
         on_time_pct = self.on_time_percentage
-        
-        if (on_time_pct >= 95 and self.safety_score >= 95 and 
-            self.passenger_rating >= 4.5 and self.total_trips >= 100):
+
+        if (on_time_pct >= 95 and self.safety_score >= 95 and
+                self.passenger_rating >= 4.5 and self.total_trips >= 100):
             self.performance_level = 'master'
-        elif (on_time_pct >= 90 and self.safety_score >= 90 and 
+        elif (on_time_pct >= 90 and self.safety_score >= 90 and
               self.passenger_rating >= 4.0 and self.total_trips >= 50):
             self.performance_level = 'expert'
-        elif (on_time_pct >= 80 and self.safety_score >= 85 and 
+        elif (on_time_pct >= 80 and self.safety_score >= 85 and
               self.passenger_rating >= 3.5 and self.total_trips >= 20):
             self.performance_level = 'experienced'
         else:
             self.performance_level = 'rookie'
-        
+
         self.save()
 
 
@@ -1091,8 +1099,6 @@ class UserPremiumFeature(BaseModel):
         if self.is_expired and self.is_active:
             self.is_active = False
             self.save()
-
-
 
 
 __all__ = [

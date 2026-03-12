@@ -690,7 +690,7 @@ class AnomalyService(BaseService):
 
     @classmethod
     @transaction.atomic
-    def create_anomaly(cls, bus_id, anomaly_type, description, **kwargs):
+    def create_anomaly(cls, bus_id, anomaly_type, description, reported_by_id=None, **kwargs):
         """
         Create a new anomaly.
 
@@ -698,6 +698,7 @@ class AnomalyService(BaseService):
             bus_id: ID of the bus
             anomaly_type: Type of anomaly
             description: Description of the anomaly
+            reported_by_id: Optional ID of the user who reported the anomaly
             **kwargs: Additional anomaly data
 
         Returns:
@@ -725,6 +726,9 @@ class AnomalyService(BaseService):
                 "description": description,
                 **kwargs
             }
+
+            if reported_by_id is not None:
+                anomaly_data["reported_by_id"] = reported_by_id
 
             # Create anomaly
             anomaly = create_object(Anomaly, anomaly_data)

@@ -48,6 +48,8 @@ class DriverViewSet(BaseModelViewSet):
             return [IsAdmin()]
         if self.action in ['update_availability']:
             return [IsOwnerOrReadOnly()]
+        if self.action in ['reapply']:
+            return [IsAuthenticated()]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):
@@ -180,6 +182,67 @@ class DriverViewSet(BaseModelViewSet):
             return self.get_paginated_response(serializer.data)
 
         serializer = DriverRatingSerializer(ratings, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    @transaction.atomic
+    def reapply(self, request, pk=None):
+        """
+        Allow a rejected driver to re-apply for approval.
+
+        Only the driver themselves (or an admin) can trigger this action.
+        The driver must currently be in 'rejected' status.
+        """
+        driver = self.get_object()
+
+        # Only the driver themselves or staff can re-apply
+        if driver.user != request.user and not request.user.is_staff:
+            return Response(
+                {'detail': 'You can only re-apply for your own driver application.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Only rejected drivers can re-apply
+        if driver.status != 'rejected':
+            return Response(
+                {
+                    'detail': (
+                        f'Only rejected drivers can re-apply. '
+                        f'Current status: {driver.status}'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Reset status to pending and clear the rejection reason
+        from django.utils import timezone
+        driver.status = 'pending'
+        driver.rejection_reason = ''
+        driver.status_changed_at = timezone.now()
+        driver.save(update_fields=['status', 'rejection_reason', 'status_changed_at'])
+
+        # Notify admin users asynchronously
+        try:
+            from apps.notifications.services import NotificationService
+            from apps.accounts.models import User
+            admins = User.objects.filter(user_type='admin', is_active=True)
+            for admin in admins:
+                NotificationService.create_notification(
+                    user_id=str(admin.id),
+                    notification_type='driver_application',
+                    title='Driver Re-application',
+                    message=f'Driver {driver.user.get_full_name() or driver.user.email} has re-applied.',
+                    data={'driver_id': str(driver.id)},
+                )
+        except Exception:
+            # Notification failure must not roll back the reapply
+            import logging
+            logging.getLogger(__name__).warning(
+                f"Failed to notify admins about driver re-application {driver.id}"
+            )
+
+        driver.refresh_from_db()
+        serializer = DriverSerializer(driver)
         return Response(serializer.data)
 
 

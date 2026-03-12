@@ -734,7 +734,7 @@ class AnomalyViewSet(BaseModelViewSet):
         if self.action in ['list', 'retrieve']:
             return [IsAuthenticated()]
         if self.action in ['create']:
-            return [IsDriverOrAdmin()]
+            return [IsAuthenticated()]
         if self.action in ['update', 'partial_update', 'destroy', 'resolve']:
             return [IsAdmin()]
         return [IsAuthenticated()]
@@ -784,50 +784,50 @@ class AnomalyViewSet(BaseModelViewSet):
 
     def perform_create(self, serializer):
         """
-        Create an anomaly for the driver's bus.
+        Create an anomaly.
+
+        Drivers use their own bus automatically; admins must supply bus_id.
+        Passengers must supply bus_id to identify the bus they are reporting.
+        The reporting user is stored in reported_by for audit purposes.
         """
         from rest_framework.exceptions import ValidationError as DRFValidationError
 
-        # Get bus ID and trip ID based on user type
+        # Determine bus and active trip based on user type
         if self.request.user.user_type == 'driver':
-            # Get bus ID from driver
+            # Drivers report against their own bus
             from apps.drivers.selectors import get_driver_by_user
             driver = get_driver_by_user(self.request.user.id)
 
-            # Get the driver's buses
             from apps.buses.selectors import get_buses_by_driver
             buses = get_buses_by_driver(driver.id)
 
             if not buses:
                 raise DRFValidationError({'detail': 'No buses found for this driver'})
 
-            # Use the first bus
             bus = buses.first()
 
-            # Get active trip
             from apps.tracking.selectors import get_active_trip
             trip = get_active_trip(bus.id)
             trip_id = trip.id if trip else None
         else:
-            # Admin must specify bus ID
+            # Admins and passengers must supply bus_id
             bus_id = self.request.data.get('bus_id')
             if not bus_id:
                 raise DRFValidationError({'detail': 'Bus ID is required'})
 
-            # Get bus
             from apps.buses.selectors import get_bus_by_id
             bus = get_bus_by_id(bus_id)
 
-            # Get trip ID if provided
             trip_id = self.request.data.get('trip_id')
 
-        # Create anomaly
+        # Create anomaly and record who reported it
         validated = serializer.validated_data.copy()
         anomaly = AnomalyService.create_anomaly(
             bus_id=bus.id,
             anomaly_type=validated.pop('type'),
             description=validated.pop('description'),
             trip_id=trip_id,
+            reported_by_id=self.request.user.id,
             **validated
         )
         serializer.instance = anomaly
