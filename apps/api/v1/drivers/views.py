@@ -86,7 +86,8 @@ class DriverViewSet(BaseModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         DriverService.approve_driver(driver.id)
-        return Response({'detail': 'Driver approved'})
+        driver.refresh_from_db()
+        return Response(DriverSerializer(driver, context={'request': request}).data)
 
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
@@ -101,8 +102,8 @@ class DriverViewSet(BaseModelViewSet):
             driver_id=driver.id,
             rejection_reason=serializer.validated_data.get('rejection_reason', '')
         )
-
-        return Response({'detail': 'Driver rejected'})
+        driver.refresh_from_db()
+        return Response(DriverSerializer(driver, context={'request': request}).data)
 
     @action(detail=True, methods=['post'])
     def update_availability(self, request, pk=None):

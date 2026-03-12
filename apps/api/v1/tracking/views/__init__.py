@@ -466,9 +466,21 @@ class PassengerCountViewSet(BaseModelViewSet):
         )
         serializer.instance = passenger_count
 
+_WAITING_PASSENGERS_DEPRECATED_HEADERS = {
+    'X-Deprecated-API': 'true',
+    'X-Deprecation-Notice': (
+        'WaitingPassengers is deprecated. Use /api/v1/tracking/waiting-reports/ instead.'
+    ),
+}
+
+
 class WaitingPassengersViewSet(BaseModelViewSet):
     """
     API endpoint for waiting passengers.
+
+    DEPRECATED: This endpoint is superseded by /api/v1/tracking/waiting-reports/
+    which supports verification, trust scores, and gamification. This model is
+    retained for backward compatibility only — no new consumers should use it.
     """
     queryset = WaitingPassengers.objects.all()
     serializer_class = WaitingPassengersSerializer
@@ -510,6 +522,18 @@ class WaitingPassengersViewSet(BaseModelViewSet):
             queryset = queryset.filter(line_id=line_id)
 
         return queryset.order_by('-created_at')
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        for key, value in _WAITING_PASSENGERS_DEPRECATED_HEADERS.items():
+            response[key] = value
+        return response
+
+    def create(self, request, *args, **kwargs):
+        response = super().create(request, *args, **kwargs)
+        for key, value in _WAITING_PASSENGERS_DEPRECATED_HEADERS.items():
+            response[key] = value
+        return response
 
     def perform_create(self, serializer):
         """
@@ -596,20 +620,29 @@ class TripViewSet(BaseModelViewSet):
         """
         Create a trip, enforcing no concurrent active trips on the same bus
         and verifying the requesting driver owns the bus.
+        Uses select_for_update() to prevent race conditions under concurrent requests.
         """
+        from django.db import transaction as _tx
         from rest_framework.exceptions import ValidationError as DRFValidationError, PermissionDenied
+        from apps.buses.models import Bus as BusModel
+
         bus = serializer.validated_data.get('bus')
 
-        # Check for existing active trip on this bus
-        if bus and Trip.objects.filter(bus=bus, is_completed=False).exists():
-            raise DRFValidationError({'bus': 'This bus already has an active trip.'})
+        with _tx.atomic():
+            if bus:
+                # Lock the bus row to prevent concurrent trip creation
+                bus = BusModel.objects.select_for_update().get(id=bus.id)
 
-        # Check driver owns this bus (skip for admins)
-        if bus and hasattr(self.request.user, 'driver'):
-            if bus.driver != self.request.user.driver:
-                raise PermissionDenied('You are not authorized to use this bus.')
+            # Check for existing active trip on this bus
+            if bus and Trip.objects.filter(bus=bus, is_completed=False).exists():
+                raise DRFValidationError({'bus': 'This bus already has an active trip.'})
 
-        super().perform_create(serializer)
+            # Check driver owns this bus (skip for admins)
+            if bus and hasattr(self.request.user, 'driver'):
+                if bus.driver != self.request.user.driver:
+                    raise PermissionDenied('You are not authorized to use this bus.')
+
+            super().perform_create(serializer)
 
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):

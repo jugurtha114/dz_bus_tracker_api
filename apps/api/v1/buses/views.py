@@ -52,7 +52,7 @@ class BusViewSet(BaseModelViewSet):
             return [IsDriverOrAdmin()]
         if self.action in ['approve', 'activate', 'deactivate']:
             return [IsAdmin()]
-        if self.action in ['update_location', 'stop_tracking']:
+        if self.action in ['update_location', 'update_passenger_count', 'start_tracking', 'stop_tracking']:
             return [IsApprovedDriver()]
         return [IsAuthenticated()]
 
@@ -118,3 +118,67 @@ class BusViewSet(BaseModelViewSet):
             )
 
         return Response({'detail': 'Tracking stopped'})
+
+    @action(detail=True, methods=['post'])
+    def update_location(self, request, pk=None):
+        """Update GPS location for a specific bus."""
+        bus = self.get_object()
+
+        from apps.api.v1.tracking.serializers import LocationUpdateCreateSerializer, LocationUpdateSerializer
+        serializer = LocationUpdateCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        from apps.tracking.services import LocationUpdateService
+        location = LocationUpdateService.record_location_update(
+            bus_id=bus.id, **serializer.validated_data
+        )
+        return Response(LocationUpdateSerializer(location).data)
+
+    @action(detail=True, methods=['post'])
+    def update_passenger_count(self, request, pk=None):
+        """Update passenger count for a specific bus."""
+        bus = self.get_object()
+
+        from apps.api.v1.tracking.serializers import PassengerCountCreateSerializer, PassengerCountSerializer
+        serializer = PassengerCountCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        from apps.tracking.services import PassengerCountService
+        pc = PassengerCountService.update_passenger_count(bus_id=bus.id, **serializer.validated_data)
+        return Response(PassengerCountSerializer(pc).data)
+
+    @action(detail=True, methods=['post'])
+    def start_tracking(self, request, pk=None):
+        """Start tracking a specific bus on a line."""
+        bus = self.get_object()
+
+        line_id = request.data.get('line_id') or request.data.get('line')
+        if not line_id:
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            raise DRFValidationError({'line_id': 'This field is required.'})
+
+        from apps.tracking.services import BusLineService
+        from apps.tracking.models import BusLine
+        from apps.api.v1.tracking.serializers import BusLineSerializer
+
+        try:
+            bus_line, trip = BusLineService.start_tracking(bus_id=bus.id, line_id=line_id)
+            return Response(BusLineSerializer(bus_line).data)
+        except Exception:
+            bus_line = BusLine.objects.filter(bus=bus, line_id=line_id, is_active=True).first()
+            if bus_line:
+                return Response(BusLineSerializer(bus_line).data)
+            return Response({'detail': 'Tracking started'})
+
+
+class BusLocationViewSet(viewsets.ReadOnlyModelViewSet):
+    """Read-only view of bus location updates."""
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        from apps.tracking.models import LocationUpdate
+        return LocationUpdate.objects.all().order_by('-created_at')
+
+    def get_serializer_class(self):
+        from apps.api.v1.tracking.serializers import LocationUpdateSerializer
+        return LocationUpdateSerializer

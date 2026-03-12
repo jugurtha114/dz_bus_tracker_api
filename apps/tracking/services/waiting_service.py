@@ -76,7 +76,18 @@ class WaitingListService(BaseService):
                 existing.save()
                 logger.info(f"Reactivated waiting list for {user.email}")
                 return existing
-            
+
+            # Coin farming prevention: 60-min cooldown per user/bus/stop combo
+            if BusWaitingList.objects.filter(
+                user=user,
+                bus=bus,
+                stop=stop,
+                joined_at__gte=timezone.now() - timedelta(minutes=60),
+            ).exists():
+                raise ValidationError(
+                    "You can only rejoin this waiting list once per 60 minutes."
+                )
+
             # Create new waiting list entry
             waiting_list = BusWaitingList.objects.create(
                 user=user,

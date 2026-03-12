@@ -70,3 +70,16 @@ DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 SECURE_SSL_REDIRECT = False
+
+# Raise throttle limits for local development/testing
+REST_FRAMEWORK = {
+    **REST_FRAMEWORK,  # noqa F405
+    "DEFAULT_THROTTLE_RATES": {
+        "burst": "1000/min",
+        "sustained": "50000/day",
+        "anon": "500/min",
+        "user": "1000/min",
+        "location_updates": "1000/min",
+        "sync": "1000/min",
+    },
+}

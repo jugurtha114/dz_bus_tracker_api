@@ -80,14 +80,24 @@ class LocationUpdateSerializer(BaseSerializer):
     """
     Serializer for location updates.
     """
+    last_seen_minutes_ago = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = LocationUpdate
         fields = [
             'id', 'bus', 'latitude', 'longitude', 'altitude', 'speed',
             'heading', 'accuracy', 'trip_id', 'nearest_stop',
-            'distance_to_stop', 'line', 'created_at', 'updated_at',
+            'distance_to_stop', 'line', 'last_seen_minutes_ago',
+            'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_last_seen_minutes_ago(self, obj) -> int | None:
+        if obj.created_at:
+            from django.utils import timezone
+            delta = (timezone.now() - obj.created_at).total_seconds()
+            return max(0, int(delta / 60))
+        return None
 
 
 class LocationUpdateCreateSerializer(BaseSerializer):

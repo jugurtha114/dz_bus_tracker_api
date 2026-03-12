@@ -675,6 +675,21 @@ class TripService(BaseService):
             # Update trip
             update_object(trip, trip_data)
 
+            # Reset BusLine tracking_status to IDLE if no more active trips for this bus
+            try:
+                still_active = Trip.objects.filter(
+                    bus_id=trip.bus_id, is_completed=False
+                ).exists()
+                if not still_active:
+                    BusLine.objects.filter(
+                        bus_id=trip.bus_id,
+                        tracking_status=BUS_TRACKING_STATUS_ACTIVE
+                    ).update(
+                        tracking_status=BUS_TRACKING_STATUS_IDLE
+                    )
+            except Exception:
+                pass
+
             logger.info(f"Ended trip {trip.id}")
             return trip
 
