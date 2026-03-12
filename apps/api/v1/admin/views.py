@@ -174,8 +174,8 @@ class BusiestStopsView(APIView):
             .values('stop__id', 'stop__name', 'stop__latitude', 'stop__longitude')
             .annotate(
                 report_count=Count('id'),
-                avg_waiting=Avg('passenger_count'),
-                total_waiting=Sum('passenger_count'),
+                avg_waiting=Avg('reported_count'),
+                total_waiting=Sum('reported_count'),
             )
             .order_by('-report_count')[:top_n]
         )

@@ -1,6 +1,7 @@
 """
 Views for the tracking API with comprehensive documentation.
 """
+from django.db import IntegrityError
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -947,6 +948,16 @@ class BusWaitingListViewSet(BaseModelViewSet):
         
         return queryset.select_related('bus', 'stop', 'user').order_by('-joined_at')
     
+    def create(self, request, *args, **kwargs):
+        """Create a waiting list entry, returning 400 on duplicate."""
+        try:
+            return super().create(request, *args, **kwargs)
+        except IntegrityError:
+            return Response(
+                {'detail': 'You are already on this waiting list.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
     @action(detail=False, methods=['post'])
     def join(self, request):
         """Join a waiting list."""
