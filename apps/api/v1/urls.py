@@ -26,6 +26,9 @@ urlpatterns = [
     # Offline mode API
     path('offline/', include('apps.offline_mode.urls')),
 
+    # Admin analytics API (R22)
+    path('admin/', include('apps.api.v1.admin.urls')),
+
     # Trip history shortcut - redirects to the tracking trips history endpoint
     path('trips/history/', RedirectView.as_view(
         url='/api/v1/tracking/trips/history/',

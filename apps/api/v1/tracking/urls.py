@@ -11,6 +11,7 @@ from .views import (
     DriverCurrencyViewSet,
     DriverPerformanceScoreViewSet,
     LocationUpdateViewSet,
+    MyCurrencyViewSet,
     PassengerCountViewSet,
     PremiumFeatureViewSet,
     ReputationScoreViewSet,
@@ -38,6 +39,9 @@ router.register(r'bus-waiting-lists', BusWaitingListViewSet)
 router.register(r'waiting-reports', WaitingCountReportViewSet)
 router.register(r'reputation', ReputationScoreViewSet)
 router.register(r'virtual-currency', VirtualCurrencyViewSet)
+
+# R16 — Unified my-currency endpoint (works for both passengers and drivers)
+router.register(r'my-currency', MyCurrencyViewSet, basename='my-currency')
 
 # Driver performance and premium features endpoints
 router.register(r'driver-performance', DriverPerformanceScoreViewSet)

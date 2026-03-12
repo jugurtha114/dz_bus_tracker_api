@@ -201,3 +201,13 @@ def send_trip_updates():
     except Exception as e:
         logger.error(f"Error sending trip updates: {e}")
         return {'status': 'error', 'message': str(e)}
+
+# R15 — Consolidation: re-export enhanced task functions so callers can
+# import from the canonical tasks.py. enhanced_tasks.py is a deprecated shim.
+from .enhanced_tasks import (  # noqa: E402, F401
+    send_bulk_notification_task,
+    cleanup_invalid_tokens,
+    notification_health_check,
+    test_push_notification,
+    clean_old_data,
+)

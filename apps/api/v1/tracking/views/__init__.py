@@ -1174,12 +1174,51 @@ class VirtualCurrencyViewSet(ReadOnlyModelViewSet):
         """Get virtual currency leaderboard."""
         period = request.query_params.get('period', 'weekly')
         limit = int(request.query_params.get('limit', 10))
-        
+
         leaderboard = VirtualCurrencyService.get_leaderboard(period=period, limit=limit)
         return Response({
             'period': period,
             'leaderboard': leaderboard
         })
+
+
+class MyCurrencyViewSet(ReadOnlyModelViewSet):
+    """
+    R16 — Unified currency endpoint for all user roles.
+
+    GET /api/v1/tracking/my-currency/           → balance (or list for admin)
+    GET /api/v1/tracking/my-currency/balance/   → current user's balance
+    GET /api/v1/tracking/my-currency/transactions/ → transaction history
+    """
+    serializer_class = VirtualCurrencySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        if getattr(self, 'swagger_fake_view', False):
+            return VirtualCurrency.objects.none()
+        if self.request.user.is_staff:
+            return VirtualCurrency.objects.all().select_related('user')
+        return VirtualCurrency.objects.filter(user=self.request.user).select_related('user')
+
+    @action(detail=False, methods=['get'])
+    def balance(self, request):
+        """Get current authenticated user's coin balance regardless of role."""
+        currency = VirtualCurrencyService.get_or_create_currency(str(request.user.id))
+        return Response(VirtualCurrencySerializer(currency).data)
+
+    @action(detail=False, methods=['get'])
+    def transactions(self, request):
+        """Get current user's transaction history."""
+        txns = CurrencyTransaction.objects.filter(
+            user=request.user
+        ).order_by('-created_at')
+
+        page = self.paginate_queryset(txns)
+        if page is not None:
+            return self.get_paginated_response(
+                CurrencyTransactionSerializer(page, many=True).data
+            )
+        return Response(CurrencyTransactionSerializer(txns, many=True).data)
 
 
 @extend_schema_view(

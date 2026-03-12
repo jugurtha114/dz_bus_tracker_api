@@ -1,5 +1,6 @@
 """
-Enhanced Celery tasks for professional notification system.
+DEPRECATED (R15): This file is a legacy module kept for backward compatibility.
+Import task functions from apps.notifications.tasks instead.
 """
 import logging
 from datetime import datetime, timedelta

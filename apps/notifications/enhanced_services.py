@@ -1,5 +1,7 @@
 """
-Enhanced notification services with professional push notification support.
+DEPRECATED (R15): This file is a legacy module kept for backward compatibility.
+Import EnhancedDeviceTokenService and EnhancedNotificationService from
+apps.notifications.services instead.
 """
 import logging
 from datetime import datetime, timedelta

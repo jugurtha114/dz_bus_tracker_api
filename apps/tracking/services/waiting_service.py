@@ -21,6 +21,7 @@ from apps.notifications.services import NotificationService
 from ..models import (
     BusWaitingList,
     CurrencyTransaction,
+    LocationUpdate,
     ReputationScore,
     VirtualCurrency,
     WaitingCountReport,
@@ -33,7 +34,111 @@ class WaitingListService(BaseService):
     """
     Service for managing bus waiting lists.
     """
-    
+
+    @classmethod
+    def _compute_eta(cls, bus, stop) -> Optional[datetime]:
+        """
+        Estimate when *bus* will reach *stop*.
+
+        Strategy:
+        1. Get the bus's most recent location update.
+        2. Find the ordered list of stops remaining on the active line after
+           the bus's current nearest stop.
+        3. Sum straight-line distances between consecutive remaining stops.
+        4. Divide by a speed estimate (last known speed or line average).
+        Returns None if data is insufficient.
+        """
+        try:
+            from apps.lines.models import LineStop
+
+            latest_loc = (
+                LocationUpdate.objects
+                .filter(bus=bus)
+                .select_related('nearest_stop', 'line')
+                .order_by('-created_at')
+                .first()
+            )
+            if not latest_loc:
+                return None
+
+            line = latest_loc.line
+            if not line:
+                # Fall back: any active BusLine for this bus
+                from ..models import BusLine, BUS_TRACKING_STATUS_ACTIVE
+                bl = (
+                    BusLine.objects
+                    .filter(bus=bus, tracking_status=BUS_TRACKING_STATUS_ACTIVE)
+                    .select_related('line')
+                    .first()
+                )
+                if not bl:
+                    return None
+                line = bl.line
+
+            # Ordered stops on this line
+            line_stops = (
+                LineStop.objects
+                .filter(line=line)
+                .select_related('stop')
+                .order_by('order')
+            )
+
+            stop_ids_ordered = [ls.stop_id for ls in line_stops]
+            stop_objs = {ls.stop_id: ls.stop for ls in line_stops}
+
+            # Position of bus's nearest stop and target stop
+            bus_stop_id = (
+                latest_loc.nearest_stop_id
+                if latest_loc.nearest_stop_id
+                else None
+            )
+            target_stop_id = stop.id
+
+            if target_stop_id not in stop_ids_ordered:
+                return None  # stop not on this line
+
+            bus_idx = (
+                stop_ids_ordered.index(bus_stop_id)
+                if bus_stop_id in stop_ids_ordered
+                else 0
+            )
+            target_idx = stop_ids_ordered.index(target_stop_id)
+
+            if target_idx <= bus_idx:
+                # Bus has already passed or is at the target stop
+                return timezone.now() + timedelta(minutes=2)
+
+            # Sum distances from bus current position to target stop
+            remaining = stop_ids_ordered[bus_idx:target_idx + 1]
+            total_distance_km = Decimal('0')
+
+            # Distance from bus to its nearest stop
+            if latest_loc.distance_to_stop:
+                total_distance_km += Decimal(str(latest_loc.distance_to_stop)) / Decimal('1000')
+
+            # Distances between consecutive remaining stops
+            for i in range(len(remaining) - 1):
+                s1 = stop_objs[remaining[i]]
+                s2 = stop_objs[remaining[i + 1]]
+                d = calculate_distance(
+                    float(s1.latitude), float(s1.longitude),
+                    float(s2.latitude), float(s2.longitude),
+                )
+                total_distance_km += Decimal(str(d))
+
+            # Speed estimate: last known speed or 20 km/h default
+            speed_kmh = Decimal('20')
+            if latest_loc.speed and latest_loc.speed > 0:
+                speed_kmh = Decimal(str(latest_loc.speed))
+
+            travel_hours = total_distance_km / speed_kmh
+            travel_seconds = int(travel_hours * 3600)
+            return timezone.now() + timedelta(seconds=travel_seconds)
+
+        except Exception as exc:
+            logger.warning(f"ETA computation failed: {exc}")
+            return None
+
     @classmethod
     @transaction.atomic
     def join_waiting_list(
@@ -87,6 +192,10 @@ class WaitingListService(BaseService):
                 raise ValidationError(
                     "You can only rejoin this waiting list once per 60 minutes."
                 )
+
+            # Compute ETA if not supplied by the caller
+            if estimated_arrival is None:
+                estimated_arrival = cls._compute_eta(bus, stop)
 
             # Create new waiting list entry
             waiting_list = BusWaitingList.objects.create(

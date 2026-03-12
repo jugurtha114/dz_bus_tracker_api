@@ -334,6 +334,58 @@ class DriverService(BaseService):
             raise ValidationError(str(e))
 
 
+def _verify_user_rode_with_driver(user, driver):
+    """
+    R28 — Verify that *user* has a recent interaction with *driver*.
+
+    Interaction counts as either:
+    - A BusWaitingList entry for a bus driven by *driver* in the last 48h, OR
+    - A WaitingCountReport submitted for a bus driven by *driver* in the last 48h.
+
+    Admins bypass this check entirely.
+    """
+    if user.is_staff or user.user_type == 'admin':
+        return
+
+    from django.utils import timezone
+    from datetime import timedelta
+    from apps.tracking.models import BusWaitingList, WaitingCountReport, Trip
+
+    cutoff = timezone.now() - timedelta(hours=48)
+
+    # Find trips completed by this driver in the last 48h
+    recent_trips = Trip.objects.filter(
+        driver=driver,
+        start_time__gte=cutoff,
+    )
+    recent_bus_ids = recent_trips.values_list('bus_id', flat=True)
+
+    # Check BusWaitingList
+    waited = BusWaitingList.objects.filter(
+        user=user,
+        bus_id__in=recent_bus_ids,
+        joined_at__gte=cutoff,
+    ).exists()
+
+    if waited:
+        return
+
+    # Check WaitingCountReport
+    reported = WaitingCountReport.objects.filter(
+        user=user,
+        bus_id__in=recent_bus_ids,
+        created_at__gte=cutoff,
+    ).exists()
+
+    if reported:
+        return
+
+    raise ValidationError(
+        "You can only rate a driver after riding with them. "
+        "No verified interaction with this driver found in the last 48 hours."
+    )
+
+
 class DriverRatingService(BaseService):
     """
     Service for driver rating-related operations.
@@ -362,6 +414,10 @@ class DriverRatingService(BaseService):
             # Validate rating
             if rating < 1 or rating > 5:
                 raise ValidationError("Rating must be between 1 and 5.")
+
+            # R28 — Ride verification: user must have interacted with this driver
+            # (waiting list entry OR waiting report) in the last 48 hours.
+            _verify_user_rode_with_driver(user, driver)
 
             # Create rating
             rating_data = {

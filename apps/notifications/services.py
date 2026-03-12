@@ -759,3 +759,11 @@ class DeviceTokenService(BaseService):
         except Exception as e:
             logger.error(f"Error cleaning inactive tokens: {e}")
             raise ValidationError(str(e))
+
+# R15 — Consolidation: re-export Enhanced* classes so callers can import
+# from a single authoritative module (services.py).
+# The enhanced_services.py file is now a deprecated shim.
+from .enhanced_services import (  # noqa: E402, F401
+    EnhancedDeviceTokenService,
+    EnhancedNotificationService,
+)
