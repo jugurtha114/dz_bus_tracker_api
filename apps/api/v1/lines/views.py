@@ -396,6 +396,7 @@ class ServiceDisruptionViewSet(BaseModelViewSet):
     Creating a disruption automatically broadcasts a Celery notification to admins.
     """
     queryset = ServiceDisruption.objects.select_related('line', 'created_by').all()
+    serializer_class = ServiceDisruptionSerializer
     filterset_fields = ['line', 'is_active', 'disruption_type']
 
     def get_permissions(self):
@@ -415,6 +416,12 @@ class ServiceDisruptionViewSet(BaseModelViewSet):
         """
         Save disruption with the requesting user as creator, then broadcast.
         """
-        from apps.lines.tasks import broadcast_disruption
+        import logging
         disruption = serializer.save(created_by=self.request.user)
-        broadcast_disruption.delay(str(disruption.id))
+        try:
+            from apps.lines.tasks import broadcast_disruption
+            broadcast_disruption.delay(str(disruption.id))
+        except Exception:
+            logging.getLogger(__name__).warning(
+                f"broadcast_disruption task could not be queued for {disruption.id}"
+            )

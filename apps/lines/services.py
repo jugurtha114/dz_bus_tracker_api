@@ -557,11 +557,11 @@ class JourneyService(BaseService):
 
         # Find line-stops containing from_stop and to_stop
         from_line_stops = LineStop.objects.filter(
-            stop_id=from_stop_id, is_active=True
+            stop_id=from_stop_id
         ).select_related('line', 'stop')
 
         to_line_stops = LineStop.objects.filter(
-            stop_id=to_stop_id, is_active=True
+            stop_id=to_stop_id
         ).select_related('line', 'stop')
 
         # Build lookup dicts keyed by line_id
@@ -615,7 +615,6 @@ class JourneyService(BaseService):
                 LineStop.objects.filter(
                     line_id=from_line_id,
                     order__gt=from_ls.order,
-                    is_active=True,
                 ).values_list('stop_id', flat=True)
             )
 
@@ -638,7 +637,6 @@ class JourneyService(BaseService):
                     line_id=to_line_id,
                     stop_id__in=transfer_stop_ids,
                     order__lt=to_ls.order,
-                    is_active=True,
                 ).order_by('order').first()
 
                 if transfer_on_to_line:
