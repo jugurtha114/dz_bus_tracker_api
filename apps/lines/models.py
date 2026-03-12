@@ -178,3 +178,47 @@ class Schedule(BaseModel):
             _("Thursday"), _("Friday"), _("Saturday"), _("Sunday")
         ]
         return f"{self.line} - {days[self.day_of_week]}: {self.start_time} - {self.end_time}"
+
+
+class ServiceDisruption(BaseModel):
+    """
+    Model for service disruptions on a line.
+    """
+    DISRUPTION_TYPES = [
+        ('suspension', _('Service Suspension')),
+        ('delay', _('Major Delay')),
+        ('diversion', _('Route Diversion')),
+        ('other', _('Other')),
+    ]
+
+    line = models.ForeignKey(
+        Line,
+        on_delete=models.CASCADE,
+        related_name='disruptions',
+        verbose_name=_('line'),
+    )
+    disruption_type = models.CharField(
+        _('disruption type'),
+        max_length=20,
+        choices=DISRUPTION_TYPES,
+    )
+    title = models.CharField(_('title'), max_length=200)
+    description = models.TextField(_('description'))
+    start_time = models.DateTimeField(_('start time'))
+    end_time = models.DateTimeField(_('end time'), null=True, blank=True)
+    is_active = models.BooleanField(_('is active'), default=True)
+    created_by = models.ForeignKey(
+        'accounts.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_disruptions',
+        verbose_name=_('created by'),
+    )
+
+    class Meta:
+        verbose_name = _('service disruption')
+        verbose_name_plural = _('service disruptions')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.line.code}: {self.title}"

@@ -8,7 +8,7 @@ from rest_framework.response import Response
 
 from apps.api.viewsets import BaseModelViewSet
 from apps.core.permissions import IsAdmin, IsAdminOrReadOnly
-from apps.lines.models import Line, LineStop, Schedule, Stop
+from apps.lines.models import Line, LineStop, Schedule, ServiceDisruption, Stop
 from apps.lines.services import LineService, ScheduleService, StopService
 
 from .filters import LineFilter, ScheduleFilter, StopFilter
@@ -21,6 +21,8 @@ from .serializers import (
     RemoveStopFromLineSerializer,
     ScheduleCreateSerializer,
     ScheduleSerializer,
+    ServiceDisruptionCreateSerializer,
+    ServiceDisruptionSerializer,
     StopCreateSerializer,
     StopSerializer,
     StopUpdateSerializer,
@@ -384,3 +386,35 @@ class ScheduleViewSet(BaseModelViewSet):
 
         # Order by day of week and start time
         return queryset.order_by('day_of_week', 'start_time')
+
+
+class ServiceDisruptionViewSet(BaseModelViewSet):
+    """
+    API endpoint for service disruptions on bus lines.
+
+    Admins can create disruptions; all authenticated users can read them.
+    Creating a disruption automatically broadcasts a Celery notification to admins.
+    """
+    queryset = ServiceDisruption.objects.select_related('line', 'created_by').all()
+    filterset_fields = ['line', 'is_active', 'disruption_type']
+
+    def get_permissions(self):
+        """
+        Read access for all authenticated users; write access for admins only.
+        """
+        if self.action in ['list', 'retrieve']:
+            return [IsAuthenticated()]
+        return [IsAdmin()]
+
+    def get_serializer_class(self):
+        if self.action == 'create':
+            return ServiceDisruptionCreateSerializer
+        return ServiceDisruptionSerializer
+
+    def perform_create(self, serializer):
+        """
+        Save disruption with the requesting user as creator, then broadcast.
+        """
+        from apps.lines.tasks import broadcast_disruption
+        disruption = serializer.save(created_by=self.request.user)
+        broadcast_disruption.delay(str(disruption.id))

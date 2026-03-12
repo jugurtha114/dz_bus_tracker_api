@@ -4,7 +4,7 @@ Serializers for the lines API.
 from rest_framework import serializers
 
 from apps.api.serializers import BaseSerializer
-from apps.lines.models import Line, LineStop, Schedule, Stop
+from apps.lines.models import Line, LineStop, Schedule, ServiceDisruption, Stop
 from drf_spectacular.utils import extend_schema_field
 
 
@@ -225,3 +225,26 @@ class StopBriefSerializer(BaseSerializer):
     class Meta:
         model = Stop
         fields = ['id', 'name', 'latitude', 'longitude']
+
+
+class ServiceDisruptionSerializer(BaseSerializer):
+    """
+    Serializer for reading service disruptions.
+    """
+    class Meta:
+        model = ServiceDisruption
+        fields = [
+            'id', 'line', 'disruption_type', 'title', 'description',
+            'start_time', 'end_time', 'is_active', 'created_by', 'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
+
+
+class ServiceDisruptionCreateSerializer(BaseSerializer):
+    """
+    Serializer for creating service disruptions.
+    """
+    class Meta:
+        model = ServiceDisruption
+        fields = ['line', 'disruption_type', 'title', 'description', 'start_time', 'end_time']
