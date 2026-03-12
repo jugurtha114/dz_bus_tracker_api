@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from apps.api.serializers import BaseSerializer
 from apps.api.v1.accounts.serializers import UserSerializer
-from apps.drivers.models import Driver, DriverRating
+from apps.drivers.models import Driver, DriverRating, DriverStatusLog
 from drf_spectacular.utils import extend_schema_field
 
 
@@ -153,3 +153,16 @@ class DriverAvailabilitySerializer(serializers.Serializer):
     Serializer for updating driver availability.
     """
     is_available = serializers.BooleanField(required=True)
+
+class DriverStatusLogSerializer(serializers.ModelSerializer):
+    """
+    Serializer for driver status change audit logs.
+    """
+    changed_by_email = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DriverStatusLog
+        fields = ['id', 'from_status', 'to_status', 'changed_by_email', 'reason', 'created_at']
+
+    def get_changed_by_email(self, obj):
+        return obj.changed_by.email if obj.changed_by else None

@@ -544,9 +544,12 @@ class ReputationScore(BaseModel):
         _("total reports"),
         default=0
     )
-    correct_reports = models.PositiveIntegerField(
+    correct_reports = models.DecimalField(
         _("correct reports"),
-        default=0
+        max_digits=10,
+        decimal_places=1,
+        default=0,
+        help_text=_("Supports 0.5 credit for partially_correct verifications")
     )
     reputation_level = models.CharField(
         _("reputation level"),

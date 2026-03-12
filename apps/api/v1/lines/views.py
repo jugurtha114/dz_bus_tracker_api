@@ -112,13 +112,18 @@ class StopViewSet(BaseModelViewSet):
                 response_data.append(stop_data)
             return self.get_paginated_response(response_data)
 
-        # Fallback (no pagination configured)
+        # Build response data with paginated envelope (always)
         response_data = []
         for stop in sorted_stops:
             stop_data = StopSerializer(stop, context={'request': request}).data
             stop_data['distance'] = getattr(stop, 'distance', None)
             response_data.append(stop_data)
-        return Response(response_data)
+        return Response({
+            'count': len(response_data),
+            'next': None,
+            'previous': None,
+            'results': response_data,
+        })
 
 
 class LineViewSet(BaseModelViewSet):

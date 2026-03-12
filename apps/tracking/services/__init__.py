@@ -144,6 +144,14 @@ class BusLineService(BaseService):
             # Get driver
             driver = bus.driver
 
+            # Prevent concurrent active trips on the same bus
+            if Trip.objects.filter(bus=bus, is_completed=False).exists():
+                raise ValidationError("Bus already has an active trip. End the current trip first.")
+
+            # Prevent same driver from having concurrent active trips on different buses
+            if driver and Trip.objects.filter(driver=driver, is_completed=False).exists():
+                raise ValidationError("Driver already has an active trip. End the current trip first.")
+
             # Create trip
             trip = create_object(Trip, {
                 "bus": bus,

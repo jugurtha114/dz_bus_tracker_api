@@ -376,6 +376,16 @@ class PremiumFeatureService:
                     'error': 'Feature already owned and active'
                 }
 
+            # Clean up any expired/inactive records to allow re-purchase (unique_together relief)
+            UserPremiumFeature.objects.filter(
+                user=user,
+                feature=feature,
+                is_active=False
+            ).delete()
+
+            # Reset existing so the create path is used
+            existing = None
+
             # Check if user has sufficient balance
             try:
                 currency = VirtualCurrency.objects.get(user=user)

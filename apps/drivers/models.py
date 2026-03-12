@@ -146,3 +146,41 @@ class DriverRating(BaseModel):
 
     def __str__(self):
         return f"{self.driver} - {self.rating} stars"
+
+class DriverStatusLog(BaseModel):
+    """
+    Audit log for driver status changes.
+    """
+    driver = models.ForeignKey(
+        Driver,
+        on_delete=models.CASCADE,
+        related_name='status_logs',
+        verbose_name=_('driver'),
+    )
+    from_status = models.CharField(
+        _('from status'),
+        max_length=20,
+        choices=DRIVER_STATUS_CHOICES,
+    )
+    to_status = models.CharField(
+        _('to status'),
+        max_length=20,
+        choices=DRIVER_STATUS_CHOICES,
+    )
+    changed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='driver_status_changes',
+        verbose_name=_('changed by'),
+    )
+    reason = models.TextField(_('reason'), blank=True)
+
+    class Meta:
+        verbose_name = _('driver status log')
+        verbose_name_plural = _('driver status logs')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.driver}: {self.from_status} -> {self.to_status}"

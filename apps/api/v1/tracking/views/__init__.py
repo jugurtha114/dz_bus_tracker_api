@@ -456,8 +456,8 @@ class PassengerCountViewSet(BaseModelViewSet):
 
         # Validate passenger count against bus capacity
         count = serializer.validated_data.get('count', 0)
-        if bus and bus.capacity and count > bus.capacity * 2:
-            raise DRFValidationError({'count': f'Passenger count ({count}) exceeds maximum allowed ({bus.capacity * 2}).'})
+        if bus and bus.capacity and count > bus.capacity:
+            raise DRFValidationError({'count': f'Passenger count ({count}) exceeds bus capacity ({bus.capacity}).'})
 
         # Create passenger count (service handles trip/line internally)
         passenger_count = PassengerCountService.update_passenger_count(
@@ -664,12 +664,10 @@ class TripViewSet(BaseModelViewSet):
         """
         trip = self.get_object()
 
-        # Ensure trip isn't already completed
+        # Ensure trip isn't already completed — return 200 for idempotent requests
         if trip.is_completed:
-            return Response(
-                {'detail': 'Trip is already completed'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            serializer = self.get_serializer(trip)
+            return Response(serializer.data)
 
         # Ensure the requester is the driver or an admin
         if (trip.driver.user != request.user and

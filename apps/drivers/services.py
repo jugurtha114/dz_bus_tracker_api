@@ -12,10 +12,23 @@ from apps.core.exceptions import ValidationError
 from apps.core.services import BaseService, create_object, update_object
 from apps.core.utils.cache import cache_driver_rating
 
-from .models import Driver, DriverRating
+from .models import Driver, DriverRating, DriverStatusLog
 from .selectors import get_driver_by_id
 
 logger = logging.getLogger(__name__)
+
+
+def _end_active_trips_for_driver(driver):
+    """End all active trips for the given driver. Called on reject/suspend/deactivate."""
+    from apps.tracking.models import Trip
+    from apps.tracking.services import TripService
+    active_trips = Trip.objects.filter(driver=driver, is_completed=False)
+    for trip in active_trips:
+        try:
+            TripService.end_trip(trip.id)
+            logger.info(f"Auto-ended trip {trip.id} due to driver status change ({driver.status})")
+        except Exception as e:
+            logger.warning(f"Could not auto-end trip {trip.id} on driver status change: {e}")
 
 
 class DriverService(BaseService):
@@ -130,10 +143,19 @@ class DriverService(BaseService):
         driver = get_driver_by_id(driver_id)
 
         try:
+            old_status = driver.status
             driver.status = DRIVER_STATUS_APPROVED
             driver.status_changed_at = timezone.now()
             driver.rejection_reason = ""
             driver.save(update_fields=["status", "status_changed_at", "rejection_reason"])
+
+            # Record status change audit log
+            DriverStatusLog.objects.create(
+                driver=driver,
+                from_status=old_status,
+                to_status=driver.status,
+                reason="",
+            )
 
             logger.info(f"Approved driver: {driver.user.email}")
 
@@ -168,10 +190,22 @@ class DriverService(BaseService):
         driver = get_driver_by_id(driver_id)
 
         try:
+            old_status = driver.status
             driver.status = DRIVER_STATUS_REJECTED
             driver.status_changed_at = timezone.now()
             driver.rejection_reason = rejection_reason
             driver.save(update_fields=["status", "status_changed_at", "rejection_reason"])
+
+            # Record status change audit log
+            DriverStatusLog.objects.create(
+                driver=driver,
+                from_status=old_status,
+                to_status=driver.status,
+                reason=rejection_reason,
+            )
+
+            # End any active trips for this driver
+            _end_active_trips_for_driver(driver)
 
             logger.info(f"Rejected driver: {driver.user.email}")
 
@@ -192,6 +226,61 @@ class DriverService(BaseService):
 
     @classmethod
     @transaction.atomic
+    def suspend_driver(cls, driver_id, reason=""):
+        """
+        Suspend a driver.
+
+        Args:
+            driver_id: ID of the driver to suspend
+            reason: Reason for suspension
+
+        Returns:
+            Suspended driver
+        """
+        driver = get_driver_by_id(driver_id)
+
+        try:
+            old_status = driver.status
+            driver.status = "suspended"
+            driver.status_changed_at = timezone.now()
+            if reason:
+                driver.rejection_reason = reason
+            driver.save(update_fields=["status", "status_changed_at", "rejection_reason"])
+
+            # Record status change audit log
+            DriverStatusLog.objects.create(
+                driver=driver,
+                from_status=old_status,
+                to_status=driver.status,
+                reason=reason,
+            )
+
+            # End any active trips for this driver
+            _end_active_trips_for_driver(driver)
+
+            logger.info(f"Suspended driver: {driver.user.email}")
+
+            # Queue notification
+            from apps.notifications.services import NotificationService
+            NotificationService.create_notification(
+                user_id=driver.user_id,
+                notification_type="system",
+                title="Driver Account Suspended",
+                message=(
+                    f"Your driver account has been suspended. Reason: {reason}"
+                    if reason
+                    else "Your driver account has been suspended."
+                ),
+            )
+
+            return driver
+
+        except Exception as e:
+            logger.error(f"Error suspending driver: {e}")
+            raise ValidationError(str(e))
+
+    @classmethod
+    @transaction.atomic
     def deactivate_driver(cls, driver_id):
         """
         Deactivate a driver.
@@ -207,6 +296,9 @@ class DriverService(BaseService):
         try:
             driver.is_active = False
             driver.save(update_fields=["is_active"])
+
+            # End any active trips for this driver
+            _end_active_trips_for_driver(driver)
 
             logger.info(f"Deactivated driver: {driver.user.email}")
             return driver

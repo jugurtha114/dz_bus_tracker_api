@@ -21,6 +21,7 @@ from .serializers import (
     DriverRatingCreateSerializer,
     DriverRatingSerializer,
     DriverSerializer,
+    DriverStatusLogSerializer,
     DriverUpdateSerializer,
 )
 
@@ -44,12 +45,14 @@ class DriverViewSet(BaseModelViewSet):
             return [IsAuthenticated()]
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [IsDriverOrAdmin()]
-        if self.action in ['approve', 'reject']:
+        if self.action in ['approve', 'reject', 'suspend']:
             return [IsAdmin()]
         if self.action in ['update_availability']:
             return [IsOwnerOrReadOnly()]
         if self.action in ['reapply']:
             return [IsAuthenticated()]
+        if self.action in ['status_history']:
+            return [IsAdmin()]
         return [IsAuthenticated()]
 
     def get_serializer_class(self):
@@ -244,6 +247,29 @@ class DriverViewSet(BaseModelViewSet):
 
         driver.refresh_from_db()
         serializer = DriverSerializer(driver)
+        return Response(serializer.data)
+
+
+    @action(detail=True, methods=['post'])
+    def suspend(self, request, pk=None):
+        """
+        Suspend a driver, ending any active trips immediately.
+        """
+        driver = self.get_object()
+        reason = request.data.get('reason', '')
+        DriverService.suspend_driver(driver.id, reason=reason)
+        driver.refresh_from_db()
+        return Response(DriverSerializer(driver, context={'request': request}).data)
+
+    @action(detail=True, methods=['get'])
+    def status_history(self, request, pk=None):
+        """
+        Get status change history for a driver.
+        """
+        from apps.drivers.models import DriverStatusLog
+        driver = self.get_object()
+        logs = DriverStatusLog.objects.filter(driver=driver).order_by('-created_at')
+        serializer = DriverStatusLogSerializer(logs, many=True)
         return Response(serializer.data)
 
 

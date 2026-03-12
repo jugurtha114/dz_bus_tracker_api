@@ -97,3 +97,10 @@ def setup_periodic_tasks(sender, **kwargs):
         sender.signature("offline_mode.cleanup_old_logs"),
         name="cleanup-old-logs-weekly",
     )
+
+    # Notify waiting passengers when bus is approaching (every 30 seconds)
+    sender.add_periodic_task(
+        30.0,
+        sender.signature("apps.tracking.tasks.notify_waiting_passengers_on_arrival"),
+        name="notify-waiting-passengers-arrival",
+    )

@@ -295,3 +295,76 @@ def detect_anomalies():
     except Exception as e:
         logger.error(f"Error detecting anomalies: {e}")
         return False
+
+@shared_task
+def notify_waiting_passengers_on_arrival():
+    """
+    Notify passengers in the waiting list when their bus is approaching their stop.
+    Triggered periodically (every 30 seconds) by Celery Beat.
+    Checks active LocationUpdates and notifies users in BusWaitingList where
+    the bus is within 300m of the stop they are waiting at.
+    """
+    try:
+        from .models import BusWaitingList
+
+        # Find active waiting list entries that have not been notified
+        active_entries = BusWaitingList.objects.filter(
+            is_active=True,
+            notified_on_arrival=False,
+        ).select_related('bus', 'stop', 'user')
+
+        now = timezone.now()
+        notified_count = 0
+
+        for entry in active_entries:
+            # Get latest location for this bus (within last 2 minutes)
+            try:
+                latest_location = LocationUpdate.objects.filter(
+                    bus=entry.bus,
+                    created_at__gte=now - timedelta(minutes=2),
+                ).order_by('-created_at').first()
+            except Exception:
+                continue
+
+            if not latest_location:
+                continue
+
+            # Calculate distance from bus to the stop
+            distance_km = calculate_distance(
+                float(latest_location.latitude),
+                float(latest_location.longitude),
+                float(entry.stop.latitude),
+                float(entry.stop.longitude),
+            )
+
+            if distance_km is None:
+                continue
+
+            # If bus is within 300 meters of the stop
+            if distance_km <= 0.3:
+                try:
+                    from apps.notifications.services import NotificationService
+                    NotificationService.create_notification(
+                        user_id=str(entry.user.id),
+                        notification_type='arrival',
+                        title='Your bus is arriving!',
+                        message=f'{entry.bus.license_plate} is approaching {entry.stop.name}.',
+                        data={
+                            'bus_id': str(entry.bus.id),
+                            'stop_id': str(entry.stop.id),
+                            'distance_m': int(distance_km * 1000),
+                        }
+                    )
+                    # Mark as notified
+                    entry.notified_on_arrival = True
+                    entry.save(update_fields=['notified_on_arrival', 'updated_at'])
+                    notified_count += 1
+                except Exception as e:
+                    logger.error(f"Error notifying user {entry.user_id} for arrival: {e}")
+
+        logger.info(f"Notified {notified_count} passengers of bus arrival")
+        return notified_count
+
+    except Exception as e:
+        logger.error(f"Error in notify_waiting_passengers_on_arrival: {e}")
+        return 0
