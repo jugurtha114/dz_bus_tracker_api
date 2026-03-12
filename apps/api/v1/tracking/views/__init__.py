@@ -214,6 +214,12 @@ class BusLineViewSet(BaseModelViewSet):
                 tracking_status='active'
             )
         except BusLine.DoesNotExist:
+            # Idempotent: trip may have been ended directly (which resets BusLine to IDLE).
+            # Return the most recent bus-line for this driver so the call succeeds.
+            bus_line = BusLine.objects.filter(bus=bus, is_active=True).order_by('-updated_at').first()
+            if bus_line:
+                response_serializer = BusLineSerializer(bus_line)
+                return Response(response_serializer.data)
             return Response(
                 {'detail': 'No active tracking found for this bus'},
                 status=status.HTTP_400_BAD_REQUEST

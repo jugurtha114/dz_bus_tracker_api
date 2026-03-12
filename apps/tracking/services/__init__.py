@@ -208,7 +208,15 @@ class BusLineService(BaseService):
             trip = get_active_trip(bus_id)
 
             if not trip:
-                raise ValidationError("No active trip found for this bus.")
+                # Trip already ended (e.g. ended via /trips/{id}/end/). Just reset bus-line status.
+                now = timezone.now()
+                bus_line.tracking_status = BUS_TRACKING_STATUS_IDLE
+                bus_line.end_time = now
+                bus_line.save(update_fields=["tracking_status", "end_time", "updated_at"])
+                logger.info(
+                    f"stop_tracking: no active trip for bus {bus_id} — bus-line status reset to IDLE"
+                )
+                return bus_line, None
 
             # Calculate trip statistics
             now = timezone.now()

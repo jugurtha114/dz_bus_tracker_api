@@ -509,7 +509,7 @@ class WaitingReportService(BaseService):
             )
             
         elif verification_status == 'partially_correct':
-            reputation.correct_reports += 0.5  # Partial credit
+            reputation.correct_reports += Decimal('0.5')  # Partial credit
             
             # Smaller bonus for partially correct
             VirtualCurrencyService.add_currency(
