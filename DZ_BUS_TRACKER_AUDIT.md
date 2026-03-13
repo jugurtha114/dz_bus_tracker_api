@@ -1,478 +1,413 @@
-# DZ Bus Tracker — Full-Stack Audit
+# DZ Bus Tracker — Full Project Audit
 
-> Perspective: real Algerian bus operator & daily commuter in a mid-size wilaya.
-> Covers: Django backend + Flutter frontend, integration gaps, and end-to-end flows.
-> Generated: 2026-03-12
+> Perspective: real Algerian bus operator & daily commuter.
+> Covers: Django backend architecture, business logic, security, and completeness.
+> Generated: 2026-03-13
 
 ---
 
 ## 1. Project Overview
 
-**DZ Bus Tracker** is a real-time public-bus tracking platform for Algeria.
+DZ Bus Tracker is a real-time bus tracking system for Algerian cities. It serves three user roles:
 
-| Role | Core need |
-|------|-----------|
-| **Passenger** | Know when the next bus arrives, how crowded it is, earn rewards for contributing crowd data |
-| **Driver** | Broadcast GPS location, manage passenger counts, track performance and earnings |
-| **Admin** | Approve drivers/buses, manage fleet/routes, monitor system health |
+| Role | Purpose |
+|------|---------|
+| **Passenger** | Track live bus positions, report waiting counts at stops, earn virtual currency for accurate reports, purchase premium features |
+| **Driver** | Send GPS coordinates, manage trips (start/end), update passenger counts, verify passenger waiting reports, earn performance-based rewards |
+| **Admin** | Approve/reject/suspend drivers, manage lines/stops/buses, view ridership analytics, resolve anomalies |
 
-**Backend:** Django 5.2 + DRF · PostgreSQL · Redis · Celery · Django Channels (WebSocket) · Uvicorn/ASGI · JWT
-**Frontend:** Flutter 3.8+ · Provider state management · Google Maps / OSRM · WebSocket
-**Push:** Firebase FCM (configured but disabled in Flutter main.dart)
+**Stack:** Django 5.2 + DRF, PostgreSQL, Redis, Celery, Django Channels (WebSocket via Uvicorn), JWT auth. Frontend is Flutter (not yet built — only an audit document exists at `dz_bus_tracker_frontend/`).
+
+**Model hierarchy:**
+```
+BaseModel (UUID pk + timestamps)
+├── User (custom auth, email login, user_type: admin/driver/passenger)
+├── Profile (1:1 User — avatar, language, notification prefs)
+├── Driver (1:1 User — ID card, license, approval status, rating)
+├── DriverRating (FK Driver, FK User — 1-5 stars per day)
+├── DriverStatusLog (audit trail for status changes)
+├── Bus (FK Driver — plate, capacity, type, approval, features)
+├── Stop (lat/lon, wilaya, commune, features)
+├── Line (code, name, color, fare_dza, M2M Stop via LineStop)
+├── LineStop (through — order, distance, time from previous)
+├── Schedule (FK Line — day_of_week, start/end times, frequency)
+├── ServiceDisruption (FK Line — type, title, active period)
+├── BusLine (FK Bus + FK Line — tracking status, trip_id)
+├── Trip (FK Bus + FK Driver + FK Line — start/end times, stats)
+├── LocationUpdate (FK Bus — lat/lon/speed/heading/accuracy/nearest_stop)
+├── PassengerCount (FK Bus — count, capacity, occupancy_rate)
+├── WaitingPassengers (DEPRECATED — FK Stop, FK Line)
+├── WaitingCountReport (FK Stop, FK Bus/Line — crowdsourced, verifiable)
+├── BusWaitingList (FK Bus + FK Stop + FK User — waiting list)
+├── ReputationScore (1:1 User — total/correct reports, level, multiplier)
+├── VirtualCurrency (1:1 User — balance, lifetime earned/spent)
+├── CurrencyTransaction (FK User — ledger entries)
+├── DriverPerformanceScore (1:1 Driver — trips, safety, streaks, level)
+├── PremiumFeature (catalog — name, cost, duration, target users)
+├── UserPremiumFeature (FK User + FK Feature — purchase record)
+├── Anomaly (FK Bus — speed/route/bunching/gap detection)
+├── RouteSegment (FK Stop→Stop — polyline, distance, duration)
+├── Notification (FK User — type, title, message, read status)
+├── NotificationPreference (FK User — channels, quiet hours, favorites)
+├── NotificationSchedule (FK User — future delivery)
+├── DeviceToken (FK User — FCM push tokens)
+├── CacheConfiguration, UserCache, CachedData, SyncQueue, OfflineLog (offline mode)
+```
 
 ---
 
 ## 2. All Workflows & Use Cases
 
-### 2.1 Passenger
+### 2.1 Passenger Workflows
 
-#### Registration & Onboarding
-1. `POST /api/v1/accounts/register/` → auto-creates `Profile`, `ReputationScore` (Bronze), `VirtualCurrency` (0 balance).
-2. First login → `access` + `refresh` JWT tokens; WebSocket connects immediately on splash screen.
-3. Optional: language (fr/ar/en), notification channels.
+#### 2.1.1 Registration & Authentication
+1. `POST /api/v1/accounts/register/` — register with email, password, user_type=passenger
+2. `POST /api/v1/accounts/login/` — receive JWT access+refresh tokens
+3. `GET /api/v1/accounts/profile/` — view/edit profile (language, notification prefs, avatar)
+4. Profile auto-created via signal on User creation
 
-#### Finding a Bus / Route
-1. `GET /api/v1/lines/lines/` — browse routes by name/code.
-2. `GET /api/v1/lines/stops/nearby/?lat=&lon=&radius=` — stops within X metres (**returns raw list, not paginated**).
-3. `GET /api/v1/tracking/active-buses/` — passenger map pins.
-4. WebSocket: `{"type":"subscribe_to_bus","bus_id":"..."}` → live location stream.
-5. No endpoint to plan a journey from Stop A to Stop B.
+#### 2.1.2 Browse & Search
+1. `GET /api/v1/lines/lines/` — list all bus lines with stops, fare, frequency
+2. `GET /api/v1/lines/stops/` — list stops, filter by wilaya/commune
+3. `GET /api/v1/lines/stops/nearby/?latitude=X&longitude=Y&radius=Z` — find stops near GPS position (returns raw list, not paginated)
+4. `GET /api/v1/lines/stops/{id}/lines/` — which lines serve a stop
+5. `GET /api/v1/lines/schedules/` — view schedules by line/day
+6. `GET /api/v1/lines/disruptions/` — active service disruptions
 
-#### Reporting a Waiting Count (Core gamification loop)
-1. Passenger physically at a stop submits `POST /api/v1/tracking/waiting-reports/`.
-2. `bus` OR `line` is required — stop-alone rejected with 400.
-3. Report status = **pending** until a driver verifies it.
-4. On driver verification → reputation updated + coins awarded (base ≥50 + proximity/early-adopter bonuses).
-5. Rate limit: 1 report / 10 minutes / stop / user.
+#### 2.1.3 Live Tracking
+1. Connect WebSocket `ws://host:8007/ws?token=JWT`
+2. Send `{"type": "subscribe_to_line", "line_id": "..."}` or `{"type": "subscribe_to_bus", "bus_id": "..."}`
+3. Receive `bus_location_update` events (but see M4 — not currently broadcast)
+4. `GET /api/v1/tracking/active-buses/` — REST fallback for currently active buses
+5. `GET /api/v1/tracking/locations/?bus_id=X&limit=10` — recent location history
 
-#### Joining a Waiting List
-1. `POST /api/v1/tracking/bus-waiting-lists/` → associates user with bus+stop.
-2. Field `notified_on_arrival` exists on model — **notification is never actually triggered**.
-3. `DELETE /api/v1/tracking/bus-waiting-lists/{id}/` to leave.
+#### 2.1.4 Waiting Count Reports (Crowdsourced)
+1. `POST /api/v1/tracking/waiting-reports/` — report how many people are waiting
+   - Fields: `stop` (required), `bus` or `line` (one required), `reported_count`, `confidence_level`, `reporter_latitude/longitude`
+   - Rate limit: 10-minute cooldown per stop per user
+   - GPS proximity validation (100m radius → `location_verified=true`)
+   - Coin reward: base(50) × trust_multiplier + proximity_bonus(20) + early_adopter_bonus(20), with diminishing returns for multiple reporters at same stop
 
-#### Coin Economy & Premium
-- Balance: `GET /api/v1/tracking/virtual-currency/`
-- Transactions: `GET /api/v1/tracking/virtual-currency/transactions/`
-- Browse features: `GET /api/v1/tracking/premium-features/`
-- Purchase: `POST /api/v1/tracking/user-premium-features/` (deducts coins, sets expiry)
+#### 2.1.5 Bus Waiting List
+1. `POST /api/v1/tracking/bus-waiting-lists/join/` — join waiting list for specific bus at stop
+   - Earns 10 coins; 60-min anti-farming cooldown
+   - System auto-computes ETA via `_compute_eta()` (uses line stops + bus speed)
+2. `POST /api/v1/tracking/bus-waiting-lists/leave/` — leave list
+3. `GET /api/v1/tracking/bus-waiting-lists/summary/?stop_id=X` — waiting summary
+4. Celery task `notify_waiting_passengers_on_arrival` → fires when bus within 300m of stop
 
-#### Notifications (In-App)
-- `GET /api/v1/notifications/notifications/` · `POST /api/v1/notifications/{id}/mark_read/`
-- `GET /api/v1/notifications/notifications/unread_count/`
-- Flutter UI: `NotificationProvider.updatePreference()` is a **placeholder — preferences are never persisted to backend**.
-- Firebase push: **disabled** — `FirebaseMessaging.requestPermission()` commented out in `main.dart`.
+#### 2.1.6 Gamification
+1. `GET /api/v1/tracking/virtual-currency/my_balance/` — balance + lifetime stats
+2. `GET /api/v1/tracking/virtual-currency/transactions/` — full ledger
+3. `GET /api/v1/tracking/virtual-currency/leaderboard/` — weekly/monthly/all-time
+4. `GET /api/v1/tracking/reputation/my_score/` — level, multiplier, accuracy rate, streak, next-level progress
+5. `GET /api/v1/tracking/premium-features/` — browse catalog
+6. `POST /api/v1/tracking/user-premium-features/purchase/` — buy feature with coins
+7. `GET /api/v1/tracking/my-currency/my_balance/` — unified endpoint (works for both passengers and drivers)
 
-#### Offline Mode
-- `POST /api/v1/offline/sync/` — caches lines, stops, schedules, buses.
-- `GET /api/v1/offline/cache-status/` — sync status, expiry, cache size.
-- Offline actions queued in `SyncQueue`; retried on reconnect.
-- Flutter: `LocationSyncService` queues GPS updates when offline; sync on reconnect exists but **not fully tested**.
+#### 2.1.7 Notifications
+1. `GET /api/v1/notifications/notifications/` — list in-app notifications (filterable by `is_read`)
+2. `POST /api/v1/notifications/notifications/{id}/mark_read/`
+3. `GET /api/v1/notifications/notifications/unread_count/`
+4. `POST /api/v1/notifications/device-tokens/` — register FCM push token
+5. `GET/POST /api/v1/notifications/preferences/` — per-type preferences (channels, quiet hours, favorite stops/lines)
+6. `GET/POST /api/v1/notifications/schedules/` — scheduled notifications
+7. WebSocket: `{"type": "subscribe", "channel": "notifications", "user_id": "..."}`
 
----
-
-### 2.2 Driver
-
-#### Registration & Approval
-1. `POST /api/v1/accounts/register-driver/` — multipart with `id_card_number`, `driver_license_number`, photos.
-2. Status = **pending** → cannot start trips or update location.
-3. Admin approves/rejects → push notification to driver (push disabled, so in-app only).
-4. **Re-apply after rejection:** `POST /api/v1/drivers/drivers/{id}/reapply/` exists in backend but **no Flutter screen or provider method calls it** — rejected drivers are stuck.
-
-#### Bus Assignment
-- Buses are **admin-created only** (admin assigns driver FK on Bus record).
-- Drivers cannot self-register their vehicle.
-- Flutter has a `DriverBusRegistrationScreen` and `POST /api/v1/buses/buses/` is listed in ApiEndpoints for drivers — **chicken-and-egg**: endpoint allows driver to POST but only if they are `IsDriverOrAdmin`, yet there is no Bus approval flow visible in the driver-side UI after submission.
-
-#### Starting a Trip
-1. `POST /api/v1/tracking/bus-lines/start_tracking/` with `bus_id` + `line_id`.
-   - Or: `POST /api/v1/tracking/trips/` directly.
-2. Creates `Trip` (start_time, is_completed=false) + sets `BusLine.tracking_status="active"`.
-3. **Requires `IsApprovedDriver`** — but this permission only blocks `status=="pending"`, not `status=="rejected"` or `"suspended"`.
-
-#### Broadcasting Location (every 10–30s)
-1. `POST /api/v1/buses/buses/{id}/update_location/` or `POST /api/v1/tracking/locations/`
-2. System finds nearest stop, caches `bus:location:{bus_id}`, broadcasts to WebSocket group.
-3. Flutter `TrackingScreen` sends GPS every configurable interval while trip is active.
-
-#### Updating Passenger Count
-1. `POST /api/v1/buses/buses/{id}/update_passenger_count/`
-2. `occupancy_rate = min(count / capacity, 1.0)` — **capacity never enforced; count=999 accepted**.
-
-#### Verifying Waiting Reports
-1. `GET /api/v1/tracking/waiting-reports/?verification_status=pending`
-2. `POST /api/v1/tracking/waiting-reports/{id}/verify/` → `{actual_count, verification_status}`
-3. Correct → reporter earns coins; driver earns 15 coins for verification accuracy.
-
-#### Ending a Trip
-1. `POST /api/v1/tracking/trips/{id}/end/` — calculates distance/speed, sets `is_completed=true`.
-2. `DriverPerformanceService.update_trip_performance()` — awards coins, updates streak.
-3. **Also exists:** `POST /api/v1/tracking/bus-lines/stop_tracking/` — two endpoints can end the same trip; state can diverge.
-
-#### Performance & Stats
-- `GET /api/v1/tracking/driver-performance/my_stats/` — **response nested under `performance_score` key**, inconsistent with all other endpoints.
+#### 2.1.8 Offline Mode
+1. `GET /api/v1/offline/cache-config/` — cache settings (duration, max size, what to cache)
+2. `GET /api/v1/offline/sync-status/` — current sync state
+3. `POST /api/v1/offline/sync/` — trigger manual sync
+4. `GET /api/v1/offline/cached-data/` — retrieve cached items
+5. `GET /api/v1/offline/sync-queue/` — view pending offline changes
 
 ---
 
-### 2.3 Admin
+### 2.2 Driver Workflows
 
-#### Driver Management
-- List: `GET /api/v1/drivers/drivers/`
-- Approve: `POST /api/v1/drivers/drivers/{id}/approve/`
-- Reject with reason: `POST /api/v1/drivers/drivers/{id}/reject/`
-- Suspend: `POST /api/v1/drivers/drivers/{id}/suspend/` — **does not end active trips or stop location broadcasting**.
-- Status history: `GET /api/v1/drivers/drivers/{id}/status-history/`
+#### 2.2.1 Registration & Approval
+1. `POST /api/v1/accounts/register/` — user_type=driver
+2. `POST /api/v1/drivers/drivers/` — multipart: `id_card_photo`, `driver_license_photo`, `id_card_number`, `driver_license_number`, `phone_number`, `years_of_experience`
+3. Status: `pending` → admin calls approve/reject/suspend
+4. `DriverStatusLog` captures all transitions with `changed_by` and `reason`
+5. Suspension cascades: deactivates buses, ends active trips
 
-#### Fleet Management
-- `POST /api/v1/buses/buses/` → create bus, assign driver.
-- `POST /api/v1/buses/buses/{id}/activate/` · `/deactivate/` · `/approve/`
-- Current GPS: `GET /api/v1/tracking/active-buses/`
+#### 2.2.2 Trip Management
+1. **Path A — Direct**: `POST /api/v1/tracking/trips/` (bus, line, start_time)
+   - Validates: driver owns bus, no concurrent active trip (via `select_for_update`), driver approved
+2. **Path B — Via BusLine**: `POST /api/v1/tracking/bus-lines/start_tracking/` (line_id)
+   - Auto-creates trip, also checks concurrent trips for both bus AND driver
+   - Auto-selects driver's first bus (see L1)
+3. During trip: `POST /api/v1/tracking/locations/` — GPS updates (bus auto-detected from driver)
+4. During trip: `POST /api/v1/tracking/passenger-counts/` — passenger count (validates against capacity in viewset)
+5. **End trip — Path A**: `POST /api/v1/tracking/trips/{id}/end/`
+   - Calculates: distance (sum of Haversine segments), avg speed, max passengers, total stops
+   - Resets BusLine to idle if no more active trips
+6. **End trip — Path B**: `POST /api/v1/tracking/bus-lines/stop_tracking/`
+   - Same calculations, slightly different clamping logic
 
-#### Network Management
-- `POST /api/v1/lines/stops/` → stop (lat/lon/wilaya/commune)
-- `POST /api/v1/lines/lines/` → route; assign stops via `POST /api/v1/lines/lines/{id}/add_stop/`
-- `POST /api/v1/lines/lines/{id}/add_schedule/` → day/time schedules
-- **Service disruptions:** `ServiceDisruption` model exists, no admin screen in Flutter to create/manage them.
+#### 2.2.3 Report Verification
+1. `POST /api/v1/tracking/waiting-reports/{id}/verify/`
+   - Fields: `actual_count`, `verification_status` (correct/incorrect/partially_correct)
+   - Correct → reporter gets +100 coins, +1 correct_report
+   - Incorrect → reporter gets -100 or -200 penalty (based on severity)
+   - Partially correct → reporter gets +25 coins, +0.5 correct_report
+   - Triggers consistency bonus (25 coins) for 5 consecutive accurate reports
+   - Updates reporter's reputation level and trust multiplier
 
-#### Monitoring
-- `GET /api/v1/tracking/anomalies/` — speed violations, route deviations, bunching.
-- `PATCH /api/v1/tracking/anomalies/{id}/` — resolve anomaly.
-- `GET /api/v1/tracking/trips/history/`
-- Celery Beat: `detect_anomalies()`, `calculate_eta_for_stops()`, `clean_old_location_data()`
-- **No aggregated analytics endpoints** — ridership, occupancy, busiest stops do not exist as API views.
+#### 2.2.4 Performance & Gamification
+1. `GET /api/v1/tracking/driver-performance/my_stats/` — nested under `performance_score` key
+   - Performance level: rookie → experienced → expert → master
+   - Metrics: total_trips, on_time_%, safety_score, passenger_rating, fuel_efficiency, streaks
+2. `GET /api/v1/tracking/driver-currency/my_balance/` — balance
+3. `GET /api/v1/tracking/driver-currency/transactions/` — ledger
+4. `GET /api/v1/tracking/driver-currency/earnings_summary/` — by type over N days
+5. Coin sources: trip completion (50+25 on-time × level multiplier), verification accuracy (+15), streak bonuses
 
-#### Notifications & Content
-- `POST /api/v1/notifications/notifications/` — broadcast to any user.
-- `POST /api/v1/tracking/virtual-currency/add/` — admin coin adjustment.
-- `PremiumFeature` catalog — **no API endpoint to create/edit premium features; likely admin panel only**.
+#### 2.2.5 Driver Ratings
+1. `GET /api/v1/drivers/drivers/{id}/ratings/` — view received ratings
+2. **BUG**: `POST /api/v1/drivers/drivers/{id}/ratings/` → 405 Method Not Allowed
+3. `POST /api/v1/drivers/drivers/{id}/update_availability/` — toggle is_available
+
+---
+
+### 2.3 Admin Workflows
+
+#### 2.3.1 Driver Management
+1. `GET /api/v1/drivers/drivers/?status=pending` — list pending applications
+2. `POST /api/v1/drivers/drivers/{id}/approve/` — approve
+3. `POST /api/v1/drivers/drivers/{id}/reject/` — reject with reason
+4. `POST /api/v1/drivers/drivers/{id}/suspend/` — suspend (cascade: deactivate buses, end trips)
+
+#### 2.3.2 Fleet Management
+1. CRUD: `/api/v1/buses/buses/` — buses assigned to drivers
+2. `POST /api/v1/buses/buses/{id}/approve/` — approve bus
+3. Status management: active / inactive / maintenance
+
+#### 2.3.3 Route Management
+1. CRUD: `/api/v1/lines/lines/`, `/api/v1/lines/stops/`
+2. Manage stop ordering via `LineStop` (order + distance + time from previous)
+3. CRUD: `/api/v1/lines/schedules/` — per-line, per-day schedules
+4. CRUD: `/api/v1/lines/disruptions/` — service disruption alerts
+
+#### 2.3.4 Analytics (R22)
+1. `GET /api/v1/admin/stats/ridership/` — daily trip count + passenger totals, filterable by line and date range
+2. `GET /api/v1/admin/stats/lines/` — per-line summary (trips, passengers, avg speed, total distance)
+3. `GET /api/v1/admin/stats/stops/busiest/?top_n=20` — stops ranked by waiting report volume
+
+#### 2.3.5 Anomaly Management
+1. `GET /api/v1/tracking/anomalies/` — list (speed, route, bunching, gap, schedule, passengers, other)
+2. `POST /api/v1/tracking/anomalies/{id}/resolve/` — resolve with notes
+
+---
+
+### 2.4 Background Tasks (Celery)
+
+| Task | Frequency | What It Does |
+|------|-----------|--------------|
+| `process_location_updates` | Periodic | Calculate missing speeds from consecutive locations; detect speed anomalies (>100 km/h) and route deviations (>1km from any stop) |
+| `calculate_eta_for_stops` | Periodic | For each active bus-line, compute ETA to each stop using Haversine distance and last known speed; cache in Redis for 5 minutes |
+| `detect_anomalies` | Periodic | Detect bus bunching (<500m between buses on same line) and service gaps (>30 min between buses); create Anomaly records |
+| `notify_waiting_passengers_on_arrival` | Every 30s | Check LocationUpdates vs BusWaitingList; notify users when bus within 300m of their stop |
+| `process_scheduled_notifications` | Every 1min | Send due scheduled notifications |
+| `check_arrival_notifications` | Every 2-3min | Check active trips vs users' favorite stops; schedule arrival alerts based on `minutes_before_arrival` preference |
+| `send_trip_updates` | Every 1min | Notify users when trips start/end on their favorite lines |
+| `clean_old_location_data` | Daily | Delete LocationUpdates >7 days, PassengerCounts >30 days, old WaitingPassengers |
+| `cleanup_old_notifications` | Daily | Delete read notifications >30 days old |
+| `cleanup_invalid_tokens` | Periodic | Remove expired/invalid FCM device tokens |
 
 ---
 
 ## 3. Critical Audit
 
-### 3.1 Duplicate / Redundant Features
+### 3.1 Confirmed Bugs
 
-#### A. Three Overlapping "Waiting" Concepts
+| # | Bug | Impact | Severity |
+|---|-----|--------|----------|
+| **B1** | `POST /drivers/{id}/ratings/` → 405 Method Not Allowed | Passengers cannot rate drivers via API | **HIGH** |
+| **B2** | Rejected driver can create trips — `IsApprovedDriver` blocks `pending` but `rejected` drivers pass through endpoints using `IsDriverOrAdmin` | Safety risk: rejected driver operates | **HIGH** |
+| **B3** | Leaderboard uses `Count('amount')` instead of `Sum('amount')` in `VirtualCurrencyService.get_leaderboard()` | Rankings based on transaction count, not total coins earned | **HIGH** |
+| **B4** | `detect_anomalies` task references `models.Max` without `from django.db import models` | Task crashes every execution | **MEDIUM** |
+| **B5** | `check_arrival_notifications` queries `.order_by('-timestamp')` but field is `created_at` | Task returns no results or crashes | **MEDIUM** |
+| **B6** | Passenger count capacity not enforced in `PassengerCountService.update_passenger_count()` — only in viewset | Direct service calls accept count=999 | **MEDIUM** |
+| **B7** | No concurrent-trip guard in `TripService.create_trip()` — only in viewset `perform_create()` | Service-layer callers can create overlapping trips | **MEDIUM** |
+| **B8** | `TripService.end_trip()` can overflow `average_speed` field (max_digits=5) for very short trips with large distance | Trip end fails with DB error for edge cases; clamped to 250.00 but distance can still overflow | **LOW** |
 
-| Model | Purpose |
-|-------|---------|
-| `WaitingPassengers` | Snapshot aggregate — service layer only, never directly user-facing |
-| `WaitingCountReport` | Crowdsourced report with verification lifecycle and coin rewards |
-| `BusWaitingList` | Personal "I am waiting for bus X at stop Y" with ETA field |
+### 3.2 Duplicate / Redundant Features
 
-All three encode "passengers waiting at a stop" from slightly different angles. A commuter at a stop must use the non-obvious `WaitingCountReport` (requires bus OR line). `WaitingPassengers` is never surfaced. The distinction confuses both users and developers.
+| # | Duplication | Action |
+|---|-------------|--------|
+| **D1** | Two identical permission modules: `apps/api/permissions.py` AND `apps/core/permissions.py` | Delete `apps/api/permissions.py` — all imports use `apps.core.permissions` |
+| **D2** | Two waiting systems: `WaitingPassengers` (deprecated) and `WaitingCountReport` (current) | Both have full ViewSets. `WaitingPassengers` adds deprecation headers but is fully functional. Remove after migration period. |
+| **D3** | Two trip-start paths: direct `POST /trips/` and `POST /bus-lines/start_tracking/` | Different validation depth. `start_tracking` also checks driver-level concurrent trips. Direct creation doesn't. |
+| **D4** | Three currency endpoints: `/virtual-currency/`, `/driver-currency/`, `/my-currency/` | `my-currency` was created to unify. The other two should be deprecated. |
+| **D5** | Two trip-end code paths: `TripService.end_trip()` and `BusLineService.stop_tracking()` | Both independently calculate distance/speed/stats with slightly different clamping. Should share one calculation function. |
+| **D6** | Welcome bonus granted inconsistently: `VirtualCurrencyService.get_or_create_currency()` gives 100 coins + transaction vs `DriverCurrencyService.add_driver_currency()` sets `defaults={'balance': 100}` without transaction record | Different initial state depending on first interaction path |
 
-#### B. Dual Currency Endpoints (Same Underlying Model)
+### 3.3 Missing Features
 
-- Passengers: `GET /tracking/virtual-currency/`
-- Drivers: `GET /tracking/driver-currency/` + `GET /tracking/driver-currency/transactions/`
+| # | Missing Feature | Why It Matters for Algeria |
+|---|-----------------|--------------------------|
+| **M1** | **No passenger trip history** | `TripViewSet.history()` returns `queryset.none()` for passengers. Essential for commuters tracking expenses. |
+| **M2** | **No fare/payment integration** | `Line.fare_dza` is display-only. No CIB/Edahabia/Baridimob integration. Cash is king but digital payment adoption is growing. |
+| **M3** | **No route polylines** | `RouteSegment` model exists but nothing populates it. Maps show straight lines between stops instead of actual street routes. |
+| **M4** | **No WebSocket location broadcast** | Drivers POST locations via REST. The WebSocket consumer handles subscriptions but never broadcasts locations. Redis cache is updated but subscribers never receive updates. This is the **core real-time feature** and it doesn't work. |
+| **M5** | **No passenger-facing ETA endpoint** | `calculate_eta_for_stops` caches ETAs in Redis but no public endpoint exposes them. `estimate_arrival` requires `IsApprovedDriver`. |
+| **M6** | **No WebSocket unsubscribe** | subscribe_to_bus, subscribe_to_line exist but no unsubscribe. Must disconnect to stop updates. |
+| **M7** | **No admin user management** | Can't list/search/deactivate passenger accounts. Only driver management exists. |
+| **M8** | **No passenger feedback/complaint system** | No way to report driver behavior, service quality, or safety concerns beyond the technical anomaly system. |
+| **M9** | **No SMS/email notification delivery** | `NotificationPreference` allows SMS/email channels. `NotificationService` only creates in-app records. Twilio/SMTP config vars exist but aren't wired up. |
+| **M10** | **No password reset** | No forgot-password flow. Users locked out permanently. |
+| **M11** | **No bus-driver reassignment** | `Bus.driver` is a direct FK. A bus is permanently bound to one driver. No shift rotation support. |
+| **M12** | **No schedule-based ETA** | ETA uses GPS speed + Haversine distance. `Schedule` data (departure times, frequency) is never consulted. Buses not yet moving have no ETA. |
+| **M13** | **No notification localization** | Profile supports ar/fr/en but notifications are hardcoded English. |
+| **M14** | **No data export** | No CSV/PDF export for analytics, trip history, or reports. |
+| **M15** | **Premium features are empty shells** | Purchasing a feature spends coins but `check_feature_access()` is never called anywhere. No feature is actually gated. |
+| **M16** | **Offline sync queue doesn't process** | `SyncQueue` model stores pending actions but no service replays them when back online. |
+| **M17** | **No geofence alerts** | No notification when bus enters/exits defined areas. Common need for school routes. |
+| **M18** | **No multi-line trip support** | Trip bound to exactly one line. No modeling for variant routes or line-sharing. |
 
-Both resolve to `VirtualCurrency` + `CurrencyTransaction`. Split API surface, no actual difference. Flutter's `GamificationService` calls both paths depending on user role.
+### 3.4 Illogical / Confusing Flows
 
-#### C. Duplicate Notification Service Files
+| # | Issue | Detail |
+|---|-------|--------|
+| **L1** | **"Use first bus" pattern** | `start_tracking`, `stop_tracking`, location updates, passenger counts all do `bus = buses.first()`. Driver with multiple buses can't choose which one. System silently picks one. |
+| **L2** | **Coins awarded before verification** | Reporter gets 50+ coins immediately with `transaction_type='accurate_report'`. If later verified incorrect: -100 penalty. Net: random reporting can still profit via partially_correct (+25 bonus, no claw-back of initial 50). |
+| **L3** | **Reputation multiplier inconsistency** | `get_or_create` defaults bronze to `trust_multiplier=1.00`. But `update_reputation()` sets bronze to 0.50. `_get_level_benefits()` shows bronze as "0.5x". First report gets 1.0x; after first verification cycle, drops to 0.5x. |
+| **L4** | **Bus approval has no workflow** | `Bus.is_approved` field exists but no admin action endpoint to approve/reject buses. Unlike drivers (approve/reject/suspend), buses just sit at `is_approved=False`. |
+| **L5** | **Cross-driver bus access returns 404 not 403** | Driver1 accessing Driver2's bus gets 404 (queryset isolation). Bus exists — 403 would be more informative. Acceptable as security pattern but confusing for debugging. |
+| **L6** | **Line fare not connected to anything** | `Line.fare_dza` is an integer field with no link to trips, payments, or revenue analytics. Pure display data. |
+| **L7** | **Capacity validation only at viewset layer** | `PassengerCountService` accepts any count. Only the DRF viewset checks `count > bus.capacity`. Any direct service call bypasses this. |
+| **L8** | **Anomaly doesn't distinguish system vs user reports** | `reported_by` is null for auto-detected anomalies. No field or flag explicitly marks the source, making it hard to filter in admin view. |
+| **L9** | **WaitingCountReport model allows both `bus` and `line` null** | Service validates one is required, but DB allows neither. Direct ORM can create orphan reports. |
+| **L10** | **Nearby stops returns raw list** | `GET /lines/stops/nearby/` returns `[...]` instead of paginated `{"count": N, "results": [...]}`. Breaks clients expecting standard DRF pagination. |
+| **L11** | **Performance stats nested under key** | `GET /driver-performance/my_stats/` wraps response in `{"performance_score": {...}}` instead of returning flat object. Frontend must handle this nesting. |
 
-- `apps/notifications/services.py`
-- `apps/notifications/enhanced_services.py`
-- `apps/notifications/tasks.py`
-- `apps/notifications/enhanced_tasks.py`
+### 3.5 Security Concerns
 
-Which is authoritative? "Enhanced" variants suggest incremental patching without cleanup. Risk of logic divergence.
-
-#### D. BusLine.tracking_status vs Trip.is_completed — Dual State
-
-Two fields encode "is this bus currently on a run." When `stop_tracking` and `trips/{id}/end` are called independently, one source can go stale.
-
-#### E. Two Trip-Start Pathways
-
-- `POST /tracking/trips/` — direct Trip creation
-- `POST /tracking/bus-lines/start_tracking/` — creates Trip + sets BusLine
-
-Flutter uses `start_tracking`. The direct Trip endpoint is also accessible to drivers and creates an orphaned Trip without updating `BusLine.tracking_status`.
-
----
-
-### 3.2 Missing Features
-
-#### A. No Route Planning (A → B)
-A passenger who knows origin and destination stop has no endpoint to find the correct line(s) or transfer points. `GET /lines/lines/` returns all routes; the passenger must scan each manually. **Fundamental for usability.**
-
-#### B. Bus Arrival Notification Never Fires
-`BusWaitingList.notified_on_arrival` field exists, model designed for it, but **no Celery task or signal** compares bus `nearest_stop` against active waiting lists. Feature is modeled but dead.
-
-#### C. No Passenger Trip / Line Rating
-Passengers rate *drivers* but cannot rate a *trip experience* or a *line* (punctuality, cleanliness). No feedback loop from passenger experience to line quality improvement.
-
-#### D. No Admin Analytics Endpoints
-Data exists (LocationUpdate, PassengerCount, Trip) but no read-only analytics views:
-- Ridership per line per day
-- Average occupancy rate per hour/route
-- Most active stops
-- Waiting time distribution
-Flutter `AnalyticsDashboardScreen` exists but appears minimal.
-
-#### E. ETA Not Computed on Waiting List Join
-`BusWaitingList.estimated_arrival` field exists — never populated at insert time. Always null in practice.
-
-#### F. Driver Cannot Self-Register Bus
-Buses are admin-only creations. Flutter has `DriverBusRegistrationScreen` but no driver-side approval flow. In Algeria's context (many owner-operator semi-informal drivers), this is a workflow blocker.
-
-#### G. No Driver Income / Shift Tracking
-Coins are gamification tokens, not salary. No model or endpoint tracks real earnings, shift hours, or trip-based pay.
-
-#### H. No Full-Text Stop / Line Search
-No `?search=` on stops by name/address or lines by description. A commuter who doesn't know the line code has no discovery mechanism. `GET /lines/stops/nearby/` requires GPS; not useful for planning from home.
-
-#### I. Service Disruptions Invisible to Users
-`ServiceDisruption` model + Flutter `service_disruption_model.dart` exist. No admin screen to create them. No passenger screen to view active disruptions. Feature is fully dead end-to-end.
-
-#### J. Anomaly Visibility Locked to Admin
-Speed violations, route deviations, and bunching are only visible to admins. Drivers are unaware when they are flagged. Passengers cannot see known service issues.
-
-#### K. Firebase Push Notifications Disabled
-`FirebaseMessaging.requestPermission()` is commented out in Flutter `main.dart`. No device token registration flow is triggered. All notifications are in-app WebSocket only — no background delivery when app is closed.
-
-#### L. No Passenger-Facing ETA Screen
-No screen shows "Bus 23 arrives at your stop in ~8 minutes." The infrastructure (LocationUpdate, nearest_stop, schedule) exists but no ETA calculation is surfaced per-stop in the passenger UI.
-
----
-
-### 3.3 Illogical / Confusing Flows
-
-#### A. `IsApprovedDriver` Does Not Block Rejected Drivers
-```python
-# Current (wrong):
-request.user.driver.status != "pending"   # only blocks pending
-# Should be:
-request.user.driver.status == "approved"
-```
-Rejected and suspended drivers can start trips, update GPS, and submit passenger counts.
-
-#### B. Bus Capacity Not Enforced
-`PassengerCountService.update_passenger_count()` accepts any integer. No comparison to `Bus.capacity`. `occupancy_rate = min(count/capacity, 1.0)` caps display but raw data is corrupted. A driver can post `count=999` on a 40-seat bus.
-
-#### C. Concurrent Active Trips for Same Bus
-No DB constraint or service guard prevents two drivers from starting the same bus simultaneously (both receive HTTP 201). Documented gap — concurrent trip guard only partially implemented.
-
-#### D. Premium Feature Re-Purchase Blocked by Stale Record
-`unique_together = ['user', 'feature']` prevents re-purchase of an expired feature. `deactivate_if_expired()` marks `is_active=False` but does not delete the record. Re-purchase raises `IntegrityError`.
-
-#### E. Reputation Formula Ignores Partial Matches
-`accuracy_rate = (correct_reports / total_reports) * 100`. `verification_status="partially_correct"` contributes zero to accuracy but adds to total_reports — unfairly penalizing reporters who are directionally right.
-
-#### F. Trip Decimal Overflow on End
-`TripService.end_trip()` writes cumulative distance/average_speed to `DecimalField(max_digits=10, decimal_places=2)`. Long trips or calculation edge cases cause ORM overflow errors and silent trip-end failure.
-
-#### G. Two Ways to End a Trip, Neither Checks the Other
-- `POST /tracking/bus-lines/stop_tracking/` — ends via BusLine
-- `POST /tracking/trips/{id}/end/` — ends via Trip
-
-A driver who calls one can call the other and double-end. No idempotency check exists. `BusLine.tracking_status` and `Trip.is_completed` can diverge.
-
-#### H. Driver Performance Stats Under Nested Key
-```json
-GET /tracking/driver-performance/my_stats/
-{ "performance_score": { "total_trips": 42, ... } }
-```
-Every other list/detail endpoint returns data at root level. Frontend must special-case this.
-
-#### I. Nearby Stops Returns Raw List
-`GET /lines/stops/nearby/` → `[{...}, ...]` instead of `{"count": N, "results": [...]}`. Flutter `StopService.getNearby()` branches on `isinstance(response, list)` — fragile pattern.
-
-#### J. Driver Rating: One-Per-Day Is Gameable, Unverified
-`unique_together = ['driver', 'user', 'rating_date']` — one rating per calendar day per user. No verification that the passenger actually rode with the driver. `POST /drivers/{id}/ratings/` returns **405** (nested router misconfiguration). GET works; POST is broken.
-
-#### K. Re-Apply Has No Document Re-Submission
-`reapply` endpoint resets status to "pending" but does not require new photos. Admin receives a re-apply notification with no new evidence to review.
-
-#### L. Password Reset Requires User ID (Unusable)
-Backend: `POST /api/v1/accounts/users/{id}/reset-password-request/` — requires knowing the user's UUID.
-Flutter: calls `/api/v1/accounts/users/reset_password_request/` without an ID.
-This endpoint 404s in practice. Password reset is broken.
-
-#### M. Notification Preferences Never Saved
-Flutter `NotificationProvider.updatePreference()`:
-```dart
-// In real implementation, find the preference ID by type and update
-// For now this is a placeholder that calls the service
-return true;
-```
-User-facing toggle in settings does nothing persistently.
-
----
-
-### 3.4 Dead-End UX Paths
-
-| Path | Symptom | Root Cause |
-|------|---------|-----------|
-| `POST /drivers/{id}/ratings/` | HTTP 405 | Nested router wires GET only |
-| Join waiting list → get arrival notification | Never fires | `notified_on_arrival` never set; no Celery task checks it |
-| Purchase expired premium feature again | IntegrityError | `unique_together` + stale inactive record |
-| Offline sync after 24h cache expiry | Stale data | `UserCache.is_expired` property exists; no middleware enforces eviction |
-| Passenger at stop, no bus/line knowledge | 400 error | `WaitingCountReport` requires bus OR line |
-| Admin views ridership analytics | No endpoint | No analytics ViewSets exist |
-| Driver uses `stop_tracking`, then `trips/{id}/end` | Double-end | No idempotency check |
-| Admin suspends driver mid-trip | Trip continues | Suspension only sets `Driver.status`; active trip/broadcasting continues |
-| Rejected driver tries to re-apply | No UI | Backend endpoint exists; Flutter has no screen or provider method |
-| Service disruption announced | No UI | Model + Flutter model exist; admin/passenger screens missing |
-| Password reset | 404 | URL requires user ID; Flutter sends no ID |
-| Turn off notification type | No effect | `NotificationProvider.updatePreference()` is a placeholder |
-| View bus arrival time at my stop | No screen | ETA calculation exists in Celery tasks; not surfaced per-stop in passenger UI |
+| # | Issue | Risk |
+|---|-------|------|
+| **S1** | JWT in WebSocket query string (`?token=JWT`) | Token visible in server logs, proxy logs, browser history. Should use first-message auth. |
+| **S2** | No WebSocket connection rate limiting | Unlimited connections per IP/user. DoS vector. |
+| **S3** | Full GPS history visible to all authenticated users | `GET /tracking/locations/?bus_id=X` exposes complete driver movement patterns to any logged-in user. |
+| **S4** | Exception details leak to API consumers | `except Exception` → `raise ValidationError(str(e))` can expose DB errors, file paths, internal state. |
+| **S5** | No anomaly description sanitization | User-supplied `description` stored/returned raw. XSS risk in web frontends. |
+| **S6** | `save_user_profile` signal creates profile on every User save if missing | Unexpected side effect during bulk operations or migrations. |
 
 ---
 
 ## 4. Recommendations
 
-### Priority 1 — Security & Correctness
+### 4.1 Critical Fixes (Block Deployment)
 
-**R1 — Fix `IsApprovedDriver`** (XS)
-Change `status != "pending"` → `status == "approved"`. Prevents rejected/suspended drivers from operating.
+**R1. Fix driver rating POST** — Add `@action(detail=True, methods=['post'])` to `DriverViewSet` for ratings, or create standalone `DriverRatingCreateView`.
 
-**R2 — Enforce bus capacity** (XS)
-In `PassengerCountService`: if `count > bus.capacity` → `ValidationError`. Raw count should never exceed seat count.
+**R2. Block rejected drivers** — In `TripViewSet.perform_create()`, explicitly check `request.user.driver.status == "approved"`. Also audit all driver-facing endpoints that use `IsDriverOrAdmin` — they should use `IsApprovedDriver` for write operations.
 
-**R3 — Prevent concurrent active trips** (S)
-Guard in `start_tracking()`: `Trip.objects.filter(bus=bus, is_completed=False).exists()` → 400 if true.
+**R3. Fix leaderboard aggregation** — Change `Count('amount')` to `Sum('amount')` in `VirtualCurrencyService.get_leaderboard()`.
 
-**R4 — Fix Decimal overflow in TripService** (S)
-Clamp: `distance = min(round(distance, 2), Decimal('99999999.99'))` or increase field precision.
+**R4. Fix Celery task crashes** — (a) Add `from django.db import models` in `detect_anomalies`. (b) Change `'-timestamp'` to `'-created_at'` in `check_arrival_notifications`.
 
-**R5 — Fix re-purchase of expired features** (S)
-In `PremiumFeatureService.purchase_feature()`: `UserPremiumFeature.objects.filter(user=user, feature=feature, is_active=False).delete()` before creating new record.
-
-**R6 — Fix password reset endpoint** (XS)
-Add a non-ID route: `POST /api/v1/accounts/reset-password/` that accepts `{"email": "..."}` — no UUID required. Update Flutter to call it.
-
-**R7 — Fix `POST /drivers/{id}/ratings/`** (XS)
-Register the action correctly in the nested router or move to a flat endpoint: `POST /api/v1/drivers/ratings/`.
-
----
-
-### Priority 2 — Logic & UX Consistency
-
-**R8 — Unify trip-end surface** (M)
-Route `stop_tracking` through `TripService.end_trip()` internally, or deprecate `stop_tracking`. Add idempotency: if `is_completed=True` → return 200 with no re-processing.
-
-**R9 — Allow stop-only waiting reports** (S)
-Make `bus` and `line` optional in `WaitingCountReport`. Auto-detect likely bus/line from active trips near that stop. Blocking informal reporters defeats the crowdsourcing premise.
-
-**R10 — Normalize paginated responses** (XS)
-`GET /lines/stops/nearby/` must return `{count, results, next, previous}`. Remove the `isinstance(list)` branch in Flutter.
-
-**R11 — Flatten driver performance stats** (XS)
-`my_stats()` should return data at root level, not under `performance_score` key.
-
-**R12 — Credit partial_correct in reputation** (S)
+**R5. Implement WebSocket location broadcast** — After `LocationUpdateService.record_location_update()`, add:
 ```python
-effective_correct = correct_reports + (partially_correct_count * 0.5)
-accuracy_rate = (effective_correct / total_reports) * 100
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+layer = get_channel_layer()
+async_to_sync(layer.group_send)(f"bus_{bus.id}", {
+    "type": "bus_location_update",
+    "bus_id": str(bus.id),
+    "location": location_dict,
+    "timestamp": location.created_at.isoformat()
+})
 ```
+This is the **core feature** of the entire application and it's not wired up.
 
-**R13 — Wire suspension cascade** (M)
-On `suspend_driver()`: find active Trip → call `TripService.end_trip()` → set `BusLine.tracking_status="idle"` → notify driver in-app.
+**R6. Add password reset** — Use Django's `PasswordResetTokenGenerator` + email delivery. Two endpoints: `POST /accounts/password-reset/` and `POST /accounts/password-reset/confirm/`.
 
-**R14 — Implement notification preferences** (S)
-Replace placeholder in Flutter `NotificationProvider.updatePreference()` with a real PATCH to `GET /api/v1/notifications/preferences/{id}/`. Query preference list on load, store IDs.
+### 4.2 High Priority Fixes
 
----
+**R7. Enforce capacity at service level** — Move `count > bus.capacity` check into `PassengerCountService.update_passenger_count()`.
 
-### Priority 3 — Redundancy Cleanup
+**R8. Add concurrent trip guard to TripService** — Add `Trip.objects.filter(bus=bus, is_completed=False).exists()` check inside `TripService.create_trip()` within `@transaction.atomic`.
 
-**R15 — Consolidate notification files** (S)
-Merge `services.py` + `enhanced_services.py` → one `services.py`. Same for tasks. Delete "enhanced" variants.
+**R9. Expose ETA to passengers** — Create `GET /api/v1/tracking/eta/?bus_id=X&stop_id=Y` (permission: `IsAuthenticated`) reading from Redis ETA cache.
 
-**R16 — Consolidate currency endpoints** (S)
-Replace `/tracking/virtual-currency/` and `/tracking/driver-currency/` with `/tracking/my-currency/` serving both roles.
+**R10. Fix coin timing** — Hold report coins in escrow (create transaction but mark as `pending`). Release after verification or after 24-hour auto-release window. This prevents gaming via random reports.
 
-**R17 — Clarify three waiting models** (M)
-- `WaitingCountReport` → primary crowdsourced input (fix stop-only)
-- `BusWaitingList` → personal queue (wire notifications)
-- `WaitingPassengers` → computed aggregate derived from reports (remove direct POST if it exists)
+**R11. Fix reputation multiplier inconsistency** — Set `get_or_create` default for bronze to `trust_multiplier=0.50` to match `update_reputation()` and documented benefits.
 
-**R18 — Resolve BusLine vs Trip dual state** (M)
-Use `Trip.is_completed` as canonical active-trip flag. Derive `BusLine.tracking_status` from it or remove it.
+**R12. Fix the "first bus" pattern** — Add optional `bus_id` parameter to all driver endpoints. If driver has >1 bus, require it. If exactly 1, auto-select.
 
----
+### 4.3 Architecture Improvements
 
-### Priority 4 — Missing Critical Features (Backlog)
+**R13. Delete duplicate permissions** — Remove `apps/api/permissions.py`. All views import from `apps.core.permissions.py`.
 
-**R19 — Bus arrival notification** (M)
-Celery task every 30–60s: find buses within ~300m of next stop → query `BusWaitingList` → create `Notification` → set `notified_on_arrival=True`. Enable Firebase in Flutter `main.dart`.
+**R14. Deprecate `WaitingPassengers`** — Return 410 Gone. Only `WaitingCountReport` should exist.
 
-**R20 — Route planning endpoint** (L)
-`GET /api/v1/lines/route-plan/?from_stop=&to_stop=` → line(s) to board, transfer points, estimated duration. Even naive "which line connects these stops" covers 80% of use cases.
+**R15. Consolidate currency to `/my-currency/`** — Deprecate `/virtual-currency/` and `/driver-currency/`.
 
-**R21 — Stop / line full-text search** (S)
-`GET /api/v1/lines/stops/?search=<name>` — add `icontains` filter on `name` and `address`. Same for lines. Table stakes for discovery.
+**R16. Unify trip creation** — Move all validation into `TripService.create_trip()`. Either remove direct trip POST or have both paths call the same service method with identical checks.
 
-**R22 — Admin analytics endpoints** (L)
-Minimum:
-- `GET /api/v1/admin/stats/ridership/?line=&date_from=&date_to=`
-- `GET /api/v1/admin/stats/lines/` — trips/day, on-time %, avg occupancy
-- `GET /api/v1/admin/stats/stops/busiest/`
-Wire into Flutter `AnalyticsDashboardScreen`.
+**R17. Unify trip-end statistics** — Extract stat calculation (distance, speed, max passengers, stops) into a shared `_calculate_trip_stats(trip_id)` function called by both `TripService.end_trip()` and `BusLineService.stop_tracking()`.
 
-**R23 — Service disruptions end-to-end** (M)
-Add Flutter admin screen to create/edit `ServiceDisruption`. Add passenger screen showing active disruptions on a line. Currently entirely dead.
+**R18. Implement push/SMS/email delivery** — Wire up Firebase (push), SMTP (email), Twilio (SMS) in `NotificationService`. Route based on user's `NotificationPreference.channels`.
 
-**R24 — Enable Firebase push** (S)
-Uncomment `FirebaseMessaging.requestPermission()` in `main.dart`. Add device token registration on login via `POST /api/v1/notifications/device-tokens/`. Test FCM delivery for `driver_approved`, arrival, and achievement notifications.
+**R19. Process offline sync queue** — Add `POST /api/v1/offline/sync/process/` that replays `SyncQueue` items (pending → syncing → completed/failed).
 
-**R25 — Driver re-apply UI** (XS)
-Add a "Re-apply" button on the driver rejected status screen in Flutter. Calls existing `POST /api/v1/drivers/drivers/{id}/reapply/` endpoint.
+### 4.4 Missing Feature Priorities
 
-**R26 — Driver bus self-registration flow** (M)
-Add bus submission form to driver onboarding. Admin approves both driver + bus in one step. Resolves chicken-and-egg where driver is approved but has no bus to operate.
+| Priority | Feature | Effort |
+|----------|---------|--------|
+| Critical | Password reset (R6) | 1 day |
+| Critical | WebSocket broadcast (R5) | 1 day |
+| High | Passenger ETA endpoint (R9) | 0.5 day |
+| High | Push/SMS/email delivery (R18) | 3 days |
+| High | Admin user management | 2 days |
+| High | Bus approval workflow | 0.5 day |
+| Medium | Route polylines (from OSRM) | 2 days |
+| Medium | Passenger trip history | 2 days |
+| Medium | Notification localization (ar/fr/en) | 2 days |
+| Medium | Driver shift/rotation model | 3 days |
+| Medium | Bus-driver reassignment | 1 day |
+| Medium | Passenger complaint system | 2 days |
+| Low | Data export (CSV/PDF) | 2 days |
+| Low | Premium feature gating | 2 days |
+| Low | Schedule-based ETA | 3 days |
+| Low | Geofence alerts | 3 days |
+| Low | Multi-line trip support | 3 days |
 
-**R27 — ETA on waiting list join** (M)
-Compute `estimated_arrival` at `POST /bus-waiting-lists/` insert time using `BusLine.average_speed` + remaining stops distance. Return in response.
+### 4.5 Algeria-Specific Recommendations
 
-**R28 — Rating by ride verification** (M)
-Before allowing `POST /drivers/ratings/`, verify passenger had a `BusWaitingList` or `WaitingCountReport` for a trip that driver completed. Prevents phantom ratings.
+**R20. Wilaya-based filtering** — Add `wilaya` to `Line` model. Filter analytics, buses, and notifications by wilaya. Algeria has 58 wilayas; most bus systems are wilaya-scoped.
 
----
+**R21. Friday schedule handling** — Friday is the weekly rest day (not Sunday). Ensure Schedule model treats `day_of_week=4` (Friday) as reduced/no service. Frontend should display Friday with appropriate styling.
 
-## Summary Table
+**R22. Peak hour ETA adjustment** — Algerian cities have brutal peak congestion (7-9 AM, 4-6 PM). Apply time-of-day speed multiplier: `peak_factor = 0.4` (40% of normal speed during rush hour).
 
-| # | Issue | Severity | Effort |
-|---|-------|----------|--------|
-| R1 | Security — rejected driver can operate | Critical | XS |
-| R2 | Data integrity — capacity not enforced | High | XS |
-| R3 | Data integrity — concurrent trips | High | S |
-| R4 | Bug — decimal overflow on trip end | High | S |
-| R5 | Bug — re-purchase blocked by stale record | High | S |
-| R6 | Bug — password reset 404 (wrong URL pattern) | High | XS |
-| R7 | Bug — driver rating POST returns 405 | High | XS |
-| R8 | Logic — dual trip-end endpoints | Medium | M |
-| R9 | UX — stop-only report rejected | High | S |
-| R10 | UX — inconsistent pagination | Medium | XS |
-| R11 | UX — nested performance stats | Low | XS |
-| R12 | Logic — partial_correct unfairly penalized | Medium | S |
-| R13 | Logic — suspension does not end active trip | High | M |
-| R14 | Bug — notification preferences never saved (Flutter placeholder) | High | S |
-| R15 | Cleanup — duplicate notification files | Low | S |
-| R16 | Cleanup — dual currency endpoints | Low | S |
-| R17 | Clarity — three overlapping waiting models | Medium | M |
-| R18 | Clarity — dual active-trip state | Medium | M |
-| R19 | Missing — bus arrival notification | High | M |
-| R20 | Missing — route planning | High | L |
-| R21 | Missing — stop/line text search | High | S |
-| R22 | Missing — admin analytics | Medium | L |
-| R23 | Missing — service disruptions UI | Medium | M |
-| R24 | Missing — Firebase push (disabled) | High | S |
-| R25 | Missing — driver re-apply UI (endpoint exists, no screen) | Medium | XS |
-| R26 | Missing — driver bus self-registration flow | Medium | M |
-| R27 | Missing — ETA on waiting list join | Medium | M |
-| R28 | Missing — rating by ride verification | Medium | M |
+**R23. Payment integration** — When ready, integrate with:
+- **CIB** (Carte Interbancaire) for card payments
+- **Baridimob** (Algérie Poste) for mobile money
+- **Edahabia** card for transport-specific payment
 
-> **XS** = < 1 hour · **S** = 1–4 hours · **M** = half-day · **L** = 1–2 days
+**R24. Arabic RTL support** — The `Profile.language` supports `ar`. Ensure all notification messages, disruption descriptions, and API string responses support Arabic.
+
+**R25. Offline map tiles** — For Flutter frontend, support downloading OpenStreetMap tile packages. Mobile data coverage is spotty outside Algiers/Oran/Constantine.
+
+**R26. Intercity vs intracity** — Add `line_type` field: `urban`, `intercity`, `suburban`. ETUSA (Algiers) vs SNTV (intercity) vs private operators have very different operational patterns.
 
 ---
 
-## Verification (post-implementation)
+## Summary Scorecard
 
-1. Run full test suite: `venv/bin/python api_test.py` — all 40 phases, expect 636/636 pass.
-2. Check R1: `pytest tests/api/test_permissions.py -k "rejected_driver"` — should return 403.
-3. Check R3: Start two trips on same bus via API — second should return 400.
-4. Check R9: Submit `WaitingCountReport` with only `stop` field — should return 201.
-5. Check R10: `GET /lines/stops/nearby/?lat=36&lon=3&radius=1` — response must be `{count, results, ...}` dict.
-6. Check R6: `POST /api/v1/accounts/reset-password/` with email only — should return 200.
-7. Flutter: enable Firebase, launch app on device, verify device token registered after login.
+| Category | Score | Key Issue |
+|----------|-------|-----------|
+| **Core tracking** | 5/10 | GPS storage works but WebSocket broadcast (the core feature) is not wired up |
+| **Gamification** | 6/10 | Well-designed system. Leaderboard bug, pre-verification rewards, premium features are shells |
+| **Driver management** | 7/10 | Approval workflow solid. Rating POST broken. No shift rotation. |
+| **Admin tools** | 5/10 | Basic analytics. No user management, no data export, no real-time dashboard. |
+| **Notifications** | 3/10 | In-app only. Push/SMS/email not implemented despite config being ready. |
+| **Offline mode** | 2/10 | Config + models exist. Sync queue doesn't process. No real offline capability. |
+| **Security** | 6/10 | JWT auth solid. WebSocket auth weak. Exception messages leak. |
+| **Algeria context** | 4/10 | Wilaya field exists on stops. No payment integration, no localization, no Friday awareness. |
+| **Frontend** | 0/10 | Not built. Only audit document exists. |
+| **Code quality** | 6/10 | Clean architecture (services/selectors/views). Duplicated permissions, broken tasks, inconsistent validation layers. |
