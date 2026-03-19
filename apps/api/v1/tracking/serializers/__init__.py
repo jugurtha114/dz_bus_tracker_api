@@ -6,6 +6,7 @@ from rest_framework import serializers
 from apps.api.serializers import BaseSerializer
 from apps.api.v1.buses.serializers import BusSerializer
 from apps.api.v1.drivers.serializers import DriverSerializer
+from apps.drivers.models import Driver
 from apps.api.v1.lines.serializers import LineSerializer, StopSerializer
 from drf_spectacular.utils import extend_schema_field
 from apps.tracking.models import (
@@ -232,7 +233,14 @@ class TripSerializer(BaseSerializer):
 class TripCreateSerializer(BaseSerializer):
     """
     Serializer for creating trips.
+    Driver is optional here — TripViewSet.perform_create() injects it from request.user.driver.
     """
+    driver = serializers.PrimaryKeyRelatedField(
+        queryset=Driver.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         model = Trip
         fields = [

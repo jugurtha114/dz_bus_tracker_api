@@ -644,12 +644,24 @@ class TripViewSet(BaseModelViewSet):
             if bus and Trip.objects.filter(bus=bus, is_completed=False).exists():
                 raise DRFValidationError({'bus': 'This bus already has an active trip.'})
 
+            # Resolve driver: prefer provided value, fall back to request user's driver profile
+            driver = serializer.validated_data.get('driver')
+            if driver is None and hasattr(self.request.user, 'driver'):
+                driver = self.request.user.driver
+
+            if driver is None:
+                raise DRFValidationError({'driver': 'Driver profile not found for the authenticated user.'})
+
             # Check driver owns this bus (skip for admins)
-            if bus and hasattr(self.request.user, 'driver'):
-                if bus.driver != self.request.user.driver:
+            if bus and not self.request.user.is_staff and self.request.user.user_type != 'admin':
+                if bus.driver != driver:
                     raise PermissionDenied('You are not authorized to use this bus.')
 
-            super().perform_create(serializer)
+            from django.utils import timezone as _tz
+            serializer.save(
+                driver=driver,
+                start_time=serializer.validated_data.get('start_time') or _tz.now(),
+            )
 
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
