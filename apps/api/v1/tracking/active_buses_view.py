@@ -21,6 +21,11 @@ def active_buses(request):
         is_active=True,
         tracking_status='active'
     ).select_related('bus', 'line', 'bus__driver')
+
+    # Optional line_id filter
+    line_id = request.query_params.get('line_id')
+    if line_id:
+        active_bus_lines = active_bus_lines.filter(line_id=line_id)
     
     # Get the buses
     bus_ids = active_bus_lines.values_list('bus_id', flat=True)
