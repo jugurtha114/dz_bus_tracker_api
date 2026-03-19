@@ -35,9 +35,19 @@ class TrackingConsumer(AsyncWebsocketConsumer):
             self.group_name,
             self.channel_name
         )
-        
+
+        # Auto-subscribe authenticated users to their personal notification group
+        if not isinstance(self.user, AnonymousUser):
+            self.personal_group = f"notifications_{self.user.id}"
+            await self.channel_layer.group_add(
+                self.personal_group,
+                self.channel_name
+            )
+        else:
+            self.personal_group = None
+
         logger.info(f"WebSocket connected: {self.channel_name} for user {self.user}")
-        
+
         # Send connection confirmation
         timestamp = await self.get_current_timestamp()
         await self.send(text_data=json.dumps({
@@ -57,7 +67,14 @@ class TrackingConsumer(AsyncWebsocketConsumer):
                 self.group_name,
                 self.channel_name
             )
-        
+
+        # Remove from personal notification group
+        if hasattr(self, 'personal_group') and self.personal_group:
+            await self.channel_layer.group_discard(
+                self.personal_group,
+                self.channel_name
+            )
+
         logger.info(f"WebSocket disconnected: {self.channel_name} with code {close_code}")
 
     async def receive(self, text_data):
