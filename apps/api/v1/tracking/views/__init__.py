@@ -1192,6 +1192,41 @@ class VirtualCurrencyViewSet(ReadOnlyModelViewSet):
             'leaderboard': leaderboard
         })
 
+    @action(detail=False, methods=['post'], permission_classes=[IsAdmin])
+    def adjust(self, request):
+        """Admin-only: award or deduct coins from a user's balance."""
+        user_id = request.data.get('user_id')
+        amount = request.data.get('amount')
+        reason = request.data.get('reason', 'Admin adjustment')
+
+        if not user_id:
+            return Response({'detail': 'user_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        if amount is None:
+            return Response({'detail': 'amount is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            amount = int(amount)
+        except (TypeError, ValueError):
+            return Response({'detail': 'amount must be an integer.'}, status=status.HTTP_400_BAD_REQUEST)
+        if amount == 0:
+            return Response({'detail': 'amount must be non-zero.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            transaction = VirtualCurrencyService.add_currency(
+                user_id=str(user_id),
+                amount=amount,
+                transaction_type='admin_adjustment',
+                description=str(reason),
+            )
+            currency = VirtualCurrencyService.get_or_create_currency(str(user_id))
+            return Response({
+                'detail': 'Balance adjusted successfully.',
+                'amount': amount,
+                'new_balance': currency.balance,
+                'transaction_id': str(transaction.id) if transaction else None,
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class MyCurrencyViewSet(ReadOnlyModelViewSet):
     """
