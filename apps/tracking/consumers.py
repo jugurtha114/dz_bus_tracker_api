@@ -72,9 +72,11 @@ class TrackingConsumer(AsyncWebsocketConsumer):
                 await self.handle_bus_subscription(data)
             elif message_type == 'subscribe_to_line':
                 await self.handle_line_subscription(data)
+            elif message_type == 'unsubscribe_from_line':
+                await self.handle_line_unsubscription(data)
             elif message_type == 'subscribe':
                 await self.handle_generic_subscription(data)
-            elif message_type == 'heartbeat':
+            elif message_type in ('heartbeat', 'ping'):
                 await self.handle_heartbeat()
             else:
                 await self.send(text_data=json.dumps({
@@ -202,6 +204,26 @@ class TrackingConsumer(AsyncWebsocketConsumer):
                 'message': f'Unknown subscription channel: {channel}'
             }))
 
+    async def handle_line_unsubscription(self, data):
+        """
+        Handle unsubscription from a specific line's updates.
+        """
+        line_id = data.get('line_id')
+        if not line_id:
+            return
+
+        line_group = f"line_{line_id}"
+        await self.channel_layer.group_discard(
+            line_group,
+            self.channel_name
+        )
+
+        await self.send(text_data=json.dumps({
+            'type': 'unsubscription_confirmed',
+            'subscription': 'line',
+            'line_id': line_id
+        }))
+
     async def handle_heartbeat(self):
         """
         Handle heartbeat ping.
@@ -277,5 +299,27 @@ class TrackingConsumer(AsyncWebsocketConsumer):
             'message': event['message'],
             'notification_type': event.get('notification_type', 'info'),
             'data': event.get('data', {}),
+            'timestamp': event['timestamp']
+        }))
+
+    async def gamification_update(self, event):
+        """
+        Handle gamification updates (currency balance changes) from group.
+        """
+        await self.send(text_data=json.dumps({
+            'type': 'gamification_update',
+            'delta': event.get('delta', 0),
+            'new_balance': event.get('new_balance'),
+            'reason': event.get('reason', ''),
+            'timestamp': event['timestamp']
+        }))
+
+    async def trip_update(self, event):
+        """
+        Handle trip status update messages from group.
+        """
+        await self.send(text_data=json.dumps({
+            'type': 'trip_update',
+            'trip': event.get('trip', {}),
             'timestamp': event['timestamp']
         }))

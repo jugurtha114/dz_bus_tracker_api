@@ -391,6 +391,34 @@ class LocationUpdateService(BaseService):
                 buses_on_line = get_buses_on_line(line.id)
                 cache_line_buses(line.id, buses_on_line)
 
+            # Broadcast real-time update to WebSocket clients
+            try:
+                from channels.layers import get_channel_layer
+                from asgiref.sync import async_to_sync
+
+                channel_layer = get_channel_layer()
+                if channel_layer:
+                    ws_event = {
+                        "type": "bus_location_update",
+                        "bus_id": str(bus.id),
+                        "location": {
+                            "latitude": float(location.latitude),
+                            "longitude": float(location.longitude),
+                            "speed": float(location.speed) if location.speed else None,
+                            "heading": float(location.heading) if location.heading else None,
+                            "nearest_stop_id": str(location.nearest_stop_id) if location.nearest_stop_id else None,
+                            "distance_to_stop": float(location.distance_to_stop) if location.distance_to_stop else None,
+                        },
+                        "timestamp": location.created_at.isoformat(),
+                    }
+                    # Broadcast to general tracking group
+                    async_to_sync(channel_layer.group_send)("tracking_updates", ws_event)
+                    # Broadcast to line-specific group if tracking a line
+                    if line:
+                        async_to_sync(channel_layer.group_send)(f"line_{line.id}", ws_event)
+            except Exception as ws_err:
+                logger.warning(f"WebSocket broadcast failed: {ws_err}")
+
             logger.info(f"Recorded location update for bus {bus.license_plate}")
             return location
 

@@ -89,6 +89,28 @@ class NotificationService(BaseService):
             elif channel == NOTIFICATION_CHANNEL_SMS:
                 cls.send_sms_notification(notification)
 
+            # Always broadcast via WebSocket for in-app real-time delivery
+            try:
+                from channels.layers import get_channel_layer
+                from asgiref.sync import async_to_sync
+
+                channel_layer = get_channel_layer()
+                if channel_layer:
+                    async_to_sync(channel_layer.group_send)(
+                        f"notifications_{user_id}",
+                        {
+                            "type": "user_notification",
+                            "notification_id": str(notification.id),
+                            "title": title,
+                            "message": message,
+                            "notification_type": notification_type,
+                            "data": data or {},
+                            "timestamp": notification.created_at.isoformat(),
+                        }
+                    )
+            except Exception as ws_err:
+                logger.warning(f"WebSocket notification broadcast failed: {ws_err}")
+
             logger.info(
                 f"Created {notification_type} notification for user {user.email} "
                 f"via {channel} channel"

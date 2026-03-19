@@ -740,7 +740,28 @@ class VirtualCurrencyService(BaseService):
                         'transaction_type': transaction_type
                     }
                 )
-            
+
+            # Broadcast balance change via WebSocket to user's notification group
+            try:
+                from channels.layers import get_channel_layer
+                from asgiref.sync import async_to_sync
+                from django.utils import timezone as tz
+
+                channel_layer = get_channel_layer()
+                if channel_layer:
+                    async_to_sync(channel_layer.group_send)(
+                        f"notifications_{user_id}",
+                        {
+                            "type": "gamification_update",
+                            "delta": amount,
+                            "new_balance": int(currency.balance),
+                            "reason": description,
+                            "timestamp": tz.now().isoformat(),
+                        }
+                    )
+            except Exception as ws_err:
+                logger.warning(f"WebSocket gamification broadcast failed: {ws_err}")
+
             logger.info(f"Added {amount} coins to {user.email} - {description}")
             return transaction_record
             
