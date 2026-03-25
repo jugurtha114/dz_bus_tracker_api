@@ -60,38 +60,67 @@ EXPOSE 8000
 # Command for development
 CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
 
-# Production stage
-FROM base AS production
+# ---------------------------------------------------------------------------
+# Production build stage (install deps, then discard build tools)
+# ---------------------------------------------------------------------------
+FROM base AS production-build
 
-# Create app user
-RUN groupadd -r app && useradd -r -g app app
-
-# Copy requirements and install
 COPY requirements/ requirements/
-RUN pip install --upgrade pip setuptools wheel
-RUN pip install -r requirements/base.txt
-RUN pip install gunicorn
+RUN pip install --upgrade pip setuptools wheel \
+    && pip install -r requirements/production.txt \
+    && pip wheel --no-deps --wheel-dir /wheels -r requirements/production.txt
+
+# ---------------------------------------------------------------------------
+# Production runtime stage (slim — no build-essential)
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim AS production
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV DJANGO_SETTINGS_MODULE=config.settings.production
+
+WORKDIR /app
+
+# Runtime-only system deps (no build-essential, no git)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        postgresql-client \
+        libjpeg62-turbo \
+        libpng16-16t64 \
+        libwebp7 \
+        libpq5 \
+        gettext \
+        gdal-bin \
+        libgdal36 \
+        curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
+RUN groupadd -r app && useradd -r -g app -d /app -s /sbin/nologin app
+
+# Copy pre-built wheels and install (no compilation needed)
+COPY --from=production-build /wheels /wheels
+COPY --from=production-build /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=production-build /usr/local/bin /usr/local/bin
 
 # Copy project
 COPY . .
 
-# Create directories and set permissions
+# Directories, permissions, entrypoint
 RUN mkdir -p /app/media /app/static /app/logs \
     && chown -R app:app /app \
-    && chmod +x /app/scripts/entrypoint.sh || echo "Entrypoint script not found"
+    && chmod +x /app/scripts/entrypoint.prod.sh \
+    && chmod +x /app/scripts/entrypoint.sh || true
 
-# Collect static files
-RUN python manage.py collectstatic --noinput --settings=config.settings.production || echo "Static files collection failed, continuing..."
-
-# Switch to app user
+# Switch to non-root user
 USER app
 
-# Expose port
-EXPOSE 8000
+# Port used by Gunicorn+Uvicorn ASGI
+EXPOSE 8007
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health/ || exit 1
+# Health check (no curl dep needed — use Python)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8007/health/')"
 
-# Command for production
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120", "config.wsgi:application"]
+# Default command (overridden by docker-compose)
+CMD ["/app/scripts/entrypoint.prod.sh", "web"]

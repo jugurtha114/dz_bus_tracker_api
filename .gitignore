@@ -176,6 +176,7 @@ Desktop.ini
 logs/
 .env.*
 !.env.example
+!.env.production.example
 firebase-credentials.json
 
 # Test outputs
