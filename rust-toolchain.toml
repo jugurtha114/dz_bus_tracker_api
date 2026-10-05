@@ -1,0 +1,5 @@
+[toolchain]
+# Pinned stable release; bump deliberately and record it in docs/VERSIONS.md.
+channel = "1.99.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

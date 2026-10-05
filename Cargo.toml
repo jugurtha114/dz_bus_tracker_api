@@ -1,0 +1,123 @@
+[workspace]
+resolver = "3"
+members = ["crates/domain", "crates/config"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "Proprietary"
+publish = false
+repository = "https://github.com/jugurtha114/dz_bus_tracker_api"
+
+[workspace.dependencies]
+# Internal crates
+dz-domain = { path = "crates/domain" }
+dz-app = { path = "crates/app" }
+dz-config = { path = "crates/config" }
+dz-infra = { path = "crates/infra" }
+dz-http = { path = "crates/api" }
+dz-testkit = { path = "crates/testkit" }
+
+# Async runtime and HTTP
+tokio = { version = "1.53.2", features = ["macros", "rt-multi-thread", "signal", "time", "sync", "net", "io-util"] }
+tokio-util = { version = "0.7.19", features = ["rt"] }
+futures = "0.3.34"
+axum = { version = "0.8.9", default-features = false, features = ["http1", "http2", "json", "macros", "matched-path", "original-uri", "query", "tokio", "tower-log", "tracing", "ws"] }
+tower = { version = "0.5.3", features = ["util", "timeout", "limit", "load-shed"] }
+tower-http = { version = "0.7.1", features = ["trace", "cors", "compression-br", "compression-gzip", "compression-zstd", "timeout", "request-id", "limit", "sensitive-headers", "set-header", "catch-panic", "util", "propagate-header"] }
+hyper = "1.11.1"
+hyper-util = { version = "0.1.21", features = ["client-legacy", "http1", "tokio"] }
+http = "1.5.0"
+http-body-util = "0.1.5"
+bytes = "1.12.1"
+
+# Persistence
+sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "ipnet", "migrate", "macros", "derive"] }
+fred = { version = "10.1.0", default-features = false, features = ["i-std", "i-scripts", "i-pubsub", "i-geo", "i-sorted-sets", "i-hashes", "i-keys", "i-server", "transactions"] }
+
+# Serialization / validation / errors
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+validator = { version = "0.21.0", features = ["derive"] }
+thiserror = "2.0.21"
+anyhow = "1.0.104"
+
+# API docs
+utoipa = { version = "6.0.0", features = ["axum_extras", "uuid", "chrono"] }
+utoipa-axum = "0.3.0"
+utoipa-scalar = { version = "0.4.0", features = ["axum"] }
+
+# Configuration
+figment = { version = "0.10.19", features = ["env"] }
+url = { version = "2.5.8", features = ["serde"] }
+ipnet = { version = "2.12.2", features = ["serde"] }
+
+# Observability
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["json", "env-filter"] }
+opentelemetry = "0.33.0"
+opentelemetry_sdk = { version = "0.33.0", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.33.0", default-features = false, features = ["http-proto", "reqwest-client", "trace"] }
+tracing-opentelemetry = "0.34.0"
+metrics = "0.24.6"
+metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
+
+# Security / crypto
+jsonwebtoken = { version = "11.1.0", default-features = false, features = ["rust_crypto", "use_pem"] }
+argon2 = { version = "0.6.0", features = ["zeroize"] }
+pbkdf2 = { version = "0.13.0", default-features = false, features = ["hmac", "sha2"] }
+sha1 = "0.11.0"
+sha2 = "0.11.0"
+ed25519-dalek = { version = "3.0.0", features = ["pkcs8", "pem", "rand_core"] }
+rand = "0.10.3"
+base64 = "0.23.1"
+hex = "0.4.3"
+subtle = "2.6.1"
+secrecy = { version = "0.10.3", features = ["serde"] }
+
+# Domain types
+uuid = { version = "1.27.0", features = ["v4", "v7", "serde"] }
+chrono = { version = "0.4.45", default-features = false, features = ["std", "clock", "serde"] }
+regex = "1.13.1"
+async-trait = "0.1.92"
+
+# Mail / jobs
+lettre = { version = "0.11.23", default-features = false, features = ["builder", "smtp-transport", "tokio1", "tokio1-rustls", "ring", "webpki-roots", "pool", "hostname"] }
+croner = "4.0.1"
+
+# CLI
+clap = { version = "4.6.7", features = ["derive", "env"] }
+
+# Testing
+testcontainers = "0.28.0"
+proptest = "1.11.0"
+ctor = "1.0.13"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+unused_must_use = "deny"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+unwrap_used = "warn"
+expect_used = "warn"
+print_stdout = "warn"
+large_futures = "warn"
+await_holding_lock = "deny"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+panic = "unwind"
+
+[profile.dev.package."*"]
+opt-level = 1
+
+[profile.dev.package.argon2]
+opt-level = 3
