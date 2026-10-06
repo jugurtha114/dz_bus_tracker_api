@@ -6,6 +6,7 @@ members = [
     "crates/app",
     "crates/infra",
     "crates/api",
+    "crates/testkit",
     "bin/dz-api",
     "bin/dz-worker",
     "bin/dz-cli",

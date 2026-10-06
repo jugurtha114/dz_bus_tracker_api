@@ -19,6 +19,8 @@ CREATE TABLE users (
     created_at            timestamptz NOT NULL DEFAULT now(),
     updated_at            timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT users_email_key UNIQUE (email),
+    -- One account per phone number (SMS notifications and future OTP sign-in).
+    CONSTRAINT users_phone_number_key UNIQUE (phone_number),
     CONSTRAINT users_email_normalized CHECK (
         email = lower(btrim(email)) AND char_length(email) BETWEEN 3 AND 254
         AND position('@' IN email) > 1

@@ -9,12 +9,14 @@
 //!
 //! Keys are scoped to the caller (user, API key or client IP), so they cannot collide across
 //! users. Non-2xx responses are not stored, so a client can fix the request and retry.
+//! Responses marked `Cache-Control: no-store` carry secrets (tokens, API keys) and are never
+//! persisted: the key is released instead, and a retry executes the request again.
 
 use std::time::Duration;
 
 use axum::body::Body;
 use axum::extract::{Request, State};
-use axum::http::header::CONTENT_TYPE;
+use axum::http::header::{CACHE_CONTROL, CONTENT_TYPE};
 use axum::http::{HeaderValue, Method, StatusCode};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
@@ -87,7 +89,7 @@ pub async fn idempotency(State(state): State<AppState>, request: Request, next: 
         Ok(IdempotencyBegin::Replay(stored)) => replay(stored),
         Ok(IdempotencyBegin::Proceed) => {
             let response = next.run(Request::from_parts(parts, Body::from(bytes))).await;
-            if !response.status().is_success() {
+            if !response.status().is_success() || carries_secrets(&response) {
                 if let Err(error) = state.idempotency.release(&scope).await {
                     tracing::warn!(%error, "could not release idempotency key");
                 }
@@ -114,6 +116,17 @@ pub async fn idempotency(State(state): State<AppState>, request: Request, next: 
             Response::from_parts(parts, Body::from(body))
         }
     }
+}
+
+/// `no-store` responses (issued tokens, API-key secrets) must not be written to Valkey.
+fn carries_secrets(response: &Response) -> bool {
+    response
+        .headers()
+        .get_all(CACHE_CONTROL)
+        .iter()
+        .filter_map(|v| v.to_str().ok())
+        .flat_map(|v| v.split(','))
+        .any(|directive| directive.trim().eq_ignore_ascii_case("no-store"))
 }
 
 fn replay(stored: StoredResponse) -> Response {

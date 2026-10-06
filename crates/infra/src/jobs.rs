@@ -204,6 +204,26 @@ pub async fn run_worker(
     Ok(())
 }
 
+/// Processes every job that is due now, one batch at a time, and returns how many ran.
+/// Used by tests and one-off maintenance; production uses [`run_worker`].
+pub async fn drain(
+    pool: &PgPool,
+    executor: &dyn JobExecutor,
+    config: &WorkerConfig,
+) -> anyhow::Result<usize> {
+    let mut processed = 0;
+    loop {
+        let jobs = claim(pool, config, config.concurrency.max(1)).await?;
+        if jobs.is_empty() {
+            return Ok(processed);
+        }
+        processed += jobs.len();
+        for job in jobs {
+            process(pool, executor, config, job).await;
+        }
+    }
+}
+
 async fn claim(pool: &PgPool, config: &WorkerConfig, limit: usize) -> AppResult<Vec<ClaimedJob>> {
     sqlx::query_as!(
         ClaimedJob,
@@ -229,7 +249,8 @@ async fn claim(pool: &PgPool, config: &WorkerConfig, limit: usize) -> AppResult<
     .map_err(db_error)
 }
 
-async fn reap_expired_leases(pool: &PgPool) -> AppResult<()> {
+/// Re-queues (or dead-letters) running jobs whose lease has expired.
+pub async fn reap_expired_leases(pool: &PgPool) -> AppResult<()> {
     let result = sqlx::query!(
         r#"
         UPDATE jobs

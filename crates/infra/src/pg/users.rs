@@ -151,10 +151,7 @@ impl UserRepository for PgStore {
         )
         .fetch_one(&mut *tx)
         .await
-        .map_err(|e| match violated_constraint(&e) {
-            Some("users_email_key") => AppError::Conflict(ConflictKind::EmailTaken),
-            _ => db_error(e),
-        })?;
+        .map_err(unique_conflict)?;
         let profile = sqlx::query_as!(
             ProfileRow,
             r#"
@@ -347,7 +344,7 @@ impl UserRepository for PgStore {
         )
         .fetch_optional(self.pool())
         .await
-        .map_err(db_error)?
+        .map_err(unique_conflict)?
         .ok_or(AppError::NotFound("user"))?
         .into_user()
     }
@@ -476,5 +473,14 @@ impl UserRepository for PgStore {
         audit::insert(&mut tx, &audit_entry).await?;
         tx.commit().await.map_err(db_error)?;
         Ok(AdminUserUpdate { user: row.into_user()?, revoked_sessions })
+    }
+}
+
+/// Maps unique-constraint violations on `users` to conflicts the client can act on.
+fn unique_conflict(error: sqlx::Error) -> AppError {
+    match violated_constraint(&error) {
+        Some("users_email_key") => AppError::Conflict(ConflictKind::EmailTaken),
+        Some("users_phone_number_key") => AppError::Conflict(ConflictKind::PhoneTaken),
+        _ => db_error(error),
     }
 }

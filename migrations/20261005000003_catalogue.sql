@@ -170,7 +170,7 @@ CREATE INDEX line_stops_stop_idx ON line_stops (stop_id);
 CREATE TABLE schedules (
     id                uuid        PRIMARY KEY DEFAULT uuidv7(),
     line_id           uuid        NOT NULL REFERENCES lines (id) ON DELETE CASCADE,
-    -- 0 = Monday … 6 = Sunday (legacy convention).
+    -- ISO 8601: 1 = Monday … 7 = Sunday (= EXTRACT(isodow FROM …)).
     day_of_week       smallint    NOT NULL,
     start_time        time        NOT NULL,
     end_time          time        NOT NULL,
@@ -178,7 +178,7 @@ CREATE TABLE schedules (
     is_active         boolean     NOT NULL DEFAULT true,
     created_at        timestamptz NOT NULL DEFAULT now(),
     updated_at        timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT schedules_day_range CHECK (day_of_week BETWEEN 0 AND 6),
+    CONSTRAINT schedules_day_range CHECK (day_of_week BETWEEN 1 AND 7),
     CONSTRAINT schedules_time_order CHECK (end_time > start_time),
     CONSTRAINT schedules_frequency_range CHECK (frequency_minutes BETWEEN 1 AND 1440),
     -- Active schedules of a line may not overlap on the same day (legacy L-23).

@@ -63,7 +63,7 @@ clients and third-party integrators (see ADR-0002). Compared with Django/DRF:
 | `lines.Stop` | `stops` | Redesign | M1 | `latitude`/`longitude` decimals → `location geography(Point,4326)` + GiST index. |
 | `lines.Line` | `lines` | Redesign | M1 | + `route geography(LineString,4326)` (replaces `RouteSegment`), color validated `#RRGGBB` (L-49). |
 | `lines.LineStop` | `line_stops` | Redesign | M1 | `order` → `position`; `(line_id, position)` unique **deferrable** so re-ordering works (L-22). |
-| `lines.Schedule` | `schedules` | Redesign | M1 | `end_time > start_time` and non-overlap enforced by the database (exclusion constraint) instead of a bypassable service check (L-23). |
+| `lines.Schedule` | `schedules` | Redesign | M1 | `end_time > start_time` and non-overlap enforced by the database (exclusion constraint) instead of a bypassable service check (L-23). `day_of_week` follows ISO 8601 (1 = Monday … 7 = Sunday); the importer adds 1 to legacy values. |
 | `lines.ServiceDisruption` | `disruptions` | Keep | M2 | Adds `end_time >= start_time` check; fan-out to affected passengers, not only admins (L-32). |
 | `tracking.BusLine` | `bus_line_assignments` | Redesign | M2 | Pure assignment (bus may serve line). Tracking state is derived from the active trip, removing the duplicated `tracking_status`/`trip_id` that drifted (L-21). Re-assigning a previously unassigned pair works (L-50). |
 | `tracking.Trip` | `trips` | Redesign | M3 | Partial unique indexes guarantee at most one active trip per bus and per driver (race L-17). One finaliser computes stats (L-18). |

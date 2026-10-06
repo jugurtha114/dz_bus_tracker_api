@@ -92,9 +92,7 @@ pub struct JobRunner {
 impl JobRunner {
     pub async fn run(&self, job: &Job) -> AppResult<()> {
         match job {
-            Job::PasswordResetRequested { email, lang, .. } => {
-                self.send_password_reset(email, *lang).await
-            }
+            Job::PasswordResetRequested { email, .. } => self.send_password_reset(email).await,
             Job::PurgeExpiredAuth => self.purge_expired_auth().await,
             Job::PurgeFinishedJobs => {
                 let before = self.clock.now() - chrono_duration(self.settings.job_retention);
@@ -105,7 +103,7 @@ impl JobRunner {
         }
     }
 
-    async fn send_password_reset(&self, email: &str, lang: Lang) -> AppResult<()> {
+    async fn send_password_reset(&self, email: &str) -> AppResult<()> {
         let Ok(email) = Email::parse(email) else {
             return Ok(());
         };
@@ -123,7 +121,9 @@ impl JobRunner {
         self.resets.issue(credentials.user.id, token.hash, now, expires_at).await?;
         let link = format!("{}#token={}", self.settings.password_reset_url, token.plaintext);
         // The user's saved language wins over the language of the anonymous request.
-        let lang = if credentials.language == lang { lang } else { credentials.language };
+        // The account's saved preference wins; the request language is kept in the job
+        // payload only as context.
+        let lang = credentials.language;
         let message = mail::password_reset(
             credentials.user.email.as_str(),
             lang,
