@@ -25,6 +25,8 @@ pub enum Violation {
     PasswordEntirelyNumeric,
     PasswordTooSimilar,
     PasswordReused,
+    /// A secret supplied for confirmation (e.g. the current password) does not match.
+    Incorrect,
     UnknownField,
 }
 
@@ -47,6 +49,7 @@ impl Violation {
             Self::PasswordEntirelyNumeric => "password_entirely_numeric",
             Self::PasswordTooSimilar => "password_too_similar",
             Self::PasswordReused => "password_reused",
+            Self::Incorrect => "incorrect",
             Self::UnknownField => "unknown_field",
         }
     }
