@@ -1,5 +1,6 @@
 //! Valkey adapters (cache, rate limiting, revocation, pub/sub) built on `fred`.
 
+mod idempotency;
 mod rate_limit;
 mod revocation;
 
@@ -9,6 +10,7 @@ use dz_config::ValkeySettings;
 use fred::prelude::{Builder, ClientLike, Config, Pool, ReconnectPolicy};
 use secrecy::ExposeSecret;
 
+pub use idempotency::ValkeyIdempotencyStore;
 pub use rate_limit::ValkeyRateLimiter;
 pub use revocation::ValkeyRevocationStore;
 

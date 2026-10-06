@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/domain", "crates/config", "crates/app", "crates/infra"]
+members = ["crates/domain", "crates/config", "crates/app", "crates/infra", "crates/api"]
 
 [workspace.package]
 version = "0.1.0"
@@ -39,6 +39,9 @@ fred = { version = "10.1.0", default-features = false, features = ["i-std", "i-s
 # Serialization / validation / errors
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+serde_path_to_error = "0.1.20"
+serde_urlencoded = "0.7.1"
+form_urlencoded = "1.2.2"
 validator = { version = "0.21.0", features = ["derive"] }
 thiserror = "2.0.21"
 anyhow = "1.0.104"
@@ -46,7 +49,6 @@ anyhow = "1.0.104"
 # API docs
 utoipa = { version = "6.0.0", features = ["axum_extras", "uuid", "chrono"] }
 utoipa-axum = "0.3.0"
-utoipa-scalar = { version = "0.4.0", features = ["axum"] }
 
 # Configuration
 figment = { version = "0.10.19", features = ["env"] }

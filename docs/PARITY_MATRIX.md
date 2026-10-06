@@ -13,8 +13,12 @@ equivalent in the Rust service. Each row is marked:
 The milestone (M1–M7) says when the Rust equivalent lands. Legacy defects are referenced as
 `L-nn` and listed in [section 9](#9-legacy-defects-and-the-rust-fix) with the proposed fix.
 
-The legacy code is the functional specification; nothing below adds a feature that does not exist
-in it, except where a security or correctness fix requires it (marked *fix*).
+**How to read this document.** The legacy code is a *capability inventory*, not a contract. It
+says what the product must be able to do. It does not prescribe how: data model, API shape, real-time
+protocol, job design and business rules are redesigned freely following current best practices.
+No compatibility with the Django API, its WebSocket messages or the existing Flutter client is
+kept. Nothing below adds a product feature that does not exist in Django, except where security or
+correctness requires it (marked *fix*).
 
 ---
 
@@ -281,6 +285,10 @@ clients and third-party integrators (see ADR-0002). Compared with Django/DRF:
 
 ## 3. WebSocket protocol
 
+The protocol is redesigned as a versioned envelope (`dzbus.v1.json` / `dzbus.v1.proto`). The
+names below are the planned event names; the legacy names are listed only to show which
+capability each event replaces. Legacy message compatibility is not a goal.
+
 | Django | Rust | Mark | M | Notes |
 |---|---|---|---|---|
 | Endpoint `ws/` with `?token=<JWT>` (refresh tokens accepted, invalid → anonymous, token logged) | `GET /api/v1/ws?ticket=<one-time>` after `POST /api/v1/ws/ticket` | Redesign | M3 | Short-lived single-use ticket (L-11); anonymous allowed for public channels; Origin allow-list; closes with 4401/4403. Sub-protocols `dzbus.v1.json` / `dzbus.v1.proto`. |
@@ -487,5 +495,5 @@ makes the defect impossible rather than patching it.
    several abuse paths in Django (L-15, L-28, L-55). To confirm the simplified rules.
 3. **Public live tracking.** Kept public (as `active-buses` was), without any driver PII. Live
    positions of specific buses are therefore visible to anonymous users; confirm this is intended.
-4. **Existing Flutter client.** The v1 REST contract changes (paths, pagination, errors); WS
-   event names stay compatible. The Flutter app must move to the new contract or be retired.
+4. **Existing Flutter client.** Decided: no compatibility. The REST and WebSocket contracts are
+   new; the upcoming Next.js and React Native clients are built against them.

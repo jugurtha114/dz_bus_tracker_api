@@ -569,6 +569,49 @@ pub trait Mailer: Send + Sync {
     async fn send(&self, message: &EmailMessage) -> AppResult<()>;
 }
 
+// --- Idempotency ---------------------------------------------------------------------------------------
+
+/// A response kept for replay of an idempotent request.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StoredResponse {
+    pub status: u16,
+    pub content_type: Option<String>,
+    pub body: Vec<u8>,
+}
+
+/// Outcome of reserving an idempotency key.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IdempotencyBegin {
+    /// First time this key is seen: process the request.
+    Proceed,
+    /// Another request with this key is still being processed.
+    InProgress,
+    /// The key was used for a different request (method, path or body differ).
+    Mismatch,
+    /// Already processed: replay the stored response.
+    Replay(StoredResponse),
+}
+
+/// Storage for `Idempotency-Key` handling (draft-ietf-httpapi-idempotency-key-header).
+#[async_trait]
+pub trait IdempotencyStore: Send + Sync {
+    async fn begin(
+        &self,
+        key: &str,
+        fingerprint: [u8; 32],
+        lock_ttl: Duration,
+    ) -> AppResult<IdempotencyBegin>;
+    async fn complete(
+        &self,
+        key: &str,
+        fingerprint: [u8; 32],
+        response: &StoredResponse,
+        ttl: Duration,
+    ) -> AppResult<()>;
+    /// Forgets an in-progress reservation (the request failed in a retryable way).
+    async fn release(&self, key: &str) -> AppResult<()>;
+}
+
 // --- Health ---------------------------------------------------------------------------------------------
 
 /// Health of one dependency.
