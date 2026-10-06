@@ -36,7 +36,9 @@ use tower_http::compression::CompressionLayer;
 use tower_http::cors::{AllowOrigin, CorsLayer};
 use tower_http::sensitive_headers::SetSensitiveHeadersLayer;
 use tower_http::set_header::SetResponseHeaderLayer;
-use tower_http::trace::TraceLayer;
+use tower_http::LatencyUnit;
+use tower_http::trace::{DefaultOnFailure, DefaultOnRequest, DefaultOnResponse, TraceLayer};
+use tracing::Level;
 use utoipa::OpenApi as _;
 use utoipa::openapi::OpenApi;
 use utoipa::openapi::server::Server;
@@ -115,7 +117,8 @@ pub fn router(state: AppState) -> Router {
         .nest("/api/v1", v1)
         .merge(routes::ops())
         .split_for_parts();
-    spec.servers = Some(vec![Server::new(settings.http.public_base_url.as_str())]);
+    spec.servers =
+        Some(vec![Server::new(settings.http.public_base_url.as_str().trim_end_matches('/'))]);
     let spec_json: Arc<str> = Arc::from(spec.to_json().unwrap_or_else(|_| "{}".to_owned()));
 
     let mut app = api.route(
@@ -136,7 +139,11 @@ pub fn router(state: AppState) -> Router {
 
     let trusted_proxies = Arc::new(settings.http.trusted_proxies.clone());
     let deadline = Duration::from_secs(settings.http.request_timeout_secs);
-    let trace = TraceLayer::new_for_http().make_span_with(|request: &Request| {
+    let trace = TraceLayer::new_for_http()
+        .on_request(DefaultOnRequest::new().level(Level::DEBUG))
+        .on_response(DefaultOnResponse::new().level(Level::INFO).latency_unit(LatencyUnit::Millis))
+        .on_failure(DefaultOnFailure::new().level(Level::ERROR))
+        .make_span_with(|request: &Request| {
         let route = request
             .extensions()
             .get::<MatchedPath>()

@@ -63,7 +63,16 @@ impl Tier {
     }
 }
 
+/// Reports the most restrictive tier: an inner (stricter) tier's headers are kept when they
+/// show fewer remaining requests.
 fn set_headers(headers: &mut HeaderMap, decision: &RateDecision) {
+    let existing = headers
+        .get("ratelimit-remaining")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.parse::<u32>().ok());
+    if existing.is_some_and(|remaining| remaining <= decision.remaining) {
+        return;
+    }
     headers.insert("ratelimit-limit", HeaderValue::from(decision.limit));
     headers.insert("ratelimit-remaining", HeaderValue::from(decision.remaining));
     headers.insert("ratelimit-reset", HeaderValue::from(decision.reset_after.as_secs().max(1)));

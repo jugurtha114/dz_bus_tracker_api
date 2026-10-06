@@ -123,14 +123,14 @@ impl AuthService {
             None | Some("") => Some(None),
             Some(raw) => v.check("phone_number", PhoneNumber::parse(raw)).map(Some),
         };
-        if let (Some(email), Some(first), Some(last)) = (&email, &first_name, &last_name) {
-            let ctx = PasswordContext {
-                email_local_part: Some(email.local_part()),
-                first_name: Some(first.as_str()),
-                last_name: Some(last.as_str()),
-            };
-            v.check("password", self.settings.password_policy.validate(input.password.expose_secret(), ctx));
-        }
+        // The password is checked even when other fields are invalid, so that a client gets
+        // every problem in one response.
+        let ctx = PasswordContext {
+            email_local_part: email.as_ref().map(Email::local_part),
+            first_name: first_name.as_ref().map(PersonName::as_str),
+            last_name: last_name.as_ref().map(PersonName::as_str),
+        };
+        v.check("password", self.settings.password_policy.validate(input.password.expose_secret(), ctx));
         let (Some(email), Some(first_name), Some(last_name), Some(phone_number)) =
             (email, first_name, last_name, phone_number)
         else {

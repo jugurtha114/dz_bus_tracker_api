@@ -33,8 +33,11 @@ pub trait Clock: Send + Sync {
 pub struct SystemClock;
 
 impl Clock for SystemClock {
+    /// Truncated to microseconds, the precision PostgreSQL stores, so that values echoed back
+    /// to clients match what is persisted.
     fn now(&self) -> DateTime<Utc> {
-        Utc::now()
+        use chrono::SubsecRound;
+        Utc::now().trunc_subsecs(6)
     }
 }
 

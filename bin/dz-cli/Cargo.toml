@@ -1,0 +1,26 @@
+[package]
+name = "dz-cli"
+description = "DZ Bus Tracker operator CLI: migrations, admin bootstrap, signing keys."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "dz-cli"
+path = "src/main.rs"
+
+[dependencies]
+dz-app.workspace = true
+dz-config.workspace = true
+dz-domain.workspace = true
+dz-infra.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+secrecy.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

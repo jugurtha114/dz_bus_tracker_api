@@ -333,3 +333,90 @@ impl AuditService {
         self.audit.list(&filter, page).await
     }
 }
+
+/// Input of [`bootstrap_admin`].
+#[derive(Debug)]
+pub struct BootstrapAdminInput {
+    pub email: String,
+    pub password: secrecy::SecretString,
+    pub first_name: String,
+    pub last_name: String,
+}
+
+/// Creates an administrator account (operator CLI only; there is no HTTP path to this).
+pub async fn bootstrap_admin(
+    users: &dyn UserRepository,
+    hasher: &dyn crate::ports::PasswordHasher,
+    clock: &dyn Clock,
+    policy: dz_domain::password::PasswordPolicy,
+    input: BootstrapAdminInput,
+) -> AppResult<User> {
+    use dz_domain::password::PasswordContext;
+    use dz_domain::user::{Email, PersonName};
+    use secrecy::ExposeSecret;
+
+    let mut v = Violations::new();
+    let email = v.check("email", Email::parse(&input.email));
+    let first_name = v.check("first_name", PersonName::parse(&input.first_name));
+    let last_name = v.check("last_name", PersonName::parse(&input.last_name));
+    if let (Some(email), Some(first), Some(last)) = (&email, &first_name, &last_name) {
+        let ctx = PasswordContext {
+            email_local_part: Some(email.local_part()),
+            first_name: Some(first.as_str()),
+            last_name: Some(last.as_str()),
+        };
+        v.check("password", policy.validate(input.password.expose_secret(), ctx));
+    }
+    let (Some(email), Some(first_name), Some(last_name)) = (email, first_name, last_name) else {
+        return Err(v.into());
+    };
+    v.into_result()?;
+    let password_hash = hasher.hash(&input.password).await?;
+    let (user, _) = users
+        .insert(crate::ports::NewUser {
+            id: UserId::generate(),
+            email,
+            password_hash,
+            role: Role::Admin,
+            first_name,
+            last_name,
+            phone_number: None,
+            language: dz_domain::Lang::default(),
+            created_at: clock.now(),
+        })
+        .await?;
+    Ok(user)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::Fakes;
+    use dz_domain::password::PasswordPolicy;
+
+    #[tokio::test]
+    async fn bootstraps_an_admin_with_a_strong_password() {
+        let f = Fakes::default();
+        let weak = BootstrapAdminInput {
+            email: "root@example.dz".into(),
+            password: secrecy::SecretString::from("password".to_owned()),
+            first_name: "Root".into(),
+            last_name: "Admin".into(),
+        };
+        let err = bootstrap_admin(&*f.store, &*f.hasher, &*f.clock, PasswordPolicy::default(), weak)
+            .await
+            .unwrap_err();
+        assert!(matches!(err, AppError::Validation(_)));
+        let ok = BootstrapAdminInput {
+            email: "Root@Example.dz".into(),
+            password: secrecy::SecretString::from("long enough passphrase".to_owned()),
+            first_name: "Root".into(),
+            last_name: "Admin".into(),
+        };
+        let user = bootstrap_admin(&*f.store, &*f.hasher, &*f.clock, PasswordPolicy::default(), ok)
+            .await
+            .unwrap();
+        assert_eq!(user.role, Role::Admin);
+        assert_eq!(user.email.as_str(), "root@example.dz");
+    }
+}
