@@ -1,0 +1,3 @@
+# Generated secrets and the local runtime configuration never enter version control.
+/secrets/
+/dz.env

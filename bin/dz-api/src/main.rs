@@ -32,7 +32,12 @@ enum Command {
     /// Run the API server (default).
     Serve,
     /// Exit 0 when the local server answers `/health/live` with 200.
-    Healthcheck,
+    Healthcheck {
+        /// Port to probe (default: the port of `DZ_HTTP__ADDR`). The worker image probes its
+        /// metrics port, which also serves `/health/live`.
+        #[arg(long)]
+        port: Option<u16>,
+    },
     /// Print the OpenAPI document as JSON.
     Openapi,
 }
@@ -41,7 +46,7 @@ fn main() -> ExitCode {
     let cli = Cli::parse();
     let result = match cli.command.unwrap_or(Command::Serve) {
         Command::Serve => serve(),
-        Command::Healthcheck => return healthcheck(),
+        Command::Healthcheck { port } => return healthcheck(port),
         Command::Openapi => print_openapi(),
     };
     match result {
@@ -62,9 +67,11 @@ fn print_openapi() -> anyhow::Result<()> {
 }
 
 /// Minimal HTTP probe without TLS or extra dependencies.
-fn healthcheck() -> ExitCode {
-    let addr = std::env::var("DZ_HTTP__ADDR").unwrap_or_else(|_| "0.0.0.0:8080".to_owned());
-    let port = addr.rsplit(':').next().and_then(|p| p.parse::<u16>().ok()).unwrap_or(8080);
+fn healthcheck(port: Option<u16>) -> ExitCode {
+    let port = port.unwrap_or_else(|| {
+        let addr = std::env::var("DZ_HTTP__ADDR").unwrap_or_else(|_| "0.0.0.0:8080".to_owned());
+        addr.rsplit(':').next().and_then(|p| p.parse::<u16>().ok()).unwrap_or(8080)
+    });
     let probe = || -> std::io::Result<bool> {
         let target = SocketAddr::from(([127, 0, 0, 1], port));
         let mut stream = TcpStream::connect_timeout(&target, Duration::from_secs(2))?;

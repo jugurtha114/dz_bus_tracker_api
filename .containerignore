@@ -1,0 +1,11 @@
+# Build context of the Rust image (Podman/Buildah read this file; Docker BuildKit reads
+# Containerfile.dockerignore, an identical copy). Allow-list: only what `cargo build` needs.
+*
+!Cargo.toml
+!Cargo.lock
+!rust-toolchain.toml
+!.sqlx/
+!crates/
+!bin/
+!migrations/
+**/target/

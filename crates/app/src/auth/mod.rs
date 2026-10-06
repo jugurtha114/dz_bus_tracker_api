@@ -335,7 +335,7 @@ impl AuthService {
         meta: &RequestMeta,
     ) -> AppResult<()> {
         let email = Email::parse(email).map_err(|v| AppError::invalid("email", v))?;
-        let key = format!("password_reset:{}", email.as_str());
+        let key = format!("password_reset:{}", secrets::opaque_key(email.as_str()));
         let decision = self.deps.limiter.check(&key, self.settings.reset_quota).await;
         match decision {
             Ok(d) if !d.allowed => {

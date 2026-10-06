@@ -1,0 +1,122 @@
+# Rust backend CI: formatting, lints, tests against PostGIS + Valkey, offline query metadata,
+# supply-chain policy, OpenAPI drift and the container image.
+name: ci
+
+on:
+  push:
+    branches: [main, master, "claude/**"]
+  pull_request:
+  schedule:
+    # Daily: new RustSec advisories fail the build even without code changes.
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  # Queries are checked against the committed .sqlx/ metadata.
+  SQLX_OFFLINE: "true"
+  RUST_BACKTRACE: "1"
+
+jobs:
+  fmt:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: rustup toolchain install
+      - run: cargo fmt --all --check
+
+  clippy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+  test:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgis/postgis:18-3.6-alpine@sha256:ffcf0c4b904e41b9779f8098007fb5a9484025319c18c70cf8e1bcebb742b9b7
+        env:
+          POSTGRES_USER: dz
+          POSTGRES_PASSWORD: dz
+          POSTGRES_DB: dz
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U dz -d dz -h 127.0.0.1"
+          --health-interval 5s --health-timeout 3s --health-retries 30
+      valkey:
+        image: valkey/valkey:9.1.2-alpine@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "valkey-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 30
+    env:
+      DZ_TEST_DATABASE_URL: postgres://dz:dz@localhost:5432/dz
+      DZ_TEST_VALKEY_URL: redis://localhost:6379/0
+      DATABASE_URL: postgres://dz:dz@localhost:5432/dz
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - uses: taiki-e/install-action@183e4297cca2404691e9380e1307288dced5c82a # v2.87.25
+        with:
+          tool: sqlx-cli@0.9.0
+      - name: Unit, integration and API tests
+        run: cargo test --workspace --locked
+      - name: Offline query metadata is up to date
+        run: |
+          sqlx migrate run --source migrations
+          cargo sqlx prepare --workspace --check -- --all-targets
+
+  openapi:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: rustup toolchain install
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - name: The committed OpenAPI document matches the code
+        run: |
+          cargo run --locked --quiet -p dz-api -- openapi > "$RUNNER_TEMP/openapi.json"
+          if ! diff -u docs/openapi.json "$RUNNER_TEMP/openapi.json"; then
+            echo "::error file=docs/openapi.json::API contract changed. Review the diff, then run: cargo run -p dz-api -- openapi > docs/openapi.json"
+            exit 1
+          fi
+
+  supply-chain:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Advisories (RustSec, i.e. cargo-audit's database), licences, bans and sources.
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1
+        with:
+          command: check advisories licenses bans sources
+
+  container:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: Containerfile
+          push: false
+          load: true
+          tags: dz-bus-tracker:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Image runs as non-root and the binaries start
+        run: |
+          test "$(docker image inspect -f '{{.Config.User}}' dz-bus-tracker:ci)" = "65532:65532"
+          docker run --rm --read-only dz-bus-tracker:ci --version
+          docker run --rm --read-only --entrypoint /usr/local/bin/dz-cli dz-bus-tracker:ci --version

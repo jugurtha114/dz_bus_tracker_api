@@ -1,0 +1,62 @@
+# cargo-deny policy: vulnerabilities, licences, duplicate/banned crates and sources.
+# Run locally with `cargo deny check`; CI runs it on every push.
+
+[graph]
+all-features = false
+
+[advisories]
+# RustSec advisory database: any vulnerability or unsound advisory fails the build;
+# unmaintained crates are reported for direct dependencies only.
+db-urls = ["https://github.com/rustsec/advisory-db"]
+unmaintained = "workspace"
+yanked = "deny"
+# Each exception must name the advisory, why it does not apply, and when to revisit it.
+ignore = [
+    # Marvin timing attack on RSA private-key operations. `rsa` is linked only because
+    # jsonwebtoken's rust_crypto backend bundles every algorithm: this service loads Ed25519
+    # keys exclusively and rejects any token whose header is not EdDSA before touching a key
+    # (crates/infra/src/jwt.rs), so no RSA operation is reachable. Revisit when jsonwebtoken
+    # makes RSA optional or `rsa` ships a fix.
+    { id = "RUSTSEC-2023-0071", reason = "RSA unreachable: EdDSA-only JWTs (see comment)" },
+]
+
+[licenses]
+# Permissive licences only; anything else needs an explicit, reviewed exception.
+allow = [
+    "0BSD",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "MIT-0",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+confidence-threshold = 0.9
+
+[licenses.private]
+# Workspace crates are proprietary and never published.
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+# Native TLS stacks are not wanted: everything uses rustls.
+deny = [
+    { crate = "openssl", reason = "rustls only" },
+    { crate = "openssl-sys", reason = "rustls only" },
+    { crate = "native-tls", reason = "rustls only" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

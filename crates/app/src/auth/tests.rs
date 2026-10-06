@@ -333,7 +333,8 @@ async fn reset_requests_are_rate_limited_per_address() {
         h.fakes.queue.drain();
     }
     // Quota of 3: the last two were silently dropped (counted by the fake limiter).
-    let limited = h.fakes.limiter.check("password_reset:spam@example.dz", settings().reset_quota).await;
+    let key = format!("password_reset:{}", secrets::opaque_key("spam@example.dz"));
+    let limited = h.fakes.limiter.check(&key, settings().reset_quota).await;
     assert!(!limited.unwrap().allowed);
 }
 

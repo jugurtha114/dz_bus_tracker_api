@@ -48,6 +48,14 @@ pub fn hash(secret: &str) -> TokenHash {
     TokenHash(Sha256::digest(secret.as_bytes()).into())
 }
 
+/// A short opaque digest of `value` for key names (rate-limit buckets, de-duplication keys),
+/// so personal data such as e-mail addresses never appears in Valkey key listings or logs.
+#[must_use]
+pub fn opaque_key(value: &str) -> String {
+    let digest = Sha256::digest(value.as_bytes());
+    URL_SAFE_NO_PAD.encode(&digest[..16])
+}
+
 /// Constant-time equality of two hashes.
 #[must_use]
 pub fn hashes_equal(a: &TokenHash, b: &TokenHash) -> bool {

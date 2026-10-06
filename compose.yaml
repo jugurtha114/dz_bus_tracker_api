@@ -1,0 +1,225 @@
+# DZ Bus Tracker — single-host stack for Docker Compose v2 and Podman (`podman compose`).
+#
+#   ./deploy/init-secrets.sh           # once: passwords, Valkey ACL, signing key
+#   cp deploy/dz.env.example deploy/dz.env && $EDITOR deploy/dz.env
+#   docker compose up -d --build       # or: podman compose up -d --build
+#
+# Topology: only nginx publishes ports. PostgreSQL and Valkey live on an internal network
+# without Internet access; the worker additionally reaches the Internet (SMTP). Application
+# containers run as an unprivileged user on a read-only root file system with all
+# capabilities dropped. Secrets are files under deploy/secrets/ (see docs/DEPLOYMENT.md).
+
+name: dz-bus
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "5" }
+
+x-app: &app
+  <<: *hardening
+  image: ${DZ_IMAGE:-localhost/dz-bus-tracker:latest}
+  user: "65532:65532"
+  env_file: [deploy/dz.env]
+  environment:
+    DZ_DATABASE__URL_FILE: /run/secrets/database_url
+    DZ_VALKEY__URL_FILE: /run/secrets/valkey_url
+    DZ_EMAIL__SMTP_URL_FILE: /run/secrets/smtp_url
+    DZ_AUTH__SIGNING_KEYS_DIR: /run/secrets/jwt
+    # nginx is the only client of the API; trust its forwarding headers, nobody else's.
+    DZ_HTTP__TRUSTED_PROXIES: "[172.30.80.0/24]"
+  secrets: [database_url, valkey_url, smtp_url]
+  volumes:
+    - ./deploy/secrets/jwt:/run/secrets/jwt:ro,z
+  tmpfs: ["/tmp:size=16m"]
+  restart: unless-stopped
+  stop_grace_period: 35s
+
+services:
+  # One-shot schema migration; the API and worker start only after it succeeded.
+  migrate:
+    <<: *app
+    entrypoint: ["/usr/local/bin/dz-cli"]
+    command: ["migrate"]
+    restart: "no"
+    networks: [backend]
+    depends_on:
+      postgres: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 128M, pids: 64 }
+
+  api:
+    <<: *app
+    build:
+      context: .
+      dockerfile: Containerfile
+    command: ["serve"]
+    networks: [edge, backend]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      valkey: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/dz-api", "healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 512M, pids: 512 }
+
+  worker:
+    <<: *app
+    entrypoint: ["/usr/local/bin/dz-worker"]
+    command: []
+    networks: [backend, egress]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      valkey: { condition: service_healthy }
+    healthcheck:
+      # The worker serves /health/live on its metrics port.
+      test: ["CMD", "/usr/local/bin/dz-api", "healthcheck", "--port", "9090"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 256M, pids: 256 }
+
+  postgres:
+    <<: *hardening
+    image: docker.io/postgis/postgis:18-3.6-alpine@sha256:ffcf0c4b904e41b9779f8098007fb5a9484025319c18c70cf8e1bcebb742b9b7
+    # The entrypoint drops to the postgres user after preparing the data directory.
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID]
+    environment:
+      POSTGRES_USER: dzbus
+      POSTGRES_DB: dzbus
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password]
+    command:
+      - postgres
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=768MB
+      - -c
+      - max_connections=200
+      - -c
+      - idle_in_transaction_session_timeout=60s
+      - -c
+      - log_min_duration_statement=500ms
+    volumes:
+      - pgdata:/var/lib/postgresql
+    tmpfs: ["/var/run/postgresql", "/tmp"]
+    shm_size: 256m
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "dzbus", "-d", "dzbus"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    stop_grace_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "2", memory: 1G, pids: 512 }
+
+  valkey:
+    <<: *hardening
+    image: docker.io/valkey/valkey:9.1.2-alpine@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
+    cap_add: [CHOWN, SETUID, SETGID]
+    # Append-only file: session revocations survive a restart. Keys expire on their own;
+    # under memory pressure the soonest-expiring go first.
+    command:
+      - valkey-server
+      - --aclfile
+      - /run/secrets/valkey_acl
+      - --appendonly
+      - "yes"
+      - --save
+      - ""
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - volatile-ttl
+    secrets: [valkey_acl]
+    volumes:
+      - valkey-data:/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "valkey-cli", "--user", "healthcheck", "--pass", "-", "--no-auth-warning", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 384M, pids: 128 }
+
+  nginx:
+    <<: *hardening
+    image: docker.io/nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:15c994d10d6d78658721c3bcafff14cb281fba2a4bdf9d5ba92c416a472516e3
+    environment:
+      NGINX_ENTRYPOINT_LOCAL_RESOLVERS: "1"
+      NGINX_ENVSUBST_FILTER: "^NGINX_"
+      NGINX_SERVER_NAME: ${DZ_SERVER_NAME:-_}
+    ports:
+      - "${DZ_HTTP_PORT:-80}:8080"
+      - "${DZ_HTTPS_PORT:-443}:8443/tcp"
+      - "${DZ_HTTPS_PORT:-443}:8443/udp"
+    volumes:
+      - ./nginx/dz-bus.conf:/etc/nginx/templates/dz-bus.conf.template:ro,z
+      - ./nginx/dz-bus-locations.conf:/etc/nginx/dz-bus/locations.conf:ro,z
+      - acme-webroot:/var/www/acme:ro
+      - letsencrypt:/etc/letsencrypt:ro
+    # The entrypoint renders the template into conf.d; nginx (uid 101) owns both mounts.
+    tmpfs:
+      - /tmp:uid=101,gid=101,mode=0700,size=64m
+      - /etc/nginx/conf.d:uid=101,gid=101,mode=0755,size=1m
+    networks:
+      edge:
+        ipv4_address: 172.30.80.10
+    depends_on:
+      api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/nginx-health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 128M, pids: 128 }
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: 172.30.80.0/24
+  backend:
+    internal: true
+  egress: {}
+
+volumes:
+  pgdata:
+  valkey-data:
+  acme-webroot:
+  letsencrypt:
+
+secrets:
+  database_url:
+    file: ./deploy/secrets/database_url
+  valkey_url:
+    file: ./deploy/secrets/valkey_url
+  smtp_url:
+    file: ./deploy/secrets/smtp_url
+  postgres_password:
+    file: ./deploy/secrets/postgres_password
+  valkey_acl:
+    file: ./deploy/secrets/valkey.acl
