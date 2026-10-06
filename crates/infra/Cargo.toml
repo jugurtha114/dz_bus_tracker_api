@@ -1,0 +1,52 @@
+[package]
+name = "dz-infra"
+description = "Adapters for DZ Bus Tracker: PostgreSQL/PostGIS (sqlx), Valkey (fred), password hashing, JWT, mail, job queue, telemetry."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+dz-domain.workspace = true
+dz-app.workspace = true
+dz-config.workspace = true
+
+anyhow.workspace = true
+argon2.workspace = true
+async-trait.workspace = true
+base64.workspace = true
+chrono.workspace = true
+croner.workspace = true
+ed25519-dalek.workspace = true
+fred.workspace = true
+futures.workspace = true
+jsonwebtoken.workspace = true
+lettre.workspace = true
+metrics.workspace = true
+metrics-exporter-prometheus.workspace = true
+opentelemetry.workspace = true
+opentelemetry_sdk.workspace = true
+opentelemetry-otlp.workspace = true
+pbkdf2.workspace = true
+rand.workspace = true
+secrecy.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha1.workspace = true
+sha2.workspace = true
+sqlx.workspace = true
+subtle.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
+tracing.workspace = true
+tracing-opentelemetry.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

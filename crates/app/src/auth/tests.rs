@@ -257,11 +257,13 @@ fn runner(h: &Harness) -> JobRunner {
         sessions: h.fakes.store.clone(),
         resets: h.fakes.store.clone(),
         mailer: h.fakes.mailer.clone(),
+        queue: h.fakes.queue.clone(),
         clock: h.fakes.clock.clone(),
         settings: JobSettings {
             password_reset_ttl: Duration::from_secs(3600),
             password_reset_url: "https://app.example/reset".into(),
             auth_retention: Duration::from_secs(86_400),
+            job_retention: Duration::from_secs(7 * 86_400),
         },
     }
 }

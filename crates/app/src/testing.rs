@@ -726,6 +726,10 @@ impl JobQueue for FakeQueue {
         jobs.push((job.clone(), options));
         Ok(EnqueueOutcome::Enqueued(Uuid::now_v7()))
     }
+
+    async fn purge_finished(&self, _before: DateTime<Utc>) -> AppResult<u64> {
+        Ok(0)
+    }
 }
 
 /// Records sent e-mails.

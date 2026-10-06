@@ -29,6 +29,8 @@ pub enum Job {
     PasswordResetRequested { email: String, lang: Lang, requested_ip: Option<IpAddr> },
     /// Deletes expired sessions, refresh tokens and reset tokens.
     PurgeExpiredAuth,
+    /// Deletes finished jobs and old cron claims.
+    PurgeFinishedJobs,
 }
 
 impl Job {
@@ -38,6 +40,7 @@ impl Job {
         match self {
             Self::PasswordResetRequested { .. } => "password_reset_requested",
             Self::PurgeExpiredAuth => "purge_expired_auth",
+            Self::PurgeFinishedJobs => "purge_finished_jobs",
         }
     }
 }
@@ -53,11 +56,14 @@ pub struct CronEntry {
 }
 
 /// Recurring jobs.
-pub const CRON_SCHEDULE: &[CronEntry] = &[CronEntry {
-    name: "purge_expired_auth",
-    schedule: "0 17 * * * *",
-    job: || Job::PurgeExpiredAuth,
-}];
+pub const CRON_SCHEDULE: &[CronEntry] = &[
+    CronEntry { name: "purge_expired_auth", schedule: "0 17 * * * *", job: || Job::PurgeExpiredAuth },
+    CronEntry {
+        name: "purge_finished_jobs",
+        schedule: "0 41 3 * * *",
+        job: || Job::PurgeFinishedJobs,
+    },
+];
 
 /// Settings the job handlers need.
 #[derive(Debug, Clone)]
@@ -67,6 +73,8 @@ pub struct JobSettings {
     pub password_reset_url: String,
     /// Expired auth rows are kept this long before deletion (forensics).
     pub auth_retention: Duration,
+    /// Finished jobs are kept this long for inspection.
+    pub job_retention: Duration,
 }
 
 /// Executes jobs. Every handler is idempotent: running a job twice has no extra effect beyond
@@ -76,6 +84,7 @@ pub struct JobRunner {
     pub sessions: Arc<dyn SessionRepository>,
     pub resets: Arc<dyn PasswordResetRepository>,
     pub mailer: Arc<dyn Mailer>,
+    pub queue: Arc<dyn JobQueue>,
     pub clock: Arc<dyn Clock>,
     pub settings: JobSettings,
 }
@@ -87,6 +96,12 @@ impl JobRunner {
                 self.send_password_reset(email, *lang).await
             }
             Job::PurgeExpiredAuth => self.purge_expired_auth().await,
+            Job::PurgeFinishedJobs => {
+                let before = self.clock.now() - chrono_duration(self.settings.job_retention);
+                let purged = self.queue.purge_finished(before).await?;
+                tracing::info!(purged, "purged finished jobs");
+                Ok(())
+            }
         }
     }
 

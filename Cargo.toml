@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/domain", "crates/config", "crates/app"]
+members = ["crates/domain", "crates/config", "crates/app", "crates/infra"]
 
 [workspace.package]
 version = "0.1.0"
@@ -34,7 +34,7 @@ bytes = "1.12.1"
 
 # Persistence
 sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "ipnet", "migrate", "macros", "derive"] }
-fred = { version = "10.1.0", default-features = false, features = ["i-std", "i-scripts", "i-pubsub", "i-geo", "i-sorted-sets", "i-hashes", "i-keys", "i-server", "transactions"] }
+fred = { version = "10.1.0", default-features = false, features = ["i-std", "i-scripts", "sha-1", "i-pubsub", "subscriber-client", "i-geo", "i-sorted-sets", "i-hashes", "i-keys", "i-server", "transactions"] }
 
 # Serialization / validation / errors
 serde = { version = "1.0.229", features = ["derive"] }
@@ -58,7 +58,7 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["json", "env-filter"] }
 opentelemetry = "0.33.0"
 opentelemetry_sdk = { version = "0.33.0", features = ["rt-tokio"] }
-opentelemetry-otlp = { version = "0.33.0", default-features = false, features = ["http-proto", "reqwest-client", "trace"] }
+opentelemetry-otlp = { version = "0.33.0", default-features = false, features = ["http-proto", "reqwest-blocking-client", "trace"] }
 tracing-opentelemetry = "0.34.0"
 metrics = "0.24.6"
 metrics-exporter-prometheus = { version = "0.18.3", default-features = false }

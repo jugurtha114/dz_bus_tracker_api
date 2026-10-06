@@ -550,6 +550,8 @@ pub enum EnqueueOutcome {
 #[async_trait]
 pub trait JobQueue: Send + Sync {
     async fn enqueue(&self, job: &Job, options: JobOptions) -> AppResult<EnqueueOutcome>;
+    /// Deletes finished (succeeded or failed) jobs and old cron claims finished before `before`.
+    async fn purge_finished(&self, before: DateTime<Utc>) -> AppResult<u64>;
 }
 
 /// A rendered e-mail.
