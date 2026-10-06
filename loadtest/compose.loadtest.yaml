@@ -1,0 +1,13 @@
+# Load-test overlay: exposes the API on localhost (bypassing nginx's per-IP limits) and raises
+# the application quotas so the test measures throughput, not the limiter.
+#
+#   docker compose -f compose.yaml -f loadtest/compose.loadtest.yaml up -d
+services:
+  api:
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      DZ_RATE_LIMIT__ANON_PER_MINUTE: "1000000"
+      DZ_RATE_LIMIT__USER_PER_MINUTE: "1000000"
+      DZ_RATE_LIMIT__BURST: "100000"
+      DZ_RATE_LIMIT__AUTH_PER_MINUTE: "1000000"
