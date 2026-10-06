@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM jobs\n            WHERE status IN ('succeeded', 'failed') AND finished_at < $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2d6f8393178d72e5f555c47735798dbd0a0c6dc53f87bfd7b5033b530a072efe"
+}

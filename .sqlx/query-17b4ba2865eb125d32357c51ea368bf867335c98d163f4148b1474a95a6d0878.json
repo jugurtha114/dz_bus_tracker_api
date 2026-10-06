@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                    UPDATE auth_sessions SET revoked_at = $2, revoked_reason = 'refresh_token_reuse'\n                    WHERE id = $1\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "17b4ba2865eb125d32357c51ea368bf867335c98d163f4148b1474a95a6d0878"
+}

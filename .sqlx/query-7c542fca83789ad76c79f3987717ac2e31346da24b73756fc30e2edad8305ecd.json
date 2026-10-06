@@ -1,0 +1,124 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT user_id, avatar_key, bio, language, push_notifications_enabled,\n                   email_notifications_enabled, sms_notifications_enabled, created_at, updated_at\n            FROM profiles WHERE user_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "avatar_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "avatar_key"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "bio",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "bio"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "language",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "language"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "push_notifications_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "push_notifications_enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "email_notifications_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "email_notifications_enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "sms_notifications_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "sms_notifications_enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7c542fca83789ad76c79f3987717ac2e31346da24b73756fc30e2edad8305ecd"
+}

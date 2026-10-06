@@ -1,0 +1,142 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, occurred_at, actor_type, actor_id, action, resource_type, resource_id,\n                   details, ip, request_id\n            FROM audit_log\n            WHERE ($1::uuid IS NULL OR actor_id = $1)\n              AND ($2::text IS NULL OR resource_type = $2)\n              AND ($3::text IS NULL OR resource_id = $3)\n              AND ($4::text IS NULL OR action = $4)\n              AND ($5::timestamptz IS NULL OR (occurred_at, id) < ($5, $6))\n            ORDER BY occurred_at DESC, id DESC\n            LIMIT $7\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "occurred_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "occurred_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "actor_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "actor_type"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "actor_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "actor_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "action",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "action"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "resource_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "resource_type"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "resource_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "resource_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "details",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "details"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "ip",
+        "type_info": "Inet",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "ip"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "request_id",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "audit_log",
+            "name": "request_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Uuid",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "61c08b563dada9535433bc01c98837bae11fd8cdb4c0295838d4ac992e2a9fb3"
+}

@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE users\n            SET failed_login_attempts = failed_login_attempts + 1,\n                locked_until = CASE\n                    WHEN failed_login_attempts + 1 >= $2 THEN\n                        $3::timestamptz\n                            + make_interval(secs => $4::float8 * power(2, LEAST(failed_login_attempts + 1 - $2, 5)))\n                    ELSE locked_until\n                END\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int4",
+        "Timestamptz",
+        "Float8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2394ca76eee332c99973ec6d447929de01da9a7056e9c4b80c260a3a72d68714"
+}

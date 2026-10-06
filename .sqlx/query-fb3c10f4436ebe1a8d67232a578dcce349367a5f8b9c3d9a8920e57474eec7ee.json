@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE password_reset_tokens SET used_at = $2\n            WHERE user_id = $1 AND used_at IS NULL\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fb3c10f4436ebe1a8d67232a578dcce349367a5f8b9c3d9a8920e57474eec7ee"
+}

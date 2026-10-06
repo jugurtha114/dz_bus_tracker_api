@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM cron_runs WHERE slot < $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7a35a6db2f9c26d24fd95330bd9c50c2a0b051755f167f209deac2a0458fcdbe"
+}

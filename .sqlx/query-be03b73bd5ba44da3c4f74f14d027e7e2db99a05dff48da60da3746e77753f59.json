@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE auth_sessions SET revoked_at = $3, revoked_reason = $4\n            WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "be03b73bd5ba44da3c4f74f14d027e7e2db99a05dff48da60da3746e77753f59"
+}
