@@ -3,7 +3,8 @@
 The backend of DZ Bus Tracker: a Rust service (axum, tokio, sqlx, fred) over PostgreSQL 18 +
 PostGIS and Valkey, replacing the legacy Django application in this repository (see
 [ADR 0002](ADR/0002-clean-break-from-the-legacy-api.md)). It is developed milestone by
-milestone; this README describes milestone **M1** (identity and administration platform).
+milestone; this README describes milestone **M1** (identity and administration platform) and
+the parts of **M2** delivered so far (object storage and uploads, see [design/M2.md](design/M2.md)).
 
 | Document | Purpose |
 |---|---|
@@ -20,12 +21,12 @@ milestone; this README describes milestone **M1** (identity and administration p
 crates/domain    entities, validation, authorization policy (no I/O)
 crates/config    typed settings from DZ_* variables and secret files
 crates/app       use cases + ports (traits); in-memory fakes for unit tests
-crates/infra     adapters: PostgreSQL, Valkey, Argon2, JWT, SMTP, jobs, telemetry
+crates/infra     adapters: PostgreSQL, Valkey, S3 storage, Argon2, JWT, SMTP, jobs, telemetry
 crates/api       HTTP: routes, extractors, middleware, DTOs, OpenAPI (package dz-http)
-crates/testkit   integration/API test support over real PostGIS + Valkey
+crates/testkit   integration/API test support over real PostGIS + Valkey + RustFS (S3)
 bin/dz-api       HTTP server (serve | healthcheck | openapi)
 bin/dz-worker    background jobs + cron
-bin/dz-cli       migrate | migration-status | create-admin | gen-signing-key
+bin/dz-cli       migrate | migration-status | create-admin | gen-signing-key | storage
 migrations/      SQL migrations (sqlx)
 .sqlx/           offline query metadata (committed)
 ```
@@ -42,6 +43,9 @@ docker run -d --name dz-dev-pg -p 55432:5432 \
   -e POSTGRES_USER=dzbus -e POSTGRES_PASSWORD=dzbus -e POSTGRES_DB=dzbus \
   postgis/postgis:18-3.6-alpine
 docker run -d --name dz-dev-valkey -p 56379:6379 valkey/valkey:9.1.2-alpine
+docker run -d --name dz-dev-s3 -p 59000:9000 \
+  -e RUSTFS_ACCESS_KEY=dzdevaccess -e RUSTFS_SECRET_KEY=dzdevsecret-0123456789 \
+  rustfs/rustfs:1.0.1                           # optional: object storage
 
 export DATABASE_URL=postgres://dzbus:dzbus@localhost:55432/dzbus   # for sqlx macros
 export DZ_ENV=development
@@ -49,8 +53,14 @@ export DZ_DATABASE__URL=$DATABASE_URL
 export DZ_VALKEY__URL=redis://localhost:56379/0
 export DZ_AUTH__ALLOW_EPHEMERAL_KEYS=true       # development only
 export DZ_TELEMETRY__LOG_FORMAT=pretty
+# Optional object storage (uploads, avatars); without it they answer 503 storage_unavailable.
+export DZ_STORAGE__ENDPOINT=http://localhost:59000
+export DZ_STORAGE__BUCKET=dz-dev
+export DZ_STORAGE__ACCESS_KEY_ID=dzdevaccess
+export DZ_STORAGE__SECRET_ACCESS_KEY=dzdevsecret-0123456789
 
 cargo run -p dz-cli -- migrate
+cargo run -p dz-cli -- storage create-bucket
 printf 'a long admin passphrase\n' | cargo run -p dz-cli -- create-admin --email admin@example.test
 cargo run -p dz-api                              # http://localhost:8080/api/docs
 cargo run -p dz-worker                           # jobs and cron (e-mails are logged)
@@ -63,17 +73,18 @@ Without `DATABASE_URL`, set `SQLX_OFFLINE=true` to compile against `.sqlx/`.
 ```sh
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace                    # starts throw-away PostGIS/Valkey containers
+cargo test --workspace                    # starts throw-away PostGIS/Valkey/RustFS containers
 cargo sqlx prepare --workspace --check -- --all-targets
 cargo deny check
 cargo run -q -p dz-api -- openapi | diff -u docs/openapi.json -
 ```
 
 * **Tests** — unit tests use in-memory fakes; `crates/testkit/tests/` exercises every endpoint
-  through the real router against PostGIS and Valkey. Each test gets its own database cloned
-  from a migrated template. Set `DZ_TEST_DATABASE_URL` / `DZ_TEST_VALKEY_URL` to reuse
-  running servers instead of containers, `DZ_TEST_KEEP_DB=1` to keep the database of a failed
-  test.
+  through the real router against PostGIS, Valkey and RustFS (S3). Each test gets its own
+  database cloned from a migrated template and its own bucket. Set `DZ_TEST_DATABASE_URL` /
+  `DZ_TEST_VALKEY_URL` / `DZ_TEST_S3_URL` (`http://<access key>:<secret key>@host:port`, e.g.
+  `http://dzdevaccess:dzdevsecret-0123456789@127.0.0.1:59000`) to reuse running servers instead
+  of containers, `DZ_TEST_KEEP_DB=1` to keep the database (and bucket) of a failed test.
 * **Changing SQL** — add a forward-only migration (`sqlx migrate add <name>`), apply it
   (`sqlx migrate run`), run `cargo sqlx prepare --workspace -- --all-targets` and commit
   `.sqlx/` with the change.
@@ -91,17 +102,21 @@ at start-up with a list of every problem.
 ## Running with compose (Docker or Podman)
 
 ```sh
-./deploy/init-secrets.sh                 # passwords, Valkey ACL, Ed25519 signing key
+./deploy/init-secrets.sh                 # passwords, Valkey ACL, Ed25519 signing key, S3 keys
 cp deploy/dz.env.example deploy/dz.env   # set URLs, CORS origins, DZ_AUTH__ACTIVE_KEY_ID
 $EDITOR deploy/secrets/smtp_url
-docker compose up -d --build             # or: podman compose up -d --build
+docker compose --profile storage up -d --build   # or: podman compose …; omit the profile
+                                                 # when DZ_STORAGE__* points to an S3 provider
 printf 'a long admin passphrase\n' | docker compose run --rm -T migrate create-admin --email you@example.com
 ```
 
 `compose.yaml` builds the image from `Containerfile` (Docker reads
 `Containerfile.dockerignore`, Podman `.containerignore`), runs the migrations once, then the
 API, the worker, PostGIS, Valkey and nginx. Only nginx publishes ports (80, and 443 tcp/udp
-for TLS/HTTP/3). The repository root also contains the legacy `docker-compose.yml`; compose
+for TLS/HTTP/3). The `storage` profile adds RustFS (S3) on the internal network and a one-shot
+`dz-cli storage create-bucket`; clients upload and download through presigned URLs on
+`DZ_STORAGE__PUBLIC_ENDPOINT`, which must reach RustFS through your TLS edge with the `Host`
+header preserved (it is part of the signature), or be an external S3 provider. The repository root also contains the legacy `docker-compose.yml`; compose
 prefers `compose.yaml` and prints a warning about the other file.
 
 ### TLS and HTTP/3

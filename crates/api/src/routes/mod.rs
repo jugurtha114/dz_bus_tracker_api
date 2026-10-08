@@ -4,6 +4,7 @@ pub mod admin;
 pub mod auth;
 pub mod me;
 pub mod ops;
+pub mod uploads;
 
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
@@ -30,6 +31,9 @@ pub fn api() -> OpenApiRouter<AppState> {
         .routes(routes!(auth::revoke_session))
         .routes(routes!(me::get_me, me::update_me))
         .routes(routes!(me::get_profile, me::update_profile))
+        .routes(routes!(me::set_avatar, me::delete_avatar))
+        .routes(routes!(uploads::create_upload))
+        .routes(routes!(uploads::get_upload))
         .routes(routes!(admin::list_users))
         .routes(routes!(admin::get_user, admin::update_user))
         .routes(routes!(admin::list_api_keys, admin::create_api_key))

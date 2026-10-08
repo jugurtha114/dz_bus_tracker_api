@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use dz_app::pagination::{Cursor, Page, PageRequest};
 use dz_app::ports::{
-    ApiKeyCredentials, ApiKeyRecord, ApiKeyRepository, NewApiKey, NewAuditEntry, TokenHash,
+    ApiKeyCredentials, ApiKeyRecord, ApiKeyRepository, NewApiKey, TokenHash, WriteEffects,
 };
 use dz_app::{AppError, AppResult};
 use dz_domain::ConflictKind;
@@ -12,7 +12,7 @@ use dz_domain::authz::{Permission, PermissionSet};
 use dz_domain::ids::{ApiKeyId, UserId};
 use uuid::Uuid;
 
-use super::{PgStore, audit, db_error, violated_constraint};
+use super::{PgStore, db_error, effects, violated_constraint};
 
 struct KeyRow {
     id: Uuid,
@@ -64,7 +64,7 @@ impl KeyRow {
 
 #[async_trait]
 impl ApiKeyRepository for PgStore {
-    async fn insert(&self, key: NewApiKey, audit_entry: NewAuditEntry) -> AppResult<ApiKeyRecord> {
+    async fn insert(&self, key: NewApiKey, effects: WriteEffects) -> AppResult<ApiKeyRecord> {
         let scopes: Vec<String> = key.scopes.iter().map(|p| p.code().to_owned()).collect();
         let mut tx = self.pool().begin().await.map_err(db_error)?;
         let row = sqlx::query_as!(
@@ -91,7 +91,7 @@ impl ApiKeyRepository for PgStore {
             Some("api_keys_prefix_key") => AppError::Conflict(ConflictKind::AlreadyExists),
             _ => db_error(e),
         })?;
-        audit::insert(&mut tx, &audit_entry).await?;
+        effects::persist(&mut tx, &effects).await?;
         tx.commit().await.map_err(db_error)?;
         Ok(row.into_credentials()?.record)
     }
@@ -162,7 +162,7 @@ impl ApiKeyRepository for PgStore {
         &self,
         id: ApiKeyId,
         at: DateTime<Utc>,
-        audit_entry: NewAuditEntry,
+        effects: WriteEffects,
     ) -> AppResult<Option<ApiKeyRecord>> {
         let mut tx = self.pool().begin().await.map_err(db_error)?;
         let Some(row) = sqlx::query_as!(
@@ -182,7 +182,7 @@ impl ApiKeyRepository for PgStore {
         else {
             return Ok(None);
         };
-        audit::insert(&mut tx, &audit_entry).await?;
+        effects::persist(&mut tx, &effects).await?;
         tx.commit().await.map_err(db_error)?;
         Ok(Some(row.into_credentials()?.record))
     }

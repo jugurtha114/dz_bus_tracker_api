@@ -2,8 +2,10 @@
 
 mod api_keys;
 mod audit;
+pub mod effects;
 mod resets;
 mod sessions;
+mod uploads;
 mod users;
 
 use std::str::FromStr;

@@ -3,15 +3,18 @@
 //! * `migrate` / `migration-status` — apply or inspect database migrations.
 //! * `create-admin` — create an administrator (password read from stdin, never from argv).
 //! * `gen-signing-key` — write a new Ed25519 token-signing key (`<kid>.pem`, mode 0600).
+//! * `storage create-bucket` — create the configured object-storage bucket (idempotent).
 
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::sync::Arc;
 
 use clap::{Parser, Subcommand};
 use dz_app::admin::{BootstrapAdminInput, bootstrap_admin};
 use dz_config::Settings;
 use dz_domain::password::PasswordPolicy;
+use dz_infra::storage::S3Storage;
 use dz_infra::wiring::password_hasher;
 use dz_infra::{jwt, pg};
 use secrecy::SecretString;
@@ -46,6 +49,17 @@ enum Command {
         #[arg(long, default_value = "./secrets/jwt")]
         out_dir: PathBuf,
     },
+    /// Object storage administration (`DZ_STORAGE__*`).
+    Storage {
+        #[command(subcommand)]
+        command: StorageCommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum StorageCommand {
+    /// Create the configured bucket; succeeds when it already exists (one-shot provisioning).
+    CreateBucket,
 }
 
 fn main() -> ExitCode {
@@ -65,6 +79,10 @@ fn run(command: Command) -> anyhow::Result<()> {
     }
     let settings = Settings::load()?;
     let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build()?;
+    if let Command::Storage { command: StorageCommand::CreateBucket } = &command {
+        // Needs no database: runs before PostgreSQL is reachable in a fresh deployment.
+        return runtime.block_on(create_bucket(&settings));
+    }
     runtime.block_on(async move {
         let pool = pg::connect(&settings.database, "dz-cli").await?;
         let result = match command {
@@ -100,11 +118,25 @@ fn run(command: Command) -> anyhow::Result<()> {
                 .map_err(describe)?;
                 println_out(&format!("administrator {} created ({})", user.email, user.id))
             }
-            Command::GenSigningKey { .. } => Ok(()),
+            Command::GenSigningKey { .. } | Command::Storage { .. } => Ok(()),
         };
         pool.close().await;
         result
     })
+}
+
+async fn create_bucket(settings: &Settings) -> anyhow::Result<()> {
+    anyhow::ensure!(
+        settings.storage.enabled(),
+        "object storage is not configured (DZ_STORAGE__ENDPOINT)"
+    );
+    let storage = S3Storage::new(&settings.storage, Arc::new(dz_app::ports::SystemClock))?;
+    let bucket = &settings.storage.bucket;
+    if storage.create_bucket().await? {
+        println_out(&format!("bucket {bucket} created"))
+    } else {
+        println_out(&format!("bucket {bucket} already exists"))
+    }
 }
 
 /// Human-readable rendering of use-case errors.

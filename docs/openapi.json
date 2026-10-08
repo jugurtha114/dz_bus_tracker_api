@@ -1037,6 +1037,149 @@
         ]
       }
     },
+    "/api/v1/me/avatar": {
+      "put": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Set the avatar to a completed upload (purpose `avatar`). The previous avatar file is deleted\nin the background.",
+        "operationId": "set_avatar",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetAvatarRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Updated profile with `avatar_url`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "API keys cannot manage an avatar",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The upload was attached by a concurrent request (`upload_already_used`), or the avatar changed concurrently (`stale_state`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`upload_id` is not a usable avatar upload of the caller: unknown, expired, already used or not matching its declaration (`invalid_upload`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is not available (`storage_unavailable`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "me"
+        ],
+        "summary": "Remove the avatar (idempotent). The file is deleted in the background.",
+        "operationId": "delete_avatar",
+        "responses": {
+          "204": {
+            "description": "No avatar any more"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "API keys cannot manage an avatar",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The avatar changed concurrently (`stale_state`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is not available (`storage_unavailable`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/me/profile": {
       "get": {
         "tags": [
@@ -1114,6 +1257,150 @@
           },
           "422": {
             "description": "Invalid fields",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/uploads": {
+      "post": {
+        "tags": [
+          "uploads"
+        ],
+        "summary": "Request an upload URL. The file is then sent directly to storage with the returned request\n(type and exact size are signed) and attached to a resource by id before `expires_at`.\nUploads belong to a signed-in user: API keys cannot request them.",
+        "operationId": "create_upload",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Pending upload with its presigned request (not cacheable)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Purpose not allowed for the caller, or an API key",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Type not accepted or size out of range for the purpose",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is not available (`storage_unavailable`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/uploads/{id}": {
+      "get": {
+        "tags": [
+          "uploads"
+        ],
+        "summary": "One of the caller's uploads: whether it is still pending or already attached.",
+        "operationId": "get_upload",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Upload id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The upload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadStatusViewDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "API keys have no uploads",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such upload of the caller",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -1413,6 +1700,33 @@
               "type": "string"
             },
             "description": "Permission codes granted to the key (e.g. `tracking:read`, `notification:send`)."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateUploadRequest": {
+        "type": "object",
+        "description": "Declares a file to upload. Its type and exact size are signed into the upload URL.",
+        "required": [
+          "purpose",
+          "content_type",
+          "size_bytes"
+        ],
+        "properties": {
+          "content_type": {
+            "type": "string",
+            "description": "Media type of the file, e.g. `image/jpeg` (accepted types depend on the purpose).",
+            "example": "image/jpeg"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/UploadPurposeDto"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Exact size of the file in bytes.",
+            "example": 524288,
+            "minimum": 0
           }
         },
         "additionalProperties": false
@@ -1761,6 +2075,34 @@
         },
         "additionalProperties": false
       },
+      "PresignedRequestDto": {
+        "type": "object",
+        "description": "The request the client performs itself to upload the file directly to storage.",
+        "required": [
+          "method",
+          "url",
+          "headers"
+        ],
+        "properties": {
+          "headers": {
+            "type": "object",
+            "description": "Headers to send with exactly these values (`content-type`, `content-length`).",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "method": {
+            "type": "string",
+            "example": "PUT"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
       "ProblemDocument": {
         "type": "object",
         "description": "RFC 9457 problem document returned by every error response.",
@@ -1854,6 +2196,13 @@
           "updated_at"
         ],
         "properties": {
+          "avatar_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Presigned download URL of the avatar (stable for an hour); `null` without avatar or when\nfile storage is not available."
+          },
           "bio": {
             "type": "string"
           },
@@ -1981,6 +2330,21 @@
           }
         }
       },
+      "SetAvatarRequest": {
+        "type": "object",
+        "description": "Sets the avatar to a completed `avatar` upload.",
+        "required": [
+          "upload_id"
+        ],
+        "properties": {
+          "upload_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id returned by `POST /uploads` (purpose `avatar`), after the file was uploaded."
+          }
+        },
+        "additionalProperties": false
+      },
       "TokenPairDto": {
         "type": "object",
         "description": "Bearer token pair. Clients must serialise refresh calls: presenting a spent refresh token\nrevokes the whole session.",
@@ -2089,6 +2453,109 @@
         },
         "additionalProperties": false
       },
+      "UploadDto": {
+        "type": "object",
+        "description": "A pending upload. Upload the file with `upload` before `expires_at`, then pass `id` to the\nendpoint that attaches it (e.g. `PUT /me/avatar`).",
+        "required": [
+          "id",
+          "purpose",
+          "content_type",
+          "size_bytes",
+          "upload",
+          "expires_at"
+        ],
+        "properties": {
+          "content_type": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/UploadPurposeDto"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "upload": {
+            "$ref": "#/components/schemas/PresignedRequestDto"
+          }
+        }
+      },
+      "UploadPurposeDto": {
+        "type": "string",
+        "description": "What an upload will be attached to.",
+        "enum": [
+          "avatar",
+          "driver_id_card",
+          "driver_license",
+          "bus_photo",
+          "stop_photo"
+        ]
+      },
+      "UploadStatusDto": {
+        "type": "string",
+        "description": "Lifecycle state of an upload.",
+        "enum": [
+          "pending",
+          "attached"
+        ]
+      },
+      "UploadStatusViewDto": {
+        "type": "object",
+        "description": "An upload of the caller, without its (single-use) presigned request.",
+        "required": [
+          "id",
+          "purpose",
+          "content_type",
+          "size_bytes",
+          "status",
+          "created_at",
+          "expires_at"
+        ],
+        "properties": {
+          "attached_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/UploadPurposeDto"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "status": {
+            "$ref": "#/components/schemas/UploadStatusDto"
+          }
+        }
+      },
       "UserDto": {
         "type": "object",
         "description": "A user account.",
@@ -2183,6 +2650,10 @@
     {
       "name": "me",
       "description": "The signed-in user's account and preferences"
+    },
+    {
+      "name": "uploads",
+      "description": "Presigned uploads of photos and documents"
     },
     {
       "name": "admin",

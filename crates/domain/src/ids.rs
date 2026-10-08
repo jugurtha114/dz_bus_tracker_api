@@ -80,6 +80,8 @@ typed_id!(
     LineId,
     /// Identifier of a bus stop.
     StopId,
+    /// Identifier of an upload to object storage.
+    UploadId,
 );
 
 #[cfg(test)]

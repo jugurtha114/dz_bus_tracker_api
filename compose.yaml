@@ -1,8 +1,9 @@
 # DZ Bus Tracker — single-host stack for Docker Compose v2 and Podman (`podman compose`).
 #
-#   ./deploy/init-secrets.sh           # once: passwords, Valkey ACL, signing key
+#   ./deploy/init-secrets.sh           # once: passwords, Valkey ACL, signing key, S3 keys
 #   cp deploy/dz.env.example deploy/dz.env && $EDITOR deploy/dz.env
 #   docker compose up -d --build       # or: podman compose up -d --build
+#   docker compose --profile storage up -d --build   # with the bundled object storage
 #
 # Topology: only nginx publishes ports. PostgreSQL and Valkey live on an internal network
 # without Internet access; the worker additionally reaches the Internet (SMTP). Application
@@ -29,9 +30,12 @@ x-app: &app
     DZ_VALKEY__URL_FILE: /run/secrets/valkey_url
     DZ_EMAIL__SMTP_URL_FILE: /run/secrets/smtp_url
     DZ_AUTH__SIGNING_KEYS_DIR: /run/secrets/jwt
+    # Object storage credentials (endpoint and bucket are in deploy/dz.env).
+    DZ_STORAGE__ACCESS_KEY_ID_FILE: /run/secrets/s3_access_key
+    DZ_STORAGE__SECRET_ACCESS_KEY_FILE: /run/secrets/s3_secret_key
     # nginx is the only client of the API; trust its forwarding headers, nobody else's.
     DZ_HTTP__TRUSTED_PROXIES: "[172.30.80.0/24]"
-  secrets: [database_url, valkey_url, smtp_url]
+  secrets: [database_url, valkey_url, smtp_url, s3_access_key, s3_secret_key]
   volumes:
     - ./deploy/secrets/jwt:/run/secrets/jwt:ro,z
   tmpfs: ["/tmp:size=16m"]
@@ -162,6 +166,47 @@ services:
       resources:
         limits: { cpus: "1", memory: 384M, pids: 128 }
 
+  # Optional S3-compatible object storage for photos and documents (profile `storage`). On the
+  # internal network only: clients reach it through DZ_STORAGE__PUBLIC_ENDPOINT (see
+  # deploy/dz.env.example). Production may point DZ_STORAGE__* at any S3 provider instead.
+  storage:
+    <<: *hardening
+    profiles: [storage]
+    image: docker.io/rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
+    environment:
+      RUSTFS_ACCESS_KEY_FILE: /run/secrets/s3_access_key
+      RUSTFS_SECRET_KEY_FILE: /run/secrets/s3_secret_key
+    secrets: [s3_access_key, s3_secret_key]
+    volumes:
+      - storage-data:/data
+    # The image runs as uid 10001 and writes its own logs under /logs.
+    tmpfs: ["/logs:uid=10001,gid=10001,mode=0700,size=64m", "/tmp"]
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits: { cpus: "1", memory: 512M, pids: 256 }
+
+  # One-shot: creates the bucket named by DZ_STORAGE__BUCKET (idempotent).
+  storage-init:
+    <<: *app
+    profiles: [storage]
+    entrypoint: ["/usr/local/bin/dz-cli"]
+    command: ["storage", "create-bucket"]
+    restart: "no"
+    networks: [backend]
+    depends_on:
+      storage: { condition: service_healthy }
+    deploy:
+      resources:
+        limits: { cpus: "0.5", memory: 64M, pids: 32 }
+
   nginx:
     <<: *hardening
     image: docker.io/nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:15c994d10d6d78658721c3bcafff14cb281fba2a4bdf9d5ba92c416a472516e3
@@ -209,6 +254,7 @@ networks:
 volumes:
   pgdata:
   valkey-data:
+  storage-data:
   acme-webroot:
   letsencrypt:
 
@@ -223,3 +269,7 @@ secrets:
     file: ./deploy/secrets/postgres_password
   valkey_acl:
     file: ./deploy/secrets/valkey.acl
+  s3_access_key:
+    file: ./deploy/secrets/s3_access_key
+  s3_secret_key:
+    file: ./deploy/secrets/s3_secret_key

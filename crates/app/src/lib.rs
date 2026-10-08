@@ -5,12 +5,14 @@
 
 pub mod account;
 pub mod admin;
+pub mod audit;
 pub mod auth;
 pub mod error;
 pub mod jobs;
 pub mod mail;
 pub mod pagination;
 pub mod ports;
+pub mod uploads;
 
 #[cfg(any(test, feature = "test-support"))]
 pub mod testing;

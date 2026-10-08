@@ -28,6 +28,9 @@ pub enum Violation {
     /// A secret supplied for confirmation (e.g. the current password) does not match.
     Incorrect,
     UnknownField,
+    /// The referenced upload cannot be used: unknown, someone else's, for another purpose,
+    /// already used or expired, or its object is missing or differs from the declaration.
+    InvalidUpload,
 }
 
 impl Violation {
@@ -51,6 +54,7 @@ impl Violation {
             Self::PasswordReused => "password_reused",
             Self::Incorrect => "incorrect",
             Self::UnknownField => "unknown_field",
+            Self::InvalidUpload => "invalid_upload",
         }
     }
 }
@@ -149,6 +153,8 @@ pub enum ConflictKind {
     PhoneTaken,
     AlreadyExists,
     StaleState,
+    /// The upload was attached by a concurrent request.
+    UploadAlreadyUsed,
 }
 
 impl ConflictKind {
@@ -159,6 +165,7 @@ impl ConflictKind {
             Self::PhoneTaken => "phone_taken",
             Self::AlreadyExists => "already_exists",
             Self::StaleState => "stale_state",
+            Self::UploadAlreadyUsed => "upload_already_used",
         }
     }
 }

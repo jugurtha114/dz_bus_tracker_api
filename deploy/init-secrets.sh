@@ -6,6 +6,8 @@
 #     database_url                       the 0700 parent keeps them private on the host
 #     valkey.acl, valkey_url
 #     smtp_url                           placeholder: edit before starting
+#     s3_access_key, s3_secret_key       object storage credentials (bundled RustFS, or replace
+#                                        them with the keys of your S3 provider)
 #     jwt/<kid>.pem                      Ed25519 signing key (PKCS#8 PEM)
 #
 # Requires: openssl (1.1.1+), sha256sum or shasum.
@@ -58,6 +60,10 @@ else
 fi
 
 write smtp_url "smtps://USER:PASSWORD@smtp.example.com:465"
+
+# Root credentials of the bundled RustFS, also used by the API and the worker.
+write s3_access_key "dz-$(openssl rand -hex 8)"
+write s3_secret_key "$(random)"
 
 kid="${1:-$(date -u +%Y-%m)}"
 if ls "$dir"/jwt/*.pem >/dev/null 2>&1; then

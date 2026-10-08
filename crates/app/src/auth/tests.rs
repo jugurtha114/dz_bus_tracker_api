@@ -256,6 +256,8 @@ fn runner(h: &Harness) -> JobRunner {
         users: h.fakes.store.clone(),
         sessions: h.fakes.store.clone(),
         resets: h.fakes.store.clone(),
+        uploads: h.fakes.store.clone(),
+        storage: Some(h.fakes.storage.clone()),
         mailer: h.fakes.mailer.clone(),
         queue: h.fakes.queue.clone(),
         clock: h.fakes.clock.clone(),
@@ -264,6 +266,7 @@ fn runner(h: &Harness) -> JobRunner {
             password_reset_url: "https://app.example/reset".into(),
             auth_retention: Duration::from_secs(86_400),
             job_retention: Duration::from_secs(7 * 86_400),
+            upload_purge_grace: Duration::from_secs(3600),
         },
     }
 }
@@ -361,7 +364,8 @@ async fn account_updates_validate_and_clear_fields() {
     let signed = register(&h, "me@example.dz").await;
     let claims = h.auth.authenticate(&signed.tokens.access_token).await.unwrap();
     let actor = actor_from_claims(&claims);
-    let accounts = AccountService::new(h.fakes.store.clone(), h.fakes.clock.clone());
+    let accounts =
+        AccountService::new(h.fakes.store.clone(), h.fakes.uploads(), h.fakes.clock.clone());
 
     let bad = accounts
         .update_me(&actor, UpdateMeInput { phone_number: Some(Some("12".into())), ..Default::default() })

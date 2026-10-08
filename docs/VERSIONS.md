@@ -4,7 +4,7 @@ Everything the backend is built and run with is pinned. This file records the pi
 move them; `Cargo.lock`, `rust-toolchain.toml`, `Containerfile`, `compose.yaml` and
 `.github/workflows/ci.yml` are the sources of truth.
 
-Last reviewed: 2026-10-06.
+Last reviewed: 2026-10-08.
 
 ## Toolchain
 
@@ -29,12 +29,18 @@ Last reviewed: 2026-10-06.
 | Config | figment | 0.10.19 |
 | Telemetry | tracing / opentelemetry(-otlp) / metrics-exporter-prometheus | 0.1.44 / 0.33.0 / 0.18.3 |
 | Mail | lettre (rustls) | 0.11.23 |
+| Object storage | rusty-s3 (SigV4 presigning, `rustcrypto` only) / jiff (its timestamps) | 0.10.2 / 0.2.37 |
+| HTTP client (storage) | reqwest (`rustls-no-provider`) / rustls (ring provider) / rustls-platform-verifier | 0.13.5 / 0.23.45 / 0.7.1 |
 | Scheduling | croner | 4.0.1 |
 | CLI | clap | 4.6.7 |
 | Tests | testcontainers | 0.28.0 |
 
 `tower-http 0.6` and `ed25519-dalek 2` also appear in the lock file as transitive dependencies
 of other crates (`cargo deny` reports duplicates as warnings).
+
+reqwest is built without its default TLS backend (which would pull `aws-lc-rs`/`aws-lc-sys`):
+the storage adapter hands it a rustls configuration with the ring provider, the same crypto
+stack as sqlx, lettre and the test kit (`cargo tree -i aws-lc-sys` finds nothing).
 
 ## Container images
 
@@ -47,6 +53,7 @@ change what runs.
 | `gcr.io/distroless/cc-debian13` | `nonroot` | `sha256:e792ab3d241a468a4fd7519ddbbebe66b49b5f365771716ea688ad40b6c6f1c2` | runtime stage |
 | `docker.io/postgis/postgis` | `18-3.6-alpine` (PostgreSQL 18, PostGIS 3.6) | `sha256:ffcf0c4b904e41b9779f8098007fb5a9484025319c18c70cf8e1bcebb742b9b7` | compose, CI, test kit |
 | `docker.io/valkey/valkey` | `9.1.2-alpine` | `sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11` | compose, CI, test kit |
+| `docker.io/rustfs/rustfs` | `1.0.1` (S3-compatible object storage) | `sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c` | compose (`storage` profile), CI, test kit |
 | `docker.io/nginxinc/nginx-unprivileged` | `1.30.5-alpine` (stable branch) | `sha256:15c994d10d6d78658721c3bcafff14cb281fba2a4bdf9d5ba92c416a472516e3` | compose |
 
 The test kit uses tags without digests (`crates/testkit/src/backends.rs`) so that a developer

@@ -22,6 +22,7 @@ use crate::error::{ProblemDocument, ProblemFieldError};
     tags(
         (name = "auth", description = "Registration, sign-in, tokens, passwords and sessions"),
         (name = "me", description = "The signed-in user's account and preferences"),
+        (name = "uploads", description = "Presigned uploads of photos and documents"),
         (name = "admin", description = "Administration (users, API keys, audit log)"),
         (name = "ops", description = "Health probes and signing keys"),
     ),

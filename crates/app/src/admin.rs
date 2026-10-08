@@ -6,54 +6,22 @@ use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use dz_domain::authz::{Action, Actor, Permission, PermissionSet, Policy};
-use dz_domain::ids::{ApiKeyId, AuditEntryId, UserId};
+use dz_domain::ids::{ApiKeyId, UserId};
 use dz_domain::user::{Role, User};
 use dz_domain::{Violation, Violations};
 use serde_json::json;
 
+use crate::audit;
 use crate::auth::secrets;
 use crate::error::{AppError, AppResult, AuthFailure};
 use crate::pagination::{Page, PageRequest};
 use crate::ports::{
-    AdminUserPatch, ApiKeyRecord, ApiKeyRepository, AuditActor, AuditEntry, AuditFilter,
-    AuditRepository, Clock, NewApiKey, NewAuditEntry, RequestMeta, RevocationStore, UserFilter,
-    UserRepository,
+    AdminUserPatch, ApiKeyRecord, ApiKeyRepository, AuditEntry, AuditFilter, AuditRepository,
+    Clock, NewApiKey, RequestMeta, RevocationStore, UserFilter, UserRepository, WriteEffects,
 };
 
 /// Longest validity accepted for an API key.
 const MAX_API_KEY_LIFETIME_DAYS: i64 = 2 * 365;
-
-/// The audited identity of an actor.
-#[must_use]
-pub fn audit_actor(actor: &Actor) -> AuditActor {
-    match actor {
-        Actor::User { id, .. } => AuditActor::User(*id),
-        Actor::Service { key_id, .. } => AuditActor::Service(*key_id),
-        Actor::Anonymous => AuditActor::System,
-    }
-}
-
-fn audit_entry(
-    actor: &Actor,
-    meta: &RequestMeta,
-    at: DateTime<Utc>,
-    action: &'static str,
-    resource_type: &'static str,
-    resource_id: String,
-    details: serde_json::Value,
-) -> NewAuditEntry {
-    NewAuditEntry {
-        id: AuditEntryId::generate(),
-        occurred_at: at,
-        actor: audit_actor(actor),
-        action,
-        resource_type,
-        resource_id: Some(resource_id),
-        details,
-        ip: meta.ip,
-        request_id: meta.request_id.clone(),
-    }
-}
 
 /// Raw filters of the admin user list.
 #[derive(Debug, Clone, Default)]
@@ -129,8 +97,9 @@ impl AdminUserService {
             "is_active": is_active,
             "role": role.map(Role::as_str),
         });
-        let audit = audit_entry(actor, meta, now, "user.update", "user", id.to_string(), details);
-        let outcome = self.users.admin_update(id, patch, audit).await?;
+        let audit = audit::entry(actor, meta, now, "user.update", "user", id.to_string(), details);
+        let effects = WriteEffects::audited(audit);
+        let outcome = self.users.admin_update(id, patch, now, effects).await?;
         if !outcome.revoked_sessions.is_empty() {
             self.revocations.revoke_sessions(&outcome.revoked_sessions, self.revocation_ttl).await?;
         }
@@ -215,7 +184,8 @@ impl ApiKeyService {
             "scopes": scopes.iter().map(Permission::code).collect::<Vec<_>>(),
             "expires_at": input.expires_at,
         });
-        let audit = audit_entry(actor, meta, now, "api_key.create", "api_key", id.to_string(), details);
+        let audit =
+            audit::entry(actor, meta, now, "api_key.create", "api_key", id.to_string(), details);
         let record = self
             .keys
             .insert(
@@ -229,7 +199,7 @@ impl ApiKeyService {
                     created_at: now,
                     expires_at: input.expires_at,
                 },
-                audit,
+                WriteEffects::audited(audit),
             )
             .await?;
         Ok(CreatedApiKey { record, secret })
@@ -249,8 +219,9 @@ impl ApiKeyService {
         Policy::authorize(actor, &Action::ManageApiKeys)?;
         let now = self.clock.now();
         let audit =
-            audit_entry(actor, meta, now, "api_key.revoke", "api_key", id.to_string(), json!({}));
-        self.keys.revoke(id, now, audit).await?.ok_or(AppError::NotFound("api_key"))
+            audit::entry(actor, meta, now, "api_key.revoke", "api_key", id.to_string(), json!({}));
+        let effects = WriteEffects::audited(audit);
+        self.keys.revoke(id, now, effects).await?.ok_or(AppError::NotFound("api_key"))
     }
 
     /// Resolves a presented key (`dzk_<id>_<secret>`) to a service actor.

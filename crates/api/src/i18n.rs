@@ -100,6 +100,10 @@ pub fn problem(code: &str, lang: Lang) -> ProblemText {
         ("stale_state", Ar) => t("تعارض", "تم تعديل المورد في الأثناء؛ أعد تحميله."),
         ("stale_state", En) => t("Conflict", "The resource changed in the meantime; reload it."),
 
+        ("upload_already_used", Fr) => t("Fichier déjà utilisé", "Ce fichier téléversé est déjà associé à une ressource ; téléversez-le à nouveau."),
+        ("upload_already_used", Ar) => t("الملف مستخدم", "هذا الملف المرفوع مرتبط بمورد آخر بالفعل؛ ارفعه من جديد."),
+        ("upload_already_used", En) => t("Upload already used", "This upload is already attached to a resource; upload the file again."),
+
         ("invalid_state", Fr) => t("Action impossible", "L'état actuel de la ressource ne permet pas cette action."),
         ("invalid_state", Ar) => t("إجراء غير ممكن", "الحالة الحالية للمورد لا تسمح بهذا الإجراء."),
         ("invalid_state", En) => t("Action not possible", "The current state of the resource does not allow this action."),
@@ -119,6 +123,10 @@ pub fn problem(code: &str, lang: Lang) -> ProblemText {
         ("service_unavailable", Fr) => t("Service indisponible", "Un service nécessaire est momentanément indisponible."),
         ("service_unavailable", Ar) => t("الخدمة غير متاحة", "إحدى الخدمات اللازمة غير متاحة مؤقتًا."),
         ("service_unavailable", En) => t("Service unavailable", "A required service is temporarily unavailable."),
+
+        ("storage_unavailable", Fr) => t("Stockage indisponible", "Le stockage des fichiers n'est pas disponible pour le moment."),
+        ("storage_unavailable", Ar) => t("التخزين غير متاح", "تخزين الملفات غير متاح حاليًا."),
+        ("storage_unavailable", En) => t("Storage unavailable", "File storage is not available at the moment."),
 
         ("request_timeout", Fr) => t("Délai dépassé", "Le traitement a pris trop de temps."),
         ("request_timeout", Ar) => t("انتهت المهلة", "استغرقت المعالجة وقتًا طويلًا."),
@@ -183,6 +191,9 @@ pub fn violation(v: &Violation, lang: Lang) -> String {
         (Violation::UnknownField, Fr) => "Champ inconnu.".into(),
         (Violation::UnknownField, Ar) => "حقل غير معروف.".into(),
         (Violation::UnknownField, En) => "Unknown field.".into(),
+        (Violation::InvalidUpload, Fr) => "Fichier téléversé introuvable, expiré, déjà utilisé ou non conforme à sa déclaration.".into(),
+        (Violation::InvalidUpload, Ar) => "الملف المرفوع غير موجود أو منتهي الصلاحية أو مستخدم أو لا يطابق ما تم التصريح به.".into(),
+        (Violation::InvalidUpload, En) => "The upload is unknown, expired, already used or does not match its declaration.".into(),
     }
 }
 
@@ -213,11 +224,13 @@ mod tests {
             "phone_taken",
             "already_exists",
             "stale_state",
+            "upload_already_used",
             "invalid_state",
             "idempotency_in_progress",
             "idempotency_key_reused",
             "rate_limited",
             "service_unavailable",
+            "storage_unavailable",
             "request_timeout",
         ];
         let fallback = problem("internal_error", Lang::En).title;

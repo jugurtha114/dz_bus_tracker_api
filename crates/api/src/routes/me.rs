@@ -2,9 +2,11 @@
 
 use axum::Json;
 use axum::extract::State;
+use axum::http::StatusCode;
 use dz_app::account::{UpdateMeInput, UpdateProfileInput};
+use dz_domain::ids::UploadId;
 
-use crate::dto::{MeDto, ProfileDto, UpdateMeRequest, UpdateProfileRequest};
+use crate::dto::{MeDto, ProfileDto, SetAvatarRequest, UpdateMeRequest, UpdateProfileRequest};
 use crate::error::{ApiError, ProblemDocument};
 use crate::extract::{CurrentUser, ValidatedJson};
 use crate::state::AppState;
@@ -104,4 +106,49 @@ pub async fn update_profile(
         )
         .await?;
     Ok(Json(profile.into()))
+}
+
+/// Set the avatar to a completed upload (purpose `avatar`). The previous avatar file is deleted
+/// in the background.
+#[utoipa::path(
+    put, path = "/me/avatar", tag = "me",
+    security(("bearer" = [])),
+    request_body = SetAvatarRequest,
+    responses(
+        (status = 200, description = "Updated profile with `avatar_url`", body = ProfileDto),
+        (status = 401, description = "Not signed in", body = ProblemDocument, content_type = "application/problem+json"),
+        (status = 403, description = "API keys cannot manage an avatar", body = ProblemDocument, content_type = "application/problem+json"),
+        (status = 409, description = "The upload was attached by a concurrent request (`upload_already_used`), or the avatar changed concurrently (`stale_state`)", body = ProblemDocument, content_type = "application/problem+json"),
+        (status = 422, description = "`upload_id` is not a usable avatar upload of the caller: unknown, expired, already used or not matching its declaration (`invalid_upload`)", body = ProblemDocument, content_type = "application/problem+json"),
+        (status = 503, description = "File storage is not available (`storage_unavailable`)", body = ProblemDocument, content_type = "application/problem+json"),
+    )
+)]
+pub async fn set_avatar(
+    State(state): State<AppState>,
+    user: CurrentUser,
+    ValidatedJson(body): ValidatedJson<SetAvatarRequest>,
+) -> Result<Json<ProfileDto>, ApiError> {
+    let profile =
+        state.accounts.set_avatar(&user.actor, UploadId::from_uuid(body.upload_id)).await?;
+    Ok(Json(profile.into()))
+}
+
+/// Remove the avatar (idempotent). The file is deleted in the background.
+#[utoipa::path(
+    delete, path = "/me/avatar", tag = "me",
+    security(("bearer" = [])),
+    responses(
+        (status = 204, description = "No avatar any more"),
+        (status = 401, description = "Not signed in", body = ProblemDocument, content_type = "application/problem+json"),
+        (status = 403, description = "API keys cannot manage an avatar", body = ProblemDocument, content_type = "application/problem+json"),
+        (status = 409, description = "The avatar changed concurrently (`stale_state`)", body = ProblemDocument, content_type = "application/problem+json"),
+        (status = 503, description = "File storage is not available (`storage_unavailable`)", body = ProblemDocument, content_type = "application/problem+json"),
+    )
+)]
+pub async fn delete_avatar(
+    State(state): State<AppState>,
+    user: CurrentUser,
+) -> Result<StatusCode, ApiError> {
+    state.accounts.remove_avatar(&user.actor).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

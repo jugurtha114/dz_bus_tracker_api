@@ -96,9 +96,17 @@ and reproduction steps; expect an acknowledgement within three working days.
 ### API7 — Server-side request forgery
 
 * The API fetches no user-supplied URL. Outbound connections go only to configured hosts
-  (PostgreSQL, Valkey, SMTP, optional OTLP collector).
-* Uploads (M2) will use S3 presigned URLs generated locally: clients upload directly to object
-  storage; the API never downloads user content.
+  (PostgreSQL, Valkey, SMTP, S3 storage, optional OTLP collector).
+* Uploads use S3 presigned URLs generated locally: clients upload directly to the private
+  bucket; the API never downloads user content. The server only `HEAD`s and `DELETE`s object
+  keys it generated itself (`<purpose>/<owner>/<upload id>`), never client file names, without
+  following redirects.
+* A presigned `PUT` signs the declared content type and exact length (another file is refused
+  by storage, `presigned_uploads_only_accept_the_declared_file`); claiming checks the stored
+  object against the declaration again and deletes it on mismatch. Uploads are bound to their
+  owner and purpose (someone else's upload is indistinguishable from a missing one), expire
+  after 15 minutes and can be attached once (`claims_refuse_unusable_uploads`). API keys
+  cannot upload. Download URLs are presigned per request for the owner's own resources only.
 
 ### API8 — Security misconfiguration
 
@@ -139,13 +147,17 @@ and reproduction steps; expect an acknowledgement within three working days.
 * Tokens, reset tokens and API-key secrets are stored hashed; secret-bearing responses carry
   `Cache-Control: no-store` and are never persisted by the idempotency layer.
 * `deploy/init-secrets.sh` generates random database and Valkey passwords, a Valkey ACL (no
-  default user, prefix-scoped app user without admin/dangerous commands) and the Ed25519
-  signing key; `deploy/secrets/` is git-ignored and private to the operator on the host.
+  default user, prefix-scoped app user without admin/dangerous commands), the S3 credentials
+  and the Ed25519 signing key; `deploy/secrets/` is git-ignored and private to the operator on
+  the host. The S3 secret key is a secret file, never part of `deploy/dz.env`.
+* Presigned upload URLs are bearer credentials: `POST /uploads` answers `no-store` and is never
+  replayed by the idempotency layer.
 
 ## Audit trail
 
 Administrative actions (user changes, API key creation/revocation) are written to
-`audit_log` in the same transaction as the change, with actor, client IP and request id.
+`audit_log` in the same transaction as the change, with actor, client IP and request id
+(`WriteEffects` persisted by `pg::effects::persist`, which also inserts outbox jobs).
 Triggers reject `UPDATE`, `DELETE` and `TRUNCATE` (`the_audit_log_is_append_only`).
 
 ## Transport

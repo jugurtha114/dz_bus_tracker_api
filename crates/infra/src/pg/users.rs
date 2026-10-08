@@ -4,8 +4,8 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use dz_app::pagination::{Cursor, Page, PageRequest};
 use dz_app::ports::{
-    AdminUserPatch, AdminUserUpdate, Credentials, LockoutPolicy, NewAuditEntry, NewUser,
-    ProfilePatch, UserFilter, UserPatch, UserRepository,
+    AdminUserPatch, AdminUserUpdate, ClaimedUpload, Credentials, LockoutPolicy, NewUser,
+    ProfilePatch, UserFilter, UserPatch, UserRepository, WriteEffects,
 };
 use dz_app::{AppError, AppResult};
 use dz_domain::ids::{SessionId, UserId};
@@ -13,7 +13,7 @@ use dz_domain::user::{Bio, Email, PersonName, PhoneNumber, Profile, Role, User};
 use dz_domain::{ConflictKind, Lang};
 use uuid::Uuid;
 
-use super::{PgStore, audit, db_error, like_prefix, violated_constraint};
+use super::{PgStore, db_error, effects, like_prefix, uploads, violated_constraint};
 
 /// Columns of `users` as selected by every query below.
 #[derive(Debug)]
@@ -432,9 +432,9 @@ impl UserRepository for PgStore {
         &self,
         id: UserId,
         patch: AdminUserPatch,
-        audit_entry: NewAuditEntry,
+        at: DateTime<Utc>,
+        effects: WriteEffects,
     ) -> AppResult<AdminUserUpdate> {
-        let at = audit_entry.occurred_at;
         let mut tx = self.pool().begin().await.map_err(db_error)?;
         let before = sqlx::query!(
             "SELECT is_active, role FROM users WHERE id = $1 FOR UPDATE",
@@ -470,9 +470,58 @@ impl UserRepository for PgStore {
         } else {
             Vec::new()
         };
-        audit::insert(&mut tx, &audit_entry).await?;
+        effects::persist(&mut tx, &effects).await?;
         tx.commit().await.map_err(db_error)?;
         Ok(AdminUserUpdate { user: row.into_user()?, revoked_sessions })
+    }
+
+    async fn set_avatar(
+        &self,
+        id: UserId,
+        avatar: Option<&ClaimedUpload>,
+        expected: Option<&str>,
+        at: DateTime<Utc>,
+        effects: WriteEffects,
+    ) -> AppResult<Profile> {
+        let mut tx = self.pool().begin().await.map_err(db_error)?;
+        // Compare-and-set on the previous key: the row lock serialises concurrent changes and
+        // the loser sees zero rows (its outbox job would delete the winner's object otherwise).
+        let row = sqlx::query_as!(
+            ProfileRow,
+            r#"
+            UPDATE profiles SET avatar_key = $2, updated_at = $3
+            WHERE user_id = $1 AND avatar_key IS NOT DISTINCT FROM $4::text
+            RETURNING user_id, avatar_key, bio, language, push_notifications_enabled,
+                      email_notifications_enabled, sms_notifications_enabled, created_at, updated_at
+            "#,
+            id.as_uuid(),
+            avatar.map(|claimed| claimed.object_key.as_str()),
+            at,
+            expected,
+        )
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(db_error)?;
+        let Some(row) = row else {
+            let exists = sqlx::query_scalar!(
+                r#"SELECT EXISTS (SELECT 1 FROM profiles WHERE user_id = $1) AS "exists!""#,
+                id.as_uuid(),
+            )
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(db_error)?;
+            return Err(if exists {
+                AppError::Conflict(ConflictKind::StaleState)
+            } else {
+                AppError::NotFound("profile")
+            });
+        };
+        if let Some(claimed) = avatar {
+            uploads::mark_attached(&mut tx, claimed, at).await?;
+        }
+        effects::persist(&mut tx, &effects).await?;
+        tx.commit().await.map_err(db_error)?;
+        Ok(row.into_profile())
     }
 }
 

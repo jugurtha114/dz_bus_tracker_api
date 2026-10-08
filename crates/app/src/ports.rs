@@ -2,7 +2,9 @@
 //! in-memory versions for tests live in [`crate::testing`].
 //!
 //! Mutations that must be atomic with an audit record or a session revocation are single port
-//! methods, so every adapter implements them in one database transaction.
+//! methods, so every adapter implements them in one database transaction. Repository write
+//! methods take the [`WriteEffects`] of the change (audit entries and outbox jobs) as their last
+//! argument and persist them in that same transaction.
 
 use std::net::IpAddr;
 use std::time::Duration;
@@ -11,7 +13,8 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use dz_domain::Lang;
 use dz_domain::authz::PermissionSet;
-use dz_domain::ids::{ApiKeyId, AuditEntryId, SessionId, UserId};
+use dz_domain::ids::{ApiKeyId, AuditEntryId, SessionId, UploadId, UserId};
+use dz_domain::upload::{UploadPurpose, UploadStatus};
 use dz_domain::user::{Bio, Email, PersonName, PhoneNumber, Profile, Role, User};
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
@@ -197,13 +200,26 @@ pub trait UserRepository: Send + Sync {
     ) -> AppResult<Profile>;
     async fn list(&self, filter: &UserFilter, page: PageRequest) -> AppResult<Page<User>>;
     /// Applies an admin change, revokes all sessions when the account is deactivated or its role
-    /// changes, and writes the audit entry, in one transaction.
+    /// changes, and persists `effects`, in one transaction.
     async fn admin_update(
         &self,
         id: UserId,
         patch: AdminUserPatch,
-        audit: NewAuditEntry,
+        at: DateTime<Utc>,
+        effects: WriteEffects,
     ) -> AppResult<AdminUserUpdate>;
+    /// Replaces the avatar of `id` with `avatar` (or removes it with `None`) provided it is still
+    /// `expected`, marks the new upload attached and persists `effects`, in one transaction.
+    /// Fails with `Conflict(StaleState)` when the avatar changed in the meantime and with
+    /// `Conflict(UploadAlreadyUsed)` when the upload was attached by a concurrent request.
+    async fn set_avatar(
+        &self,
+        id: UserId,
+        avatar: Option<&ClaimedUpload>,
+        expected: Option<&str>,
+        at: DateTime<Utc>,
+        effects: WriteEffects,
+    ) -> AppResult<Profile>;
 }
 
 // --- Sessions & refresh tokens -------------------------------------------------------------------
@@ -382,17 +398,18 @@ pub struct ApiKeyCredentials {
 
 #[async_trait]
 pub trait ApiKeyRepository: Send + Sync {
-    async fn insert(&self, key: NewApiKey, audit: NewAuditEntry) -> AppResult<ApiKeyRecord>;
+    async fn insert(&self, key: NewApiKey, effects: WriteEffects) -> AppResult<ApiKeyRecord>;
     async fn find_by_prefix(&self, prefix: &str) -> AppResult<Option<ApiKeyCredentials>>;
     /// Records usage, at most once per minute per key (cheap conditional update).
     async fn touch(&self, id: ApiKeyId, at: DateTime<Utc>) -> AppResult<()>;
     async fn list(&self, page: PageRequest) -> AppResult<Page<ApiKeyRecord>>;
-    /// Revokes the key and writes the audit entry atomically; `None` if it does not exist.
+    /// Revokes the key and persists `effects` atomically; `None` (and nothing persisted) if it
+    /// does not exist.
     async fn revoke(
         &self,
         id: ApiKeyId,
         at: DateTime<Utc>,
-        audit: NewAuditEntry,
+        effects: WriteEffects,
     ) -> AppResult<Option<ApiKeyRecord>>;
 }
 
@@ -444,6 +461,141 @@ pub struct AuditFilter {
 #[async_trait]
 pub trait AuditRepository: Send + Sync {
     async fn list(&self, filter: &AuditFilter, page: PageRequest) -> AppResult<Page<AuditEntry>>;
+}
+
+// --- Transactional outbox ------------------------------------------------------------------------
+
+/// A job enqueued atomically with a repository write (transactional outbox, legacy L-08): it
+/// exists if and only if the change committed, and runs after the commit.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OutboxJob {
+    pub job: Job,
+    pub options: JobOptions,
+}
+
+/// What a repository write must persist atomically with the change itself.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct WriteEffects {
+    pub audit: Vec<NewAuditEntry>,
+    pub jobs: Vec<OutboxJob>,
+}
+
+impl WriteEffects {
+    /// Effects consisting of one audit entry.
+    #[must_use]
+    pub fn audited(entry: NewAuditEntry) -> Self {
+        Self { audit: vec![entry], jobs: Vec::new() }
+    }
+
+    /// Adds a job with default options.
+    #[must_use]
+    pub fn with_job(self, job: Job) -> Self {
+        self.with_job_options(job, JobOptions::default())
+    }
+
+    /// Adds a job with explicit options.
+    #[must_use]
+    pub fn with_job_options(mut self, job: Job, options: JobOptions) -> Self {
+        self.jobs.push(OutboxJob { job, options });
+        self
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.audit.is_empty() && self.jobs.is_empty()
+    }
+}
+
+// --- Object storage & uploads --------------------------------------------------------------------
+
+/// A presigned request the client performs itself, directly against object storage.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PresignedUpload {
+    pub url: String,
+    pub method: &'static str,
+    /// Headers the client must send with exactly these values (they are signed).
+    pub headers: Vec<(&'static str, String)>,
+    pub expires_at: DateTime<Utc>,
+}
+
+/// Metadata of a stored object.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObjectInfo {
+    pub size_bytes: u64,
+    pub content_type: Option<String>,
+}
+
+/// Private S3-compatible object storage. Failures of the remote service are
+/// `AppError::Unavailable("storage")`.
+#[async_trait]
+pub trait ObjectStorage: Send + Sync {
+    /// Presigns a `PUT` of `key`. Content type and length are signed, so the client can upload
+    /// neither something else nor something bigger than declared.
+    fn presign_put(
+        &self,
+        key: &str,
+        content_type: &str,
+        size_bytes: u64,
+        expires_in: Duration,
+    ) -> PresignedUpload;
+    /// Presigns a `GET` of `key`. The signing time is truncated to the start of the current hour
+    /// and the URL is valid for the download TTL plus one hour, so it is identical for every
+    /// request within an hour (ETags of resources embedding it stay valid).
+    fn presign_get(&self, key: &str) -> String;
+    /// Size and type of the object, or `None` if it does not exist.
+    async fn head(&self, key: &str) -> AppResult<Option<ObjectInfo>>;
+    /// Deletes the object; deleting a missing object succeeds (idempotent).
+    async fn delete(&self, key: &str) -> AppResult<()>;
+}
+
+/// A pending upload to insert.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct NewUpload {
+    pub id: UploadId,
+    pub owner_id: UserId,
+    pub purpose: UploadPurpose,
+    pub object_key: String,
+    pub content_type: String,
+    pub size_bytes: u32,
+    pub created_at: DateTime<Utc>,
+    pub expires_at: DateTime<Utc>,
+}
+
+/// An upload as stored.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Upload {
+    pub id: UploadId,
+    pub owner_id: UserId,
+    pub purpose: UploadPurpose,
+    pub object_key: String,
+    pub content_type: String,
+    pub size_bytes: u32,
+    pub status: UploadStatus,
+    pub created_at: DateTime<Utc>,
+    pub expires_at: DateTime<Utc>,
+    pub attached_at: Option<DateTime<Utc>>,
+}
+
+/// An upload verified by [`crate::uploads::UploadService::claim`]: owned by the caller, for the
+/// right purpose, pending, unexpired, and its object exists as declared. The repository that
+/// stores `object_key` on a resource marks the upload attached in the same transaction; if a
+/// concurrent request attached it first, that write fails with `Conflict(UploadAlreadyUsed)`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClaimedUpload {
+    pub id: UploadId,
+    pub object_key: String,
+}
+
+#[async_trait]
+pub trait UploadRepository: Send + Sync {
+    async fn insert(&self, upload: NewUpload) -> AppResult<Upload>;
+    async fn find(&self, id: UploadId) -> AppResult<Option<Upload>>;
+    /// The upload of an object key, whatever its status.
+    async fn find_by_key(&self, object_key: &str) -> AppResult<Option<Upload>>;
+    /// Pending uploads that expired before `before`, oldest first, at most `limit`.
+    async fn list_expired(&self, before: DateTime<Utc>, limit: u32) -> AppResult<Vec<Upload>>;
+    /// Deletes those of `ids` that are still pending; returns how many were deleted.
+    async fn delete_pending(&self, ids: &[UploadId]) -> AppResult<u64>;
 }
 
 // --- Security primitives ----------------------------------------------------------------------------

@@ -1,0 +1,127 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE profiles SET avatar_key = $2, updated_at = $3\n            WHERE user_id = $1 AND avatar_key IS NOT DISTINCT FROM $4::text\n            RETURNING user_id, avatar_key, bio, language, push_notifications_enabled,\n                      email_notifications_enabled, sms_notifications_enabled, created_at, updated_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "avatar_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "avatar_key"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "bio",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "bio"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "language",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "language"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "push_notifications_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "push_notifications_enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "email_notifications_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "email_notifications_enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "sms_notifications_enabled",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "sms_notifications_enabled"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8520470db722467ee3d605da65d738519c1a730b33ff357ac5a8e3e40580f654"
+}

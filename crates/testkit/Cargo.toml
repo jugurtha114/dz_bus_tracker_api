@@ -16,6 +16,7 @@ dz-infra.workspace = true
 anyhow.workspace = true
 axum.workspace = true
 http-body-util.workspace = true
+reqwest.workspace = true
 secrecy.workspace = true
 serde_json.workspace = true
 sqlx.workspace = true

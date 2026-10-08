@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::DenyReason;
 use crate::ids::{ApiKeyId, SessionId, UserId};
+use crate::upload::UploadPurpose;
 use crate::user::Role;
 
 macro_rules! permissions {
@@ -361,6 +362,9 @@ pub enum Action {
     ManageApiKeys,
     /// Read the audit log.
     ReadAuditLog,
+    /// Request a presigned upload for `purpose`. Uploads are owned by a human account, so API
+    /// keys are refused whatever their scopes.
+    RequestUpload { purpose: UploadPurpose },
 }
 
 /// Resource-level authorization rules.
@@ -392,6 +396,20 @@ impl Policy {
             }
             Action::ManageApiKeys => actor.require(Permission::ApiKeyManage),
             Action::ReadAuditLog => actor.require(Permission::AuditLogRead),
+            Action::RequestUpload { purpose } => {
+                let allowed = match purpose {
+                    UploadPurpose::Avatar => actor.require(Permission::AccountSelfManage),
+                    UploadPurpose::DriverIdCard | UploadPurpose::DriverLicense => {
+                        actor.require(Permission::DriverApply)
+                    }
+                    UploadPurpose::BusPhoto => actor
+                        .require(Permission::BusRegister)
+                        .or_else(|_| actor.require(Permission::BusManage)),
+                    UploadPurpose::StopPhoto => actor.require(Permission::StopWrite),
+                };
+                allowed?;
+                actor.user_id().map(|_| ()).ok_or(DenyReason::MissingPermission)
+            }
         }
     }
 }
@@ -522,6 +540,41 @@ mod tests {
             ("driver reads audit", &driver, Action::ReadAuditLog, deny_perm),
         ];
         for (name, actor, action, expected) in cases {
+            assert_eq!(Policy::authorize(actor, &action), expected, "{name}");
+        }
+    }
+
+    /// Who may request an upload for which purpose (actor × purpose).
+    #[test]
+    fn upload_requests() {
+        use UploadPurpose as U;
+        let admin = user(Role::Admin);
+        let passenger = user(Role::Passenger);
+        let driver = user(Role::Driver);
+        let writer = service(&[Permission::StopWrite, Permission::BusRead]);
+        let ok = Ok(());
+        let deny_perm = Err(DenyReason::MissingPermission);
+        let deny_auth = Err(DenyReason::AuthenticationRequired);
+        #[rustfmt::skip]
+        let cases: Vec<(&str, &Actor, U, Result<(), DenyReason>)> = vec![
+            ("passenger avatar",           &passenger,        U::Avatar,        ok),
+            ("driver avatar",              &driver,           U::Avatar,        ok),
+            ("admin avatar",               &admin,            U::Avatar,        ok),
+            ("anon avatar",                &Actor::Anonymous, U::Avatar,        deny_auth),
+            ("service avatar",             &writer,           U::Avatar,        deny_perm),
+            ("passenger id card",          &passenger,        U::DriverIdCard,  ok),
+            ("driver licence",             &driver,           U::DriverLicense, ok),
+            ("admin id card",              &admin,            U::DriverIdCard,  deny_perm),
+            ("passenger bus photo",        &passenger,        U::BusPhoto,      deny_perm),
+            ("driver bus photo",           &driver,           U::BusPhoto,      ok),
+            ("admin bus photo",            &admin,            U::BusPhoto,      ok),
+            ("admin stop photo",           &admin,            U::StopPhoto,     ok),
+            ("driver stop photo",          &driver,           U::StopPhoto,     deny_perm),
+            ("stop:write key stop photo",  &writer,           U::StopPhoto,     deny_perm),
+            ("anon stop photo",            &Actor::Anonymous, U::StopPhoto,     deny_auth),
+        ];
+        for (name, actor, purpose, expected) in cases {
+            let action = Action::RequestUpload { purpose };
             assert_eq!(Policy::authorize(actor, &action), expected, "{name}");
         }
     }

@@ -46,35 +46,48 @@ impl PgJobQueue {
     }
 }
 
+/// Inserts a job. While a job with the same `dedup_key` is queued or running, nothing is
+/// inserted and the outcome is `Duplicate`. Shared by [`PgJobQueue::enqueue`] and the
+/// transactional outbox ([`crate::pg::effects::persist`]), which passes its transaction.
+pub(crate) async fn insert_job<'e>(
+    executor: impl sqlx::PgExecutor<'e>,
+    job: &Job,
+    options: &JobOptions,
+) -> AppResult<EnqueueOutcome> {
+    let payload = serde_json::to_value(job).map_err(AppError::internal)?;
+    let id = Uuid::now_v7();
+    let max_attempts = i16::try_from(options.max_attempts.unwrap_or(DEFAULT_MAX_ATTEMPTS))
+        .unwrap_or(i16::MAX)
+        .clamp(1, 100);
+    let inserted = sqlx::query_scalar!(
+        r#"
+        INSERT INTO jobs (id, kind, payload, status, max_attempts, run_at, dedup_key,
+                          created_at, updated_at)
+        VALUES ($1, $2, $3, 'queued', $4, COALESCE($5, now()), $6, now(), now())
+        ON CONFLICT (dedup_key) WHERE dedup_key IS NOT NULL AND status IN ('queued', 'running')
+        DO NOTHING
+        RETURNING id
+        "#,
+        id,
+        job.kind(),
+        payload,
+        max_attempts,
+        options.run_at,
+        options.dedup_key,
+    )
+    .fetch_optional(executor)
+    .await
+    .map_err(db_error)?;
+    if inserted.is_some() {
+        metrics::counter!("dz_jobs_enqueued_total", "kind" => job.kind()).increment(1);
+    }
+    Ok(inserted.map_or(EnqueueOutcome::Duplicate, EnqueueOutcome::Enqueued))
+}
+
 #[async_trait]
 impl JobQueue for PgJobQueue {
     async fn enqueue(&self, job: &Job, options: JobOptions) -> AppResult<EnqueueOutcome> {
-        let payload = serde_json::to_value(job).map_err(AppError::internal)?;
-        let id = Uuid::now_v7();
-        let max_attempts = i16::try_from(options.max_attempts.unwrap_or(DEFAULT_MAX_ATTEMPTS))
-            .unwrap_or(i16::MAX)
-            .clamp(1, 100);
-        let inserted = sqlx::query_scalar!(
-            r#"
-            INSERT INTO jobs (id, kind, payload, status, max_attempts, run_at, dedup_key,
-                              created_at, updated_at)
-            VALUES ($1, $2, $3, 'queued', $4, COALESCE($5, now()), $6, now(), now())
-            ON CONFLICT (dedup_key) WHERE dedup_key IS NOT NULL AND status IN ('queued', 'running')
-            DO NOTHING
-            RETURNING id
-            "#,
-            id,
-            job.kind(),
-            payload,
-            max_attempts,
-            options.run_at,
-            options.dedup_key,
-        )
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(db_error)?;
-        metrics::counter!("dz_jobs_enqueued_total", "kind" => job.kind()).increment(1);
-        Ok(inserted.map_or(EnqueueOutcome::Duplicate, EnqueueOutcome::Enqueued))
+        insert_job(&self.pool, job, &options).await
     }
 
     async fn purge_finished(&self, before: chrono::DateTime<Utc>) -> AppResult<u64> {

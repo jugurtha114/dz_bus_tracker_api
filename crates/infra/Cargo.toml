@@ -30,6 +30,11 @@ opentelemetry_sdk.workspace = true
 opentelemetry-otlp.workspace = true
 pbkdf2.workspace = true
 rand.workspace = true
+reqwest.workspace = true
+rustls.workspace = true
+rustls-platform-verifier.workspace = true
+rusty-s3.workspace = true
+jiff.workspace = true
 secrecy.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -43,9 +48,11 @@ tokio-util.workspace = true
 tracing.workspace = true
 tracing-opentelemetry.workspace = true
 tracing-subscriber.workspace = true
+url.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+dz-app = { workspace = true, features = ["test-support"] }
 proptest.workspace = true
 
 [lints]

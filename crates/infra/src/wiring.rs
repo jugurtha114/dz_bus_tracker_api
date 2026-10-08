@@ -9,9 +9,10 @@ use dz_app::admin::{AdminUserService, ApiKeyService, AuditService};
 use dz_app::auth::{AuthDeps, AuthService, AuthSettings};
 use dz_app::jobs::{JobRunner, JobSettings};
 use dz_app::ports::{
-    Clock, IdempotencyStore, LockoutPolicy, Mailer, Quota, RateLimiter, ReadinessProbe,
-    SystemClock,
+    Clock, IdempotencyStore, LockoutPolicy, Mailer, ObjectStorage, Quota, RateLimiter,
+    ReadinessProbe, SystemClock,
 };
+use dz_app::uploads::UploadService;
 use dz_config::Settings;
 use dz_domain::password::PasswordPolicy;
 use sqlx::PgPool;
@@ -21,6 +22,7 @@ use crate::jobs::PgJobQueue;
 use crate::jwt::JwtCodec;
 use crate::password::{Argon2Config, Argon2Hasher};
 use crate::pg::{self, PgStore};
+use crate::storage::S3Storage;
 use crate::valkey::{Valkey, ValkeyIdempotencyStore, ValkeyRateLimiter, ValkeyRevocationStore};
 
 /// Connected adapters.
@@ -34,6 +36,8 @@ pub struct Infrastructure {
     pub jwt: Arc<JwtCodec>,
     pub hasher: Arc<Argon2Hasher>,
     pub mailer: Arc<dyn Mailer>,
+    /// `None` when `storage.endpoint` is not configured.
+    pub storage: Option<Arc<S3Storage>>,
     pub clock: Arc<dyn Clock>,
 }
 
@@ -41,6 +45,7 @@ pub struct Infrastructure {
 pub struct Services {
     pub auth: AuthService,
     pub accounts: AccountService,
+    pub uploads: Arc<UploadService>,
     pub admin_users: AdminUserService,
     pub api_keys: ApiKeyService,
     pub audit: AuditService,
@@ -93,6 +98,13 @@ impl Infrastructure {
     ) -> anyhow::Result<Self> {
         let jwt = Arc::new(jwt_codec(&settings)?);
         let hasher = Arc::new(password_hasher(&settings)?);
+        let clock: Arc<dyn Clock> = Arc::new(SystemClock);
+        let storage = if settings.storage.enabled() {
+            Some(Arc::new(S3Storage::new(&settings.storage, clock.clone())?))
+        } else {
+            tracing::warn!("object storage is not configured: uploads are disabled");
+            None
+        };
         Ok(Self {
             store: Arc::new(PgStore::new(pool.clone())),
             queue: Arc::new(PgJobQueue::new(pool.clone())),
@@ -102,8 +114,13 @@ impl Infrastructure {
             jwt,
             hasher,
             mailer,
-            clock: Arc::new(SystemClock),
+            storage,
+            clock,
         })
+    }
+
+    fn object_storage(&self) -> Option<Arc<dyn ObjectStorage>> {
+        self.storage.clone().map(|s| s as Arc<dyn ObjectStorage>)
     }
 
     fn revocation_ttl(&self) -> Duration {
@@ -139,9 +156,16 @@ impl Infrastructure {
             reset_quota: Quota { limit: 3, period: Duration::from_secs(15 * 60), burst: 3 },
             revocation_fail_open: s.auth.revocation_fail_open,
         };
+        let uploads = Arc::new(UploadService::new(
+            self.store.clone(),
+            self.object_storage(),
+            self.clock.clone(),
+            Duration::from_secs(s.storage.upload_ttl_secs),
+        ));
         Services {
             auth: AuthService::new(deps, auth_settings),
-            accounts: AccountService::new(self.store.clone(), self.clock.clone()),
+            accounts: AccountService::new(self.store.clone(), uploads.clone(), self.clock.clone()),
+            uploads,
             admin_users: AdminUserService::new(
                 self.store.clone(),
                 revocations,
@@ -165,6 +189,8 @@ impl Infrastructure {
             users: self.store.clone(),
             sessions: self.store.clone(),
             resets: self.store.clone(),
+            uploads: self.store.clone(),
+            storage: self.object_storage(),
             mailer: self.mailer.clone(),
             queue: self.queue.clone(),
             clock: self.clock.clone(),
@@ -173,6 +199,7 @@ impl Infrastructure {
                 password_reset_url: s.auth.password_reset_url.to_string(),
                 auth_retention: Duration::from_secs(7 * 24 * 3600),
                 job_retention: Duration::from_secs(u64::from(s.worker.retention_days) * 24 * 3600),
+                upload_purge_grace: Duration::from_secs(3600),
             },
         }
     }

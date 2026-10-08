@@ -9,16 +9,18 @@ use axum::Router;
 use axum::Extension;
 use axum::extract::ConnectInfo;
 use axum::http::{Method, StatusCode};
-use dz_app::ports::EmailMessage;
+use dz_app::ports::{EmailMessage, ObjectStorage, SystemClock};
 use dz_app::testing::FakeMailer;
 use dz_config::{Environment, Settings};
 use dz_domain::user::Role;
 use dz_http::state::{AppServices, AppState};
 use dz_infra::jobs::{self, WorkerConfig};
+use dz_infra::storage::S3Storage;
 use dz_infra::valkey::Valkey;
 use dz_infra::wiring::Infrastructure;
 use serde_json::{Value, json};
-use sqlx::PgPool;
+use sqlx::postgres::PgConnection;
+use sqlx::{Connection, PgPool};
 use uuid::Uuid;
 
 use crate::client::TestRequest;
@@ -76,11 +78,15 @@ impl TestAppBuilder {
         let valkey = Valkey::connect(&settings.valkey).await.unwrap();
         let mailer = Arc::new(FakeMailer::default());
         let infra = Infrastructure::assemble(settings, pool, valkey, mailer.clone()).unwrap();
+        if let Some(storage) = &infra.storage {
+            assert!(storage.create_bucket().await.unwrap(), "test buckets are new");
+        }
         let services = infra.services();
         let state = AppState::new(AppServices {
             settings: infra.settings.clone(),
             auth: services.auth,
             accounts: services.accounts,
+            uploads: services.uploads,
             admin_users: services.admin_users,
             api_keys: services.api_keys,
             audit: services.audit,
@@ -91,7 +97,8 @@ impl TestAppBuilder {
         });
         // What `into_make_service_with_connect_info` provides in the server.
         let router = dz_http::router(state).layer(Extension(ConnectInfo(self.peer)));
-        TestApp { router, infra, mailer, accounts: AtomicU32::new(0), db }
+        let http = dz_infra::storage::http_client(Duration::from_secs(30)).unwrap();
+        TestApp { router, infra, mailer, http, accounts: AtomicU32::new(0), db }
     }
 }
 
@@ -114,6 +121,12 @@ fn test_settings(db: &TestDatabase) -> Settings {
     s.rate_limit.auth_per_minute = 10_000;
     s.rate_limit.service_per_minute = 10_000;
     s.http.public_base_url = "http://api.test".parse().unwrap();
+    // One bucket per test (created by the builder, removed when the app is dropped). Tests of
+    // the storage-less mode unset `storage.endpoint`.
+    s.storage.endpoint = Some(db.s3.endpoint.clone());
+    s.storage.bucket = format!("dz-t-{}", Uuid::now_v7().simple());
+    s.storage.access_key_id = db.s3.access_key.clone();
+    s.storage.secret_access_key = Some(db.s3.secret_key.clone().into());
     s
 }
 
@@ -122,6 +135,8 @@ pub struct TestApp {
     router: Router,
     pub infra: Infrastructure,
     pub mailer: Arc<FakeMailer>,
+    /// A client of object storage, as a browser or mobile app would be.
+    http: reqwest::Client,
     accounts: AtomicU32,
     // Last: dropped after the pools above.
     db: TestDatabase,
@@ -157,6 +172,10 @@ impl TestApp {
 
     pub fn post(&self, uri: &str) -> TestRequest {
         self.request(Method::POST, uri)
+    }
+
+    pub fn put(&self, uri: &str) -> TestRequest {
+        self.request(Method::PUT, uri)
     }
 
     pub fn patch(&self, uri: &str) -> TestRequest {
@@ -246,6 +265,97 @@ impl TestApp {
             .await
             .expect(StatusCode::CREATED);
         response.json()["secret"].as_str().expect("API key secret").to_owned()
+    }
+}
+
+impl TestApp {
+    /// The object storage adapter of the application (`None` when storage is disabled).
+    #[must_use]
+    pub fn storage(&self) -> Option<&S3Storage> {
+        self.infra.storage.as_deref()
+    }
+
+    /// Uploads `bytes` as `account` through the real flow: `POST /api/v1/uploads`, then the
+    /// presigned `PUT` straight to storage with the signed headers. Returns the upload id.
+    pub async fn upload(
+        &self,
+        account: &Account,
+        purpose: &str,
+        content_type: &str,
+        bytes: &[u8],
+    ) -> Uuid {
+        let response = self
+            .post("/api/v1/uploads")
+            .bearer(&account.access_token)
+            .json(&json!({
+                "purpose": purpose,
+                "content_type": content_type,
+                "size_bytes": bytes.len(),
+            }))
+            .send()
+            .await
+            .expect(StatusCode::CREATED);
+        let body = response.json();
+        let status = self.send_presigned(&body["upload"], bytes.to_vec()).await;
+        assert!(status.is_success(), "presigned upload failed with {status}");
+        body["id"].as_str().and_then(|id| id.parse().ok()).expect("upload id")
+    }
+
+    /// Performs a presigned request (`{"method", "url", "headers"}` as returned by
+    /// `POST /api/v1/uploads`) with `body`, and returns the storage's status.
+    pub async fn send_presigned(&self, request: &Value, body: Vec<u8>) -> StatusCode {
+        let method = request["method"].as_str().expect("method");
+        let url = request["url"].as_str().expect("url");
+        let mut builder = self.http.request(method.parse().expect("HTTP method"), url);
+        for (name, value) in request["headers"].as_object().expect("headers") {
+            builder = builder.header(name.as_str(), value.as_str().expect("header value"));
+        }
+        let response = builder.body(body).send().await.expect("storage reachable");
+        StatusCode::from_u16(response.status().as_u16()).expect("status code")
+    }
+
+    /// `GET` of a (presigned) URL, as a client displaying an image would do.
+    pub async fn download(&self, url: &str) -> (StatusCode, Vec<u8>) {
+        let response = self.http.get(url).send().await.expect("storage reachable");
+        let status = StatusCode::from_u16(response.status().as_u16()).expect("status code");
+        (status, response.bytes().await.expect("body").to_vec())
+    }
+}
+
+impl Drop for TestApp {
+    /// Removes the test bucket: every object the application can have stored has an upload
+    /// row, so the keys come from the test database (which is dropped right after).
+    fn drop(&mut self) {
+        let settings = self.infra.settings.storage.clone();
+        if !settings.enabled()
+            || (std::thread::panicking() && std::env::var_os("DZ_TEST_KEEP_DB").is_some())
+        {
+            return;
+        }
+        let url = self.db.url.clone();
+        let bucket = settings.bucket.clone();
+        // Drop runs inside the test's runtime; use a separate thread with its own runtime.
+        let removed = std::thread::spawn(move || {
+            let runtime =
+                tokio::runtime::Builder::new_current_thread().enable_all().build().ok()?;
+            runtime.block_on(async {
+                let mut conn = PgConnection::connect(&url).await.ok()?;
+                let keys: Vec<String> = sqlx::query_scalar("SELECT object_key FROM uploads")
+                    .fetch_all(&mut conn)
+                    .await
+                    .ok()?;
+                conn.close().await.ok()?;
+                let storage = S3Storage::new(&settings, Arc::new(SystemClock)).ok()?;
+                for key in keys {
+                    storage.delete(&key).await.ok()?;
+                }
+                storage.delete_bucket().await.ok()
+            })
+        })
+        .join();
+        if !matches!(removed, Ok(Some(()))) {
+            eprintln!("dz-testkit: could not remove bucket {bucket}");
+        }
     }
 }
 

@@ -3,14 +3,19 @@
 //! Requests reject unknown fields (`deny_unknown_fields`), so a client cannot smuggle extra
 //! attributes such as a role. Responses never expose secrets or internal columns.
 
+use std::collections::BTreeMap;
+
 use chrono::{DateTime, Utc};
+use dz_app::account::ProfileView;
 use dz_app::admin::CreatedApiKey;
 use dz_app::auth::{OwnSession, TokenPair};
 use dz_app::pagination::Page;
-use dz_app::ports::{ApiKeyRecord, AuditActor, AuditEntry};
+use dz_app::ports::{ApiKeyRecord, AuditActor, AuditEntry, Upload};
+use dz_app::uploads::RequestedUpload;
 use dz_domain::Lang;
 use dz_domain::authz::Permission;
-use dz_domain::user::{Profile, Role, User};
+use dz_domain::upload::{UploadPurpose, UploadStatus};
+use dz_domain::user::{Role, User};
 use serde::{Deserialize, Deserializer, Serialize};
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -129,15 +134,20 @@ impl From<User> for UserDto {
 pub struct ProfileDto {
     pub language: Language,
     pub bio: String,
+    /// Presigned download URL of the avatar (stable for an hour); `null` without avatar or when
+    /// file storage is not available.
+    pub avatar_url: Option<String>,
     pub push_notifications_enabled: bool,
     pub email_notifications_enabled: bool,
     pub sms_notifications_enabled: bool,
     pub updated_at: DateTime<Utc>,
 }
 
-impl From<Profile> for ProfileDto {
-    fn from(p: Profile) -> Self {
+impl From<ProfileView> for ProfileDto {
+    fn from(view: ProfileView) -> Self {
+        let p = view.profile;
         Self {
+            avatar_url: view.avatar_url,
             language: p.language.into(),
             bio: p.bio.as_str().to_owned(),
             push_notifications_enabled: p.push_notifications_enabled,
@@ -179,6 +189,156 @@ pub struct UpdateProfileRequest {
     pub push_notifications_enabled: Option<bool>,
     pub email_notifications_enabled: Option<bool>,
     pub sms_notifications_enabled: Option<bool>,
+}
+
+/// Sets the avatar to a completed `avatar` upload.
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct SetAvatarRequest {
+    /// Id returned by `POST /uploads` (purpose `avatar`), after the file was uploaded.
+    pub upload_id: Uuid,
+}
+
+// --- Uploads ------------------------------------------------------------------------------------------
+
+/// What an upload will be attached to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum UploadPurposeDto {
+    /// JPEG, PNG or WebP, at most 2 MiB (`account:self`).
+    Avatar,
+    /// JPEG, PNG, WebP or PDF, at most 10 MiB (`driver:apply`).
+    DriverIdCard,
+    /// JPEG, PNG, WebP or PDF, at most 10 MiB (`driver:apply`).
+    DriverLicense,
+    /// JPEG, PNG or WebP, at most 5 MiB (`bus:register` or `bus:manage`).
+    BusPhoto,
+    /// JPEG, PNG or WebP, at most 5 MiB (`stop:write`).
+    StopPhoto,
+}
+
+impl From<UploadPurposeDto> for UploadPurpose {
+    fn from(p: UploadPurposeDto) -> Self {
+        match p {
+            UploadPurposeDto::Avatar => Self::Avatar,
+            UploadPurposeDto::DriverIdCard => Self::DriverIdCard,
+            UploadPurposeDto::DriverLicense => Self::DriverLicense,
+            UploadPurposeDto::BusPhoto => Self::BusPhoto,
+            UploadPurposeDto::StopPhoto => Self::StopPhoto,
+        }
+    }
+}
+
+impl From<UploadPurpose> for UploadPurposeDto {
+    fn from(p: UploadPurpose) -> Self {
+        match p {
+            UploadPurpose::Avatar => Self::Avatar,
+            UploadPurpose::DriverIdCard => Self::DriverIdCard,
+            UploadPurpose::DriverLicense => Self::DriverLicense,
+            UploadPurpose::BusPhoto => Self::BusPhoto,
+            UploadPurpose::StopPhoto => Self::StopPhoto,
+        }
+    }
+}
+
+/// Declares a file to upload. Its type and exact size are signed into the upload URL.
+#[derive(Debug, Deserialize, Validate, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CreateUploadRequest {
+    pub purpose: UploadPurposeDto,
+    /// Media type of the file, e.g. `image/jpeg` (accepted types depend on the purpose).
+    #[validate(length(min = 1, max = 100))]
+    #[schema(example = "image/jpeg")]
+    pub content_type: String,
+    /// Exact size of the file in bytes.
+    #[schema(example = 524_288)]
+    pub size_bytes: u64,
+}
+
+/// The request the client performs itself to upload the file directly to storage.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PresignedRequestDto {
+    #[schema(example = "PUT")]
+    pub method: &'static str,
+    pub url: String,
+    /// Headers to send with exactly these values (`content-type`, `content-length`).
+    pub headers: BTreeMap<&'static str, String>,
+}
+
+/// A pending upload. Upload the file with `upload` before `expires_at`, then pass `id` to the
+/// endpoint that attaches it (e.g. `PUT /me/avatar`).
+#[derive(Debug, Serialize, ToSchema)]
+pub struct UploadDto {
+    pub id: Uuid,
+    pub purpose: UploadPurposeDto,
+    pub content_type: String,
+    pub size_bytes: u32,
+    pub upload: PresignedRequestDto,
+    pub expires_at: DateTime<Utc>,
+}
+
+impl From<RequestedUpload> for UploadDto {
+    fn from(r: RequestedUpload) -> Self {
+        Self {
+            id: r.upload.id.as_uuid(),
+            purpose: r.upload.purpose.into(),
+            content_type: r.upload.content_type,
+            size_bytes: r.upload.size_bytes,
+            upload: PresignedRequestDto {
+                method: r.presigned.method,
+                url: r.presigned.url,
+                headers: r.presigned.headers.into_iter().collect(),
+            },
+            expires_at: r.upload.expires_at,
+        }
+    }
+}
+
+/// Lifecycle state of an upload.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum UploadStatusDto {
+    /// Not attached yet; usable until `expires_at`.
+    Pending,
+    /// Referenced by a resource; cannot be attached again.
+    Attached,
+}
+
+impl From<UploadStatus> for UploadStatusDto {
+    fn from(s: UploadStatus) -> Self {
+        match s {
+            UploadStatus::Pending => Self::Pending,
+            UploadStatus::Attached => Self::Attached,
+        }
+    }
+}
+
+/// An upload of the caller, without its (single-use) presigned request.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct UploadStatusViewDto {
+    pub id: Uuid,
+    pub purpose: UploadPurposeDto,
+    pub content_type: String,
+    pub size_bytes: u32,
+    pub status: UploadStatusDto,
+    pub created_at: DateTime<Utc>,
+    pub expires_at: DateTime<Utc>,
+    pub attached_at: Option<DateTime<Utc>>,
+}
+
+impl From<Upload> for UploadStatusViewDto {
+    fn from(u: Upload) -> Self {
+        Self {
+            id: u.id.as_uuid(),
+            purpose: u.purpose.into(),
+            content_type: u.content_type,
+            size_bytes: u.size_bytes,
+            status: u.status.into(),
+            created_at: u.created_at,
+            expires_at: u.expires_at,
+            attached_at: u.attached_at,
+        }
+    }
 }
 
 // --- Authentication -------------------------------------------------------------------------------------

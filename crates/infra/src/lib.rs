@@ -7,6 +7,7 @@ pub mod mail;
 pub mod password;
 pub mod pg;
 pub mod shutdown;
+pub mod storage;
 pub mod telemetry;
 pub mod valkey;
 pub mod wiring;

@@ -59,6 +59,7 @@ pub struct Settings {
     pub email: EmailSettings,
     pub telemetry: TelemetrySettings,
     pub worker: WorkerSettings,
+    pub storage: StorageSettings,
 }
 
 /// HTTP server settings.
@@ -358,6 +359,131 @@ impl Default for WorkerSettings {
     }
 }
 
+/// Private S3-compatible object storage for photos and documents.
+///
+/// Optional: without `endpoint`, upload and attach endpoints answer `503 storage_unavailable`
+/// and every `*_url` field is `null`. Production requires it with an `https` public endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct StorageSettings {
+    /// S3 endpoint the API and the worker talk to (e.g. `http://rustfs:9000` on an internal
+    /// network). Unset disables storage.
+    pub endpoint: Option<Url>,
+    /// Endpoint embedded in presigned URLs handed to clients (default: `endpoint`).
+    pub public_endpoint: Option<Url>,
+    pub region: String,
+    pub bucket: String,
+    pub access_key_id: String,
+    #[serde(serialize_with = "ser::redacted_opt")]
+    pub secret_access_key: Option<SecretString>,
+    /// `https://endpoint/bucket/key` (true) or `https://bucket.endpoint/key` (false).
+    pub path_style: bool,
+    /// Validity of presigned upload URLs (60–3600 s).
+    pub upload_ttl_secs: u64,
+    /// Validity of presigned download URLs (300–43200 s); one hour is added so that a URL
+    /// signed at the start of an hour stays stable (and valid) throughout that hour.
+    pub download_ttl_secs: u64,
+    /// Timeout of server-side requests (`HEAD`, `DELETE`).
+    pub request_timeout_ms: u64,
+}
+
+impl Default for StorageSettings {
+    fn default() -> Self {
+        Self {
+            endpoint: None,
+            public_endpoint: None,
+            region: "us-east-1".to_owned(),
+            bucket: String::new(),
+            access_key_id: String::new(),
+            secret_access_key: None,
+            path_style: true,
+            upload_ttl_secs: 900,
+            download_ttl_secs: 3_600,
+            request_timeout_ms: 5_000,
+        }
+    }
+}
+
+impl StorageSettings {
+    /// Whether object storage is configured.
+    #[must_use]
+    pub fn enabled(&self) -> bool {
+        self.endpoint.is_some()
+    }
+
+    /// The endpoint used in presigned URLs for clients.
+    #[must_use]
+    pub fn effective_public_endpoint(&self) -> Option<&Url> {
+        self.public_endpoint.as_ref().or(self.endpoint.as_ref())
+    }
+
+    fn validate(&self, prod: bool, errors: &mut Vec<String>) {
+        if !(60..=3_600).contains(&self.upload_ttl_secs) {
+            errors.push("storage.upload_ttl_secs must be between 60 and 3600".to_owned());
+        }
+        if !(300..=43_200).contains(&self.download_ttl_secs) {
+            errors.push("storage.download_ttl_secs must be between 300 and 43200".to_owned());
+        }
+        if !(100..=60_000).contains(&self.request_timeout_ms) {
+            errors.push("storage.request_timeout_ms must be between 100 and 60000".to_owned());
+        }
+        let Some(endpoint) = &self.endpoint else {
+            if self.public_endpoint.is_some() {
+                errors.push("storage.public_endpoint requires storage.endpoint".to_owned());
+            }
+            if prod {
+                errors.push("storage.endpoint is required in production".to_owned());
+            }
+            return;
+        };
+        let public = self.public_endpoint.as_ref().map(|url| ("public_endpoint", url));
+        for (name, url) in std::iter::once(("endpoint", endpoint)).chain(public) {
+            let plain = url.username().is_empty()
+                && url.password().is_none()
+                && url.query().is_none()
+                && url.fragment().is_none();
+            if !matches!(url.scheme(), "http" | "https") || url.host().is_none() || !plain {
+                errors.push(format!(
+                    "storage.{name} must be an http(s) URL without credentials, query or fragment"
+                ));
+            }
+        }
+        if !valid_bucket_name(&self.bucket) {
+            errors.push(
+                "storage.bucket must be 3-63 characters of [a-z0-9.-], starting and ending with \
+                 a letter or digit"
+                    .to_owned(),
+            );
+        }
+        if self.region.trim().is_empty() {
+            errors.push("storage.region must not be empty".to_owned());
+        }
+        if self.access_key_id.trim().is_empty() {
+            errors.push(
+                "storage.access_key_id is required when storage.endpoint is set".to_owned(),
+            );
+        }
+        if self.secret_access_key.as_ref().is_none_or(|k| k.expose_secret().is_empty()) {
+            errors.push(
+                "storage.secret_access_key is required when storage.endpoint is set".to_owned(),
+            );
+        }
+        if prod && self.effective_public_endpoint().is_some_and(|u| u.scheme() != "https") {
+            errors.push("storage.public_endpoint must use https in production".to_owned());
+        }
+    }
+}
+
+/// S3 bucket naming rules (the subset every provider accepts).
+fn valid_bucket_name(name: &str) -> bool {
+    let bytes = name.as_bytes();
+    (3..=63).contains(&bytes.len())
+        && bytes.iter().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b"-.".contains(b))
+        && bytes.first().is_some_and(u8::is_ascii_alphanumeric)
+        && bytes.last().is_some_and(u8::is_ascii_alphanumeric)
+        && !name.contains("..")
+}
+
 impl Settings {
     /// Loads settings from the process environment and validates them.
     pub fn load() -> Result<Self, ConfigError> {
@@ -477,6 +603,7 @@ impl Settings {
         if self.worker.concurrency == 0 {
             errors.push("worker.concurrency must be >= 1".to_owned());
         }
+        self.storage.validate(prod, &mut errors);
 
         if prod {
             if a.allow_ephemeral_keys {
@@ -657,7 +784,9 @@ mod tests {
         let err = Settings::from_vars(vec![("DZ_ENV".to_owned(), "production".to_owned())])
             .unwrap_err()
             .to_string();
-        for needle in ["signing_keys_dir", "https", "email.transport", "development credentials"] {
+        let needles =
+            ["signing_keys_dir", "https", "email.transport", "development credentials", "storage"];
+        for needle in needles {
             assert!(err.contains(needle), "missing `{needle}` in: {err}");
         }
     }
@@ -671,5 +800,125 @@ mod tests {
         .unwrap_err()
         .to_string();
         assert!(err.contains("bare origin") && err.contains("access_token_ttl_secs"), "{err}");
+    }
+    /// A complete storage section; `overrides` win (the first occurrence of a variable is used).
+    fn storage_vars(overrides: &[(&str, &str)]) -> Vec<(String, String)> {
+        let mut pairs = overrides.to_vec();
+        pairs.extend_from_slice(&[
+            ("DZ_STORAGE__ENDPOINT", "http://rustfs:9000"),
+            ("DZ_STORAGE__BUCKET", "dz-media"),
+            ("DZ_STORAGE__ACCESS_KEY_ID", "dz-api"),
+            ("DZ_STORAGE__SECRET_ACCESS_KEY", "s3-secret-value"),
+        ]);
+        vars(&pairs)
+    }
+
+    #[test]
+    fn storage_is_optional_and_has_defaults() {
+        let s = Settings::from_vars(vars(&[])).unwrap();
+        assert!(!s.storage.enabled());
+        assert_eq!(s.storage.region, "us-east-1");
+        assert!(s.storage.path_style);
+        assert_eq!((s.storage.upload_ttl_secs, s.storage.download_ttl_secs), (900, 3_600));
+        assert_eq!(s.storage.request_timeout_ms, 5_000);
+    }
+
+    #[test]
+    fn storage_settings_are_parsed() {
+        let s = Settings::from_vars(storage_vars(&[
+            ("DZ_STORAGE__PUBLIC_ENDPOINT", "https://media.dzbus.example"),
+            ("DZ_STORAGE__PATH_STYLE", "false"),
+            ("DZ_STORAGE__UPLOAD_TTL_SECS", "600"),
+        ]))
+        .unwrap();
+        assert!(s.storage.enabled());
+        assert_eq!(s.storage.endpoint.as_ref().unwrap().as_str(), "http://rustfs:9000/");
+        assert_eq!(
+            s.storage.effective_public_endpoint().unwrap().as_str(),
+            "https://media.dzbus.example/"
+        );
+        assert!(!s.storage.path_style);
+        assert_eq!(s.storage.upload_ttl_secs, 600);
+        let secret = s.storage.secret_access_key.as_ref().unwrap();
+        assert_eq!(secret.expose_secret(), "s3-secret-value");
+
+        // Without a public endpoint, clients get URLs on the internal endpoint.
+        let s = Settings::from_vars(storage_vars(&[])).unwrap();
+        assert_eq!(s.storage.effective_public_endpoint(), s.storage.endpoint.as_ref());
+    }
+
+    #[test]
+    fn storage_secret_is_redacted_and_readable_from_a_file() {
+        let dir = std::env::temp_dir().join(format!("dz-config-s3-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("s3_secret_key");
+        std::fs::write(&file, "from-a-file\n").unwrap();
+        let mut pairs = storage_vars(&[]);
+        pairs.retain(|(k, _)| k != "DZ_STORAGE__SECRET_ACCESS_KEY");
+        pairs.push(("DZ_STORAGE__SECRET_ACCESS_KEY_FILE".into(), file.to_str().unwrap().into()));
+        let s = Settings::from_vars(pairs).unwrap();
+        assert_eq!(s.storage.secret_access_key.as_ref().unwrap().expose_secret(), "from-a-file");
+        let dump = serde_json::to_string(&s).unwrap();
+        assert!(!dump.contains("from-a-file"), "{dump}");
+        assert!(dump.contains(r#""secret_access_key":"[redacted]""#), "{dump}");
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn enabled_storage_needs_a_bucket_and_credentials() {
+        let err = Settings::from_vars(vars(&[("DZ_STORAGE__ENDPOINT", "http://rustfs:9000")]))
+            .unwrap_err()
+            .to_string();
+        for needle in ["storage.bucket", "storage.access_key_id", "storage.secret_access_key"] {
+            assert!(err.contains(needle), "missing `{needle}` in: {err}");
+        }
+        for bucket in ["ab", "Upper", "-dash", "dot.", "a..b", "under_score"] {
+            let err = Settings::from_vars(storage_vars(&[("DZ_STORAGE__BUCKET", bucket)]))
+                .unwrap_err()
+                .to_string();
+            assert!(err.contains("storage.bucket"), "{bucket}: {err}");
+        }
+    }
+
+    #[test]
+    fn storage_urls_and_ranges_are_validated() {
+        let err = Settings::from_vars(storage_vars(&[
+            ("DZ_STORAGE__ENDPOINT", "ftp://rustfs:9000"),
+            ("DZ_STORAGE__PUBLIC_ENDPOINT", "https://user:pass@media.example"),
+            ("DZ_STORAGE__UPLOAD_TTL_SECS", "59"),
+            ("DZ_STORAGE__DOWNLOAD_TTL_SECS", "43201"),
+            ("DZ_STORAGE__REQUEST_TIMEOUT_MS", "0"),
+        ]))
+        .unwrap_err()
+        .to_string();
+        for needle in [
+            "storage.endpoint must be an http(s) URL",
+            "storage.public_endpoint must be an http(s) URL",
+            "upload_ttl_secs",
+            "download_ttl_secs",
+            "request_timeout_ms",
+        ] {
+            assert!(err.contains(needle), "missing `{needle}` in: {err}");
+        }
+        let public_only = vars(&[("DZ_STORAGE__PUBLIC_ENDPOINT", "https://m.example")]);
+        let err = Settings::from_vars(public_only).unwrap_err().to_string();
+        assert!(err.contains("requires storage.endpoint"), "{err}");
+        let err = Settings::from_vars(storage_vars(&[("DZ_STORAGE__RGION", "eu")])).unwrap_err();
+        assert!(err.to_string().contains("rgion"), "{err}");
+    }
+
+    #[test]
+    fn production_requires_https_storage() {
+        let production = |extra: &[(&str, &str)]| {
+            let mut pairs = storage_vars(extra);
+            pairs.push(("DZ_ENV".into(), "production".into()));
+            Settings::from_vars(pairs).unwrap_err().to_string()
+        };
+        let err = production(&[]);
+        assert!(err.contains("storage.public_endpoint must use https"), "{err}");
+        assert!(!err.contains("storage.endpoint is required"), "{err}");
+        // An internal plain-HTTP endpoint is fine when clients get an https one.
+        let err = production(&[("DZ_STORAGE__PUBLIC_ENDPOINT", "https://media.dzbus.example")]);
+        assert!(!err.contains("storage."), "{err}");
     }
 }

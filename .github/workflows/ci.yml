@@ -1,5 +1,5 @@
-# Rust backend CI: formatting, lints, tests against PostGIS + Valkey, offline query metadata,
-# supply-chain policy, OpenAPI drift and the container image.
+# Rust backend CI: formatting, lints, tests against PostGIS + Valkey + RustFS (S3), offline query
+# metadata, supply-chain policy, OpenAPI drift and the container image.
 name: ci
 
 on:
@@ -60,9 +60,20 @@ jobs:
         options: >-
           --health-cmd "valkey-cli ping"
           --health-interval 5s --health-timeout 3s --health-retries 30
+      # S3-compatible object storage; the test kit creates one bucket per test.
+      rustfs:
+        image: rustfs/rustfs:1.0.1@sha256:1803faef57627e2d9c2e7d89d655d712ddded5389040054987163043fecb6a3c
+        env:
+          RUSTFS_ACCESS_KEY: dz-ci-access
+          RUSTFS_SECRET_KEY: dz-ci-secret-0123456789
+        ports: ["9000:9000"]
+        options: >-
+          --health-cmd "curl -fsS http://127.0.0.1:9000/health"
+          --health-interval 5s --health-timeout 3s --health-retries 30
     env:
       DZ_TEST_DATABASE_URL: postgres://dz:dz@localhost:5432/dz
       DZ_TEST_VALKEY_URL: redis://localhost:6379/0
+      DZ_TEST_S3_URL: http://dz-ci-access:dz-ci-secret-0123456789@localhost:9000
       DATABASE_URL: postgres://dz:dz@localhost:5432/dz
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

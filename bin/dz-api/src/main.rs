@@ -127,6 +127,7 @@ async fn run(settings: Settings) -> anyhow::Result<()> {
         settings: infra.settings.clone(),
         auth: services.auth,
         accounts: services.accounts,
+        uploads: services.uploads,
         admin_users: services.admin_users,
         api_keys: services.api_keys,
         audit: services.audit,

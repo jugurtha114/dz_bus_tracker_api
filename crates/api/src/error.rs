@@ -110,8 +110,11 @@ impl From<AppError> for ApiError {
             AppError::RateLimited { retry_after_secs } => Self::rate_limited(retry_after_secs),
             AppError::Unavailable(what) => {
                 tracing::warn!(dependency = what, "dependency unavailable");
-                let mut problem =
-                    Problem::new(StatusCode::SERVICE_UNAVAILABLE, "service_unavailable");
+                // Object storage is optional and may be unconfigured: clients can tell that
+                // apart from the API itself being unavailable.
+                let code =
+                    if what == "storage" { "storage_unavailable" } else { "service_unavailable" };
+                let mut problem = Problem::new(StatusCode::SERVICE_UNAVAILABLE, code);
                 problem.retry_after_secs = Some(5);
                 Self(problem)
             }
@@ -300,6 +303,16 @@ mod tests {
             ),
             (AppError::RateLimited { retry_after_secs: 3 }, StatusCode::TOO_MANY_REQUESTS, "rate_limited"),
             (AppError::Unavailable("db"), StatusCode::SERVICE_UNAVAILABLE, "service_unavailable"),
+            (
+                AppError::Unavailable("storage"),
+                StatusCode::SERVICE_UNAVAILABLE,
+                "storage_unavailable",
+            ),
+            (
+                AppError::Conflict(dz_domain::ConflictKind::UploadAlreadyUsed),
+                StatusCode::CONFLICT,
+                "upload_already_used",
+            ),
             (
                 AppError::Internal(anyhow::anyhow!("boom")),
                 StatusCode::INTERNAL_SERVER_ERROR,

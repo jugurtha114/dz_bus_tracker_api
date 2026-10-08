@@ -49,11 +49,12 @@ clients and third-party integrators (see ADR-0002). Compared with Django/DRF:
 | Django model (app) | Rust table(s) | Mark | M | Notes |
 |---|---|---|---|---|
 | `accounts.User` | `users` | Redesign | M1 | `user_type` + `is_staff` + `is_superuser` → single `role` (`admin`/`driver`/`passenger`); `role` is never client-writable (L-01). Email stored lower-cased and unique (L-35). Phone stored as E.164. Adds `failed_login_attempts`, `locked_until`, `last_login_at`, `password_changed_at`, `email_verified_at`. `password_hash` keeps Django PBKDF2 hashes until next login (ADR-0005). |
-| `accounts.Profile` | `profiles` (PK = `user_id`) | Keep | M1 | Created in the same transaction as the user (no signal, no lazy creation race L-63). `avatar` file → `avatar_key` (object storage, upload endpoint in M2). |
+| `accounts.Profile` | `profiles` (PK = `user_id`) | Keep | M1 | Created in the same transaction as the user (no signal, no lazy creation race L-63). `avatar` file → `avatar_key` (private object storage; set with `PUT /api/v1/me/avatar` from an upload, M2). |
 | `core.Address` | — | Drop | — | Never referenced outside its own module. |
 | simplejwt `OutstandingToken` / `BlacklistedToken` | `auth_sessions`, `refresh_tokens` | Redesign | M1 | Session = refresh-token family; tokens stored as SHA-256 hashes; rotation with reuse detection; purge job (L-60). |
 | — | `password_reset_tokens` | *fix* | M1 | Django derived stateless HMAC tokens from `SECRET_KEY` and never sent them (L-30). Random single-use tokens, hashed, 1 h TTL. |
 | — | `api_keys` | New (spec §4) | M1 | `service` role for machine-to-machine access, hashed, scoped, revocable. |
+| — (Django `ImageField`/`FileField` uploads through the API) | `uploads` | *fix* | M2 | Files go straight to the private bucket through presigned `PUT`s whose type and size are signed; the row records the server-generated key (`<purpose>/<owner>/<id>`), owner, purpose, declared type/size and expiry, and is claimed once by the resource that attaches it (L-03). |
 | — | `audit_log` | New (spec §4) | M1 | Append-only (trigger-enforced) record of admin actions. |
 | — | `jobs` | Redesign | M1 | Replaces Celery broker/results (ADR-0006). |
 | `drivers.Driver` | `drivers` | Redesign | M1 schema / M2 logic | Explicit state machine (L-24); ID-card / licence photos become private object-storage keys (L-03); `rating`/`total_ratings` → `rating_sum`/`rating_count` maintained atomically (L-57). `is_active` folded into `status` (suspended). |
@@ -124,7 +125,7 @@ clients and third-party integrators (see ADR-0002). Compared with Django/DRF:
 | `POST /accounts/users/logout/` | `POST /api/v1/auth/logout` | Redesign | M1 | Revokes the session immediately, including its access tokens (Django left them valid). |
 | — | `GET /api/v1/auth/sessions`, `DELETE /api/v1/auth/sessions/{id}` | *fix* | M1 | Lets a user see and revoke sessions on lost devices (needed to make revocation usable). |
 | `GET /accounts/profile/`, `GET /accounts/profiles/me/`, `GET /accounts/profiles/` (self) | `GET /api/v1/me/profile` | Keep | M1 | Duplicates collapsed. |
-| `PATCH /accounts/profiles/update_me/`, `PATCH /accounts/profiles/{id}/`, `PATCH /accounts/profiles/update_notification_preferences/` | `PATCH /api/v1/me/profile` | Keep | M1 | `bio`, `language`, the three channel flags. Avatar via upload endpoint (M2). |
+| `PATCH /accounts/profiles/update_me/`, `PATCH /accounts/profiles/{id}/`, `PATCH /accounts/profiles/update_notification_preferences/` | `PATCH /api/v1/me/profile` | Keep | M1 | `bio`, `language`, the three channel flags. The avatar file is no longer a multipart field: `POST /api/v1/uploads` (purpose `avatar`) → presigned `PUT` to storage → `PUT /api/v1/me/avatar {upload_id}`; `DELETE /api/v1/me/avatar` removes it; profiles carry a presigned `avatar_url` (M2). |
 | `POST /accounts/profiles/` (broken, 500) | — | Drop | — | Profiles are created with the user (L-46). |
 | `DELETE /accounts/profiles/{id}/` | — | Drop | — | A profile cannot exist without its user. |
 | — | `GET/POST /api/v1/admin/api-keys`, `DELETE /api/v1/admin/api-keys/{id}` | New (spec §4) | M1 | Service-role keys; audited. |
@@ -334,6 +335,8 @@ capability each event replaces. Legacy message compatibility is not a goal.
 | — | `email.send` | *fix* | M1 | Password-reset e-mails (L-30). |
 | — | cron `auth.purge_expired` (hourly) | *fix* | M1 | Expired sessions/refresh/reset tokens (L-60). |
 | — | cron `jobs.purge_finished` (daily) | New | M1 | Keeps the queue table small. |
+| — (replaced media files were never deleted) | `storage_delete_object` (outbox) | *fix* | M2 | Enqueued in the transaction that drops a reference to an object (replaced/removed avatar, photo or document). |
+| — | cron `purge_expired_uploads` (hourly) | New | M2 | Deletes pending uploads expired for more than an hour and their objects (500 per run). |
 
 All cron jobs are de-duplicated across replicas: each firing is enqueued with a unique
 `dedup_key = cron:<name>:<slot>` so only one replica's enqueue succeeds (ADR-0006).
@@ -375,7 +378,7 @@ All cron jobs are de-duplicated across replicas: each firing is enqueued with a 
 | `EMAIL_*`, `DEFAULT_FROM_EMAIL` | `DZ_EMAIL__TRANSPORT`, `DZ_EMAIL__SMTP_URL`, `DZ_EMAIL__FROM` | Keep | |
 | `TWILIO_*` | `DZ_SMS__*` | Keep | M5 |
 | `FIREBASE_CREDENTIALS_PATH`, `FIREBASE_SERVER_KEY` | `DZ_PUSH__FCM_SERVICE_ACCOUNT_FILE`, `DZ_PUSH__FCM_PROJECT_ID` | Redesign | FCM HTTP v1 (L-16). |
-| `USE_S3`, `AWS_*` (ignored by Django 5.2, L-16b) | `DZ_STORAGE__*` | Redesign | M2; private bucket, presigned URLs. |
+| `USE_S3`, `AWS_*` (ignored by Django 5.2, L-16b) | `DZ_STORAGE__*` | Redesign | M2; any S3-compatible service (RustFS bundled in the compose `storage` profile), private bucket, presigned URLs (uploads with signed type and size; downloads stable per hour). Optional outside production: without it uploads answer `503 storage_unavailable` and `*_url` fields are `null`. |
 | `SENTRY_DSN` (crashes settings, L-16c) | `DZ_TELEMETRY__OTLP_ENDPOINT` | Redesign | OpenTelemetry instead of a vendor SDK. |
 | `SECURE_*`, HSTS, `X_FRAME_OPTIONS` | nginx + API security headers | Redesign | TLS terminates at nginx. |
 | `BUS_LOCATION_HISTORY_RETENTION` (7), `PASSENGER_COUNT_HISTORY_RETENTION` (30) | `DZ_TRACKING__*` | Keep | M3/M4 |
@@ -388,6 +391,7 @@ All cron jobs are de-duplicated across replicas: each firing is enqueued with a 
 | `manage.py migrate` | `dz-cli migrate` | Keep | M1 |
 | `manage.py createsuperuser` | `dz-cli create-admin` | Keep | M1 |
 | — | `dz-cli gen-signing-key` | New | M1 |
+| — | `dz-cli storage create-bucket` | New | M2 |
 | `seed_webtest` | `dz-cli seed --demo` | Keep | M2 |
 | `create_premium_features` | `dz-cli seed --premium-features` | Keep | M6 |
 | simplejwt `flushexpiredtokens` | cron `auth.purge_expired` | Redesign | M1 |
@@ -418,7 +422,7 @@ makes the defect impossible rather than patching it.
 | L-05 | Drivers create buses for any driver and toggle status/activation themselves (`buses/serializers.py:48,63`). | Bus owner forced to the caller; status/activation require `BusManage`. | M2 |
 | L-06 | Unscoped write IDORs on trips, locations, passenger counts, waiting reports (`tracking/views/__init__.py:256,406,573,1033`); trip create trusts a body `driver` (`:648`). | Immutable measurements (no PATCH/DELETE); trip driver = caller; ownership checked in use-cases. | M3/M4 |
 | L-07 | Every reporter's GPS position and name listed to all users (`waiting-reports`). | Reporter location stored for verification only, never returned to others. | M4 |
-| L-08 | Side effects (WS, cache, Celery, notifications) fire inside the transaction, before commit. | Transactional outbox; publishing happens after commit. | M2+ |
+| L-08 | Side effects (WS, cache, Celery, notifications) fire inside the transaction, before commit. | Transactional outbox: repository writes persist their audit entries and jobs in the same transaction (`WriteEffects`, M2); jobs run after the commit; publishing (WS, push) follows the same rule. | M2+ |
 | L-09 | `mark_all_read` with ids marks any user's notifications (`notifications/views.py:116`). | Owner-scoped `UPDATE ... WHERE user_id = $1`. | M5 |
 | L-10 | Every WS client (incl. anonymous) receives every bus position; groups leak; arbitrary group names. | Explicit, validated, capped subscriptions; no firehose; cleanup on close. | M3 |
 | L-11 | WS accepts refresh and logged-out tokens, logs the token, silently downgrades to anonymous, no Origin check. | One-time tickets, Origin allow-list, explicit close codes, token never logged. | M3 |

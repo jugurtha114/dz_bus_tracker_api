@@ -9,8 +9,9 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-use dz_domain::ids::{ApiKeyId, SessionId, UserId};
+use chrono::{DateTime, DurationRound, Utc};
+use dz_domain::ids::{ApiKeyId, SessionId, UploadId, UserId};
+use dz_domain::upload::UploadStatus;
 use dz_domain::user::{Bio, Email, Profile, User};
 use dz_domain::{ConflictKind, Lang};
 use secrecy::{ExposeSecret, SecretString};
@@ -21,13 +22,15 @@ use crate::jobs::{Job, chrono_duration};
 use crate::pagination::{Cursor, Page, PageRequest};
 use crate::ports::{
     AccessClaims, AccessTokenCodec, AdminUserPatch, AdminUserUpdate, ApiKeyCredentials,
-    ApiKeyRecord, ApiKeyRepository, AuditActor, AuditEntry, AuditFilter, AuditRepository, Clock,
-    Credentials, EmailMessage, EnqueueOutcome, JobOptions, JobQueue, LockoutPolicy, Mailer,
-    NewApiKey, NewAuditEntry, NewRefreshToken, NewSession, NewUser, PasswordCheck,
-    PasswordHasher, PasswordResetRepository, ProfilePatch, Quota, RateDecision, RateLimiter,
+    ApiKeyRecord, ApiKeyRepository, AuditActor, AuditEntry, AuditFilter, AuditRepository,
+    ClaimedUpload, Clock, Credentials, EmailMessage, EnqueueOutcome, JobOptions, JobQueue,
+    LockoutPolicy, Mailer, NewApiKey, NewAuditEntry, NewRefreshToken, NewSession, NewUpload,
+    NewUser, ObjectInfo, ObjectStorage, OutboxJob, PasswordCheck, PasswordHasher,
+    PasswordResetRepository, PresignedUpload, ProfilePatch, Quota, RateDecision, RateLimiter,
     RevocationReason, RevocationStore, RotateOutcome, SessionInfo, SessionRepository, TokenHash,
-    UserFilter, UserPatch, UserRepository,
+    Upload, UploadRepository, UserFilter, UserPatch, UserRepository, WriteEffects,
 };
+use crate::uploads::UploadService;
 
 /// A clock that only moves when told to.
 #[derive(Debug)]
@@ -88,6 +91,17 @@ struct State {
     resets: HashMap<TokenHash, ResetRow>,
     keys: HashMap<ApiKeyId, ApiKeyCredentials>,
     audit: Vec<AuditEntry>,
+    uploads: HashMap<UploadId, Upload>,
+    /// Jobs persisted by writes (transactional outbox), in order.
+    outbox: Vec<OutboxJob>,
+}
+
+impl State {
+    /// What the Postgres adapter does in the write's transaction.
+    fn persist(&mut self, effects: WriteEffects) {
+        self.audit.extend(effects.audit.into_iter().map(to_entry));
+        self.outbox.extend(effects.jobs);
+    }
 }
 
 /// One in-memory "database" implementing all repository ports.
@@ -111,6 +125,17 @@ impl InMemoryStore {
     #[must_use]
     pub fn password_hash(&self, id: UserId) -> Option<String> {
         self.state().users.get(&id).and_then(|r| r.password_hash.clone())
+    }
+
+    /// Removes and returns the jobs persisted by writes so far, with their options.
+    pub fn drain_outbox(&self) -> Vec<OutboxJob> {
+        std::mem::take(&mut self.state().outbox)
+    }
+
+    /// An upload as stored.
+    #[must_use]
+    pub fn upload(&self, id: UploadId) -> Option<Upload> {
+        self.state().uploads.get(&id).cloned()
     }
 
     /// Overrides the stored hash (e.g. to simulate an imported Django hash).
@@ -319,7 +344,8 @@ impl UserRepository for InMemoryStore {
         &self,
         id: UserId,
         patch: AdminUserPatch,
-        audit: NewAuditEntry,
+        at: DateTime<Utc>,
+        effects: WriteEffects,
     ) -> AppResult<AdminUserUpdate> {
         let mut state = self.state();
         let row = state.users.get_mut(&id).ok_or(AppError::NotFound("user"))?;
@@ -331,15 +357,51 @@ impl UserRepository for InMemoryStore {
         if let Some(role) = patch.role {
             row.user.role = role;
         }
-        row.user.updated_at = audit.occurred_at;
+        row.user.updated_at = at;
         let user = row.user.clone();
         let revoked_sessions = if deactivated || role_changed {
             Self::revoke_all_locked(&mut state, id, RevocationReason::AdminAction, None)
         } else {
             Vec::new()
         };
-        state.audit.push(to_entry(audit));
+        state.persist(effects);
         Ok(AdminUserUpdate { user, revoked_sessions })
+    }
+
+    async fn set_avatar(
+        &self,
+        id: UserId,
+        avatar: Option<&ClaimedUpload>,
+        expected: Option<&str>,
+        at: DateTime<Utc>,
+        effects: WriteEffects,
+    ) -> AppResult<Profile> {
+        let mut state = self.state();
+        let row = state.users.get(&id).ok_or(AppError::NotFound("profile"))?;
+        if row.profile.avatar_key.as_deref() != expected {
+            return Err(AppError::Conflict(ConflictKind::StaleState));
+        }
+        if let Some(claimed) = avatar {
+            mark_attached(&mut state, claimed, at)?;
+        }
+        let profile = &mut state.users.get_mut(&id).unwrap().profile;
+        profile.avatar_key = avatar.map(|c| c.object_key.clone());
+        profile.updated_at = at;
+        let profile = profile.clone();
+        state.persist(effects);
+        Ok(profile)
+    }
+}
+
+/// What `pg::uploads::mark_attached` does: pending → attached, or a conflict.
+fn mark_attached(state: &mut State, claimed: &ClaimedUpload, at: DateTime<Utc>) -> AppResult<()> {
+    match state.uploads.get_mut(&claimed.id) {
+        Some(upload) if upload.status == UploadStatus::Pending => {
+            upload.status = UploadStatus::Attached;
+            upload.attached_at = Some(at);
+            Ok(())
+        }
+        _ => Err(AppError::Conflict(ConflictKind::UploadAlreadyUsed)),
     }
 }
 
@@ -533,7 +595,7 @@ impl PasswordResetRepository for InMemoryStore {
 
 #[async_trait]
 impl ApiKeyRepository for InMemoryStore {
-    async fn insert(&self, key: NewApiKey, audit: NewAuditEntry) -> AppResult<ApiKeyRecord> {
+    async fn insert(&self, key: NewApiKey, effects: WriteEffects) -> AppResult<ApiKeyRecord> {
         let mut state = self.state();
         let record = ApiKeyRecord {
             id: key.id,
@@ -550,7 +612,7 @@ impl ApiKeyRepository for InMemoryStore {
             key.id,
             ApiKeyCredentials { record: record.clone(), secret_hash: key.secret_hash },
         );
-        state.audit.push(to_entry(audit));
+        state.persist(effects);
         Ok(record)
     }
 
@@ -577,7 +639,7 @@ impl ApiKeyRepository for InMemoryStore {
         &self,
         id: ApiKeyId,
         at: DateTime<Utc>,
-        audit: NewAuditEntry,
+        effects: WriteEffects,
     ) -> AppResult<Option<ApiKeyRecord>> {
         let mut state = self.state();
         let Some(key) = state.keys.get_mut(&id) else {
@@ -585,7 +647,7 @@ impl ApiKeyRepository for InMemoryStore {
         };
         key.record.revoked_at.get_or_insert(at);
         let record = key.record.clone();
-        state.audit.push(to_entry(audit));
+        state.persist(effects);
         Ok(Some(record))
     }
 }
@@ -611,6 +673,58 @@ impl AuditRepository for InMemoryStore {
         entries.sort_by_key(|e| std::cmp::Reverse((e.occurred_at, e.id.as_uuid())));
         entries.truncate(page.fetch_limit() as usize);
         Ok(Page::from_rows(entries, page, |e| Cursor { created_at: e.occurred_at, id: e.id.as_uuid() }))
+    }
+}
+
+#[async_trait]
+impl UploadRepository for InMemoryStore {
+    async fn insert(&self, new: NewUpload) -> AppResult<Upload> {
+        let mut state = self.state();
+        if state.uploads.values().any(|u| u.object_key == new.object_key) {
+            return Err(AppError::Conflict(ConflictKind::AlreadyExists));
+        }
+        let upload = Upload {
+            id: new.id,
+            owner_id: new.owner_id,
+            purpose: new.purpose,
+            object_key: new.object_key,
+            content_type: new.content_type,
+            size_bytes: new.size_bytes,
+            status: UploadStatus::Pending,
+            created_at: new.created_at,
+            expires_at: new.expires_at,
+            attached_at: None,
+        };
+        state.uploads.insert(upload.id, upload.clone());
+        Ok(upload)
+    }
+
+    async fn find(&self, id: UploadId) -> AppResult<Option<Upload>> {
+        Ok(self.state().uploads.get(&id).cloned())
+    }
+
+    async fn find_by_key(&self, object_key: &str) -> AppResult<Option<Upload>> {
+        Ok(self.state().uploads.values().find(|u| u.object_key == object_key).cloned())
+    }
+
+    async fn list_expired(&self, before: DateTime<Utc>, limit: u32) -> AppResult<Vec<Upload>> {
+        let mut expired: Vec<Upload> = self
+            .state()
+            .uploads
+            .values()
+            .filter(|u| u.status == UploadStatus::Pending && u.expires_at < before)
+            .cloned()
+            .collect();
+        expired.sort_by_key(|u| u.expires_at);
+        expired.truncate(limit as usize);
+        Ok(expired)
+    }
+
+    async fn delete_pending(&self, ids: &[UploadId]) -> AppResult<u64> {
+        let mut state = self.state();
+        let before = state.uploads.len();
+        state.uploads.retain(|id, u| !(ids.contains(id) && u.status == UploadStatus::Pending));
+        Ok((before - state.uploads.len()) as u64)
     }
 }
 
@@ -746,6 +860,104 @@ impl Mailer for FakeMailer {
     }
 }
 
+/// An object stored by [`FakeObjectStorage`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FakeObject {
+    pub size_bytes: u64,
+    pub content_type: String,
+}
+
+/// In-memory object storage. Presigned URLs are `fake://` URLs that encode what was signed;
+/// tests "upload" with [`FakeObjectStorage::put`]. Can be switched to failing mode.
+pub struct FakeObjectStorage {
+    clock: Arc<dyn Clock>,
+    download_ttl: Duration,
+    objects: Mutex<HashMap<String, FakeObject>>,
+    /// Keys deleted so far, in order.
+    pub deleted: Mutex<Vec<String>>,
+    pub failing: std::sync::atomic::AtomicBool,
+}
+
+impl std::fmt::Debug for FakeObjectStorage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FakeObjectStorage").field("objects", &self.objects).finish_non_exhaustive()
+    }
+}
+
+impl FakeObjectStorage {
+    #[must_use]
+    pub fn new(clock: Arc<dyn Clock>) -> Self {
+        Self {
+            clock,
+            download_ttl: Duration::from_secs(3600),
+            objects: Mutex::default(),
+            deleted: Mutex::default(),
+            failing: std::sync::atomic::AtomicBool::new(false),
+        }
+    }
+
+    /// Stores an object as a client would through a presigned `PUT`.
+    pub fn put(&self, key: &str, size_bytes: u64, content_type: &str) {
+        let object = FakeObject { size_bytes, content_type: content_type.to_owned() };
+        self.objects.lock().unwrap().insert(key.to_owned(), object);
+    }
+
+    #[must_use]
+    pub fn object(&self, key: &str) -> Option<FakeObject> {
+        self.objects.lock().unwrap().get(key).cloned()
+    }
+
+    fn check(&self) -> AppResult<()> {
+        if self.failing.load(std::sync::atomic::Ordering::SeqCst) {
+            return Err(AppError::Unavailable("storage"));
+        }
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl ObjectStorage for FakeObjectStorage {
+    fn presign_put(
+        &self,
+        key: &str,
+        content_type: &str,
+        size_bytes: u64,
+        expires_in: Duration,
+    ) -> PresignedUpload {
+        let expires_at = self.clock.now() + chrono_duration(expires_in);
+        PresignedUpload {
+            url: format!("fake://put/{key}"),
+            method: "PUT",
+            headers: vec![
+                ("content-type", content_type.to_owned()),
+                ("content-length", size_bytes.to_string()),
+            ],
+            expires_at,
+        }
+    }
+
+    fn presign_get(&self, key: &str) -> String {
+        let hour = self.clock.now().duration_trunc(chrono::TimeDelta::hours(1)).unwrap();
+        let expires = hour + chrono_duration(self.download_ttl + Duration::from_secs(3600));
+        format!("fake://get/{key}?expires={}", expires.timestamp())
+    }
+
+    async fn head(&self, key: &str) -> AppResult<Option<ObjectInfo>> {
+        self.check()?;
+        Ok(self.object(key).map(|o| ObjectInfo {
+            size_bytes: o.size_bytes,
+            content_type: Some(o.content_type),
+        }))
+    }
+
+    async fn delete(&self, key: &str) -> AppResult<()> {
+        self.check()?;
+        self.objects.lock().unwrap().remove(key);
+        self.deleted.lock().unwrap().push(key.to_owned());
+        Ok(())
+    }
+}
+
 /// A ready-to-use set of fakes sharing one store and clock.
 pub struct Fakes {
     pub store: Arc<InMemoryStore>,
@@ -756,14 +968,17 @@ pub struct Fakes {
     pub limiter: Arc<FakeLimiter>,
     pub queue: Arc<FakeQueue>,
     pub mailer: Arc<FakeMailer>,
+    pub storage: Arc<FakeObjectStorage>,
 }
 
 impl Default for Fakes {
     fn default() -> Self {
         let start = DateTime::parse_from_rfc3339("2026-10-01T08:00:00Z").unwrap().to_utc();
+        let clock = Arc::new(ManualClock::new(start));
         Self {
             store: Arc::default(),
-            clock: Arc::new(ManualClock::new(start)),
+            storage: Arc::new(FakeObjectStorage::new(clock.clone())),
+            clock,
             hasher: Arc::default(),
             tokens: Arc::default(),
             revocations: Arc::default(),
@@ -779,5 +994,23 @@ impl Fakes {
     #[must_use]
     pub const fn lang() -> Lang {
         Lang::Fr
+    }
+
+    /// Upload use-cases over the fake store and storage (15-minute upload URLs).
+    #[must_use]
+    pub fn uploads(&self) -> Arc<UploadService> {
+        let storage: Arc<dyn ObjectStorage> = self.storage.clone();
+        Arc::new(self.upload_service(Some(storage)))
+    }
+
+    /// Upload use-cases of a deployment without object storage.
+    #[must_use]
+    pub fn uploads_without_storage(&self) -> Arc<UploadService> {
+        Arc::new(self.upload_service(None))
+    }
+
+    fn upload_service(&self, storage: Option<Arc<dyn ObjectStorage>>) -> UploadService {
+        let ttl = Duration::from_secs(900);
+        UploadService::new(self.store.clone(), storage, self.clock.clone(), ttl)
     }
 }

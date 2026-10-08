@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM uploads WHERE id = ANY($1) AND status = 'pending'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "282df18b17eda96b0e83f9818dfedd42e5485ef41d049fd24f2b73037a033a6e"
+}

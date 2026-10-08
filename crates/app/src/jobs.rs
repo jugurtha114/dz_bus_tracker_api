@@ -13,11 +13,11 @@ use dz_domain::user::Email;
 use serde::{Deserialize, Serialize};
 
 use crate::auth::secrets;
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::mail;
 use crate::ports::{
-    Clock, JobOptions, JobQueue, Mailer, PasswordResetRepository, SessionRepository,
-    UserRepository,
+    Clock, JobOptions, JobQueue, Mailer, ObjectStorage, PasswordResetRepository,
+    SessionRepository, UploadRepository, UserRepository,
 };
 
 /// Every job the worker knows how to run.
@@ -31,6 +31,11 @@ pub enum Job {
     PurgeExpiredAuth,
     /// Deletes finished jobs and old cron claims.
     PurgeFinishedJobs,
+    /// Deletes an object that is no longer referenced (replaced or removed photo or document).
+    /// Enqueued in the transaction that dropped the reference (outbox).
+    StorageDeleteObject { key: String },
+    /// Deletes expired pending uploads and their objects.
+    PurgeExpiredUploads,
 }
 
 impl Job {
@@ -41,6 +46,8 @@ impl Job {
             Self::PasswordResetRequested { .. } => "password_reset_requested",
             Self::PurgeExpiredAuth => "purge_expired_auth",
             Self::PurgeFinishedJobs => "purge_finished_jobs",
+            Self::StorageDeleteObject { .. } => "storage_delete_object",
+            Self::PurgeExpiredUploads => "purge_expired_uploads",
         }
     }
 }
@@ -63,7 +70,16 @@ pub const CRON_SCHEDULE: &[CronEntry] = &[
         schedule: "0 41 3 * * *",
         job: || Job::PurgeFinishedJobs,
     },
+    CronEntry {
+        name: "purge_expired_uploads",
+        schedule: "0 29 * * * *",
+        job: || Job::PurgeExpiredUploads,
+    },
 ];
+
+/// Expired pending uploads deleted per run of [`Job::PurgeExpiredUploads`]; the hourly schedule
+/// catches up with any backlog.
+pub const UPLOAD_PURGE_BATCH: u32 = 500;
 
 /// Settings the job handlers need.
 #[derive(Debug, Clone)]
@@ -75,6 +91,8 @@ pub struct JobSettings {
     pub auth_retention: Duration,
     /// Finished jobs are kept this long for inspection.
     pub job_retention: Duration,
+    /// Pending uploads are purged this long after they expired.
+    pub upload_purge_grace: Duration,
 }
 
 /// Executes jobs. Every handler is idempotent: running a job twice has no extra effect beyond
@@ -83,6 +101,9 @@ pub struct JobRunner {
     pub users: Arc<dyn UserRepository>,
     pub sessions: Arc<dyn SessionRepository>,
     pub resets: Arc<dyn PasswordResetRepository>,
+    pub uploads: Arc<dyn UploadRepository>,
+    /// `None` when object storage is not configured.
+    pub storage: Option<Arc<dyn ObjectStorage>>,
     pub mailer: Arc<dyn Mailer>,
     pub queue: Arc<dyn JobQueue>,
     pub clock: Arc<dyn Clock>,
@@ -100,7 +121,47 @@ impl JobRunner {
                 tracing::info!(purged, "purged finished jobs");
                 Ok(())
             }
+            Job::StorageDeleteObject { key } => {
+                // Retried with backoff while storage is unconfigured or unreachable.
+                let storage = self.storage.as_ref().ok_or(AppError::Unavailable("storage"))?;
+                storage.delete(key).await?;
+                tracing::info!(%key, "deleted unreferenced object");
+                Ok(())
+            }
+            Job::PurgeExpiredUploads => self.purge_expired_uploads().await,
         }
+    }
+
+    /// Deletes the objects of expired pending uploads, then the rows whose object is gone. A
+    /// failed deletion keeps its row, so the object is retried on the next run.
+    async fn purge_expired_uploads(&self) -> AppResult<()> {
+        let before = self.clock.now() - chrono_duration(self.settings.upload_purge_grace);
+        let expired = self.uploads.list_expired(before, UPLOAD_PURGE_BATCH).await?;
+        if expired.is_empty() {
+            return Ok(());
+        }
+        let Some(storage) = &self.storage else {
+            // Rows are kept so that their objects are deleted once storage is configured again.
+            tracing::warn!(pending = expired.len(), "storage not configured; expired uploads kept");
+            return Ok(());
+        };
+        let mut deleted = Vec::with_capacity(expired.len());
+        for upload in &expired {
+            match storage.delete(&upload.object_key).await {
+                Ok(()) => deleted.push(upload.id),
+                Err(error) => {
+                    tracing::warn!(%error, key = %upload.object_key, "could not delete object");
+                }
+            }
+        }
+        let purged = self.uploads.delete_pending(&deleted).await?;
+        let failed = expired.len() - deleted.len();
+        tracing::info!(purged, failed, "purged expired uploads");
+        if deleted.is_empty() {
+            // Nothing could be deleted: report the outage so the run is retried.
+            return Err(AppError::Unavailable("storage"));
+        }
+        Ok(())
     }
 
     async fn send_password_reset(&self, email: &str) -> AppResult<()> {

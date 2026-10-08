@@ -1,4 +1,5 @@
-//! PostgreSQL/PostGIS and Valkey for a test binary: from `DZ_TEST_*` URLs or containers.
+//! PostgreSQL/PostGIS, Valkey and S3 (RustFS) for a test binary: from `DZ_TEST_*` URLs or
+//! containers.
 
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
@@ -6,6 +7,7 @@ use std::time::{Duration, Instant};
 
 use sqlx::Connection;
 use sqlx::postgres::PgConnection;
+use url::Url;
 use testcontainers::core::{IntoContainerPort, WaitFor};
 use testcontainers::runners::SyncRunner;
 use testcontainers::{Container, GenericImage, ImageExt};
@@ -13,6 +15,10 @@ use testcontainers::{Container, GenericImage, ImageExt};
 /// Image tags match `compose.yaml` (see `docs/VERSIONS.md`).
 const POSTGIS_IMAGE: (&str, &str) = ("postgis/postgis", "18-3.6-alpine");
 const VALKEY_IMAGE: (&str, &str) = ("valkey/valkey", "9.1.2-alpine");
+const RUSTFS_IMAGE: (&str, &str) = ("rustfs/rustfs", "1.0.1");
+/// Root credentials of the RustFS container started here.
+const RUSTFS_ACCESS_KEY: &str = "dz-test-access";
+const RUSTFS_SECRET_KEY: &str = "dz-test-secret-0123456789";
 /// Label on every container started here: `docker rm -f $(docker ps -aq -f label=dz-testkit)`
 /// cleans up after a test run that was killed before its reaper could.
 const LABEL: &str = "dz-testkit";
@@ -22,6 +28,32 @@ pub(crate) struct Backends {
     /// A maintenance connection allowed to create and drop databases.
     pub postgres_url: String,
     pub valkey_url: String,
+    pub s3: S3Backend,
+}
+
+/// An S3-compatible server whose root credentials may create buckets.
+#[derive(Debug, Clone)]
+pub(crate) struct S3Backend {
+    pub endpoint: Url,
+    pub access_key: String,
+    pub secret_key: String,
+}
+
+impl S3Backend {
+    /// Parses `DZ_TEST_S3_URL`: `http://<access key>:<secret key>@<host>:<port>` (the keys must
+    /// consist of URL-safe characters, as RustFS and MinIO keys usually do).
+    fn from_url(raw: &str) -> Self {
+        let mut endpoint = Url::parse(raw).expect("DZ_TEST_S3_URL is a URL");
+        let access_key = endpoint.username().to_owned();
+        let secret_key = endpoint.password().unwrap_or_default().to_owned();
+        assert!(
+            !access_key.is_empty() && !secret_key.is_empty(),
+            "DZ_TEST_S3_URL must carry credentials: http://<access key>:<secret key>@host:port"
+        );
+        endpoint.set_username("").expect("URL with a host");
+        endpoint.set_password(None).expect("URL with a host");
+        Self { endpoint, access_key, secret_key }
+    }
 }
 
 static BACKENDS: OnceLock<Backends> = OnceLock::new();
@@ -61,11 +93,30 @@ fn start() -> Backends {
         std::mem::forget(container);
         url
     });
+    let s3 = std::env::var("DZ_TEST_S3_URL").map_or_else(
+        |_| {
+            let container = rustfs();
+            let endpoint = format!(
+                "http://{}:{}",
+                container.get_host().expect("container host"),
+                container.get_host_port_ipv4(9000).expect("S3 port"),
+            );
+            started.push(container.id().to_owned());
+            std::mem::forget(container);
+            S3Backend {
+                endpoint: endpoint.parse().expect("S3 endpoint"),
+                access_key: RUSTFS_ACCESS_KEY.to_owned(),
+                secret_key: RUSTFS_SECRET_KEY.to_owned(),
+            }
+        },
+        |url| S3Backend::from_url(&url),
+    );
     if !started.is_empty() {
         spawn_reaper(&started);
     }
     wait_for_postgres(&postgres_url);
-    Backends { postgres_url, valkey_url }
+    wait_for_s3(&s3.endpoint);
+    Backends { postgres_url, valkey_url, s3 }
 }
 
 fn postgis() -> Container<GenericImage> {
@@ -101,6 +152,40 @@ fn valkey() -> Container<GenericImage> {
         .with_startup_timeout(Duration::from_secs(120))
         .start()
         .expect("could not start Valkey (is Docker or the Podman socket available?)")
+}
+
+fn rustfs() -> Container<GenericImage> {
+    GenericImage::new(RUSTFS_IMAGE.0, RUSTFS_IMAGE.1)
+        .with_exposed_port(9000.tcp())
+        .with_wait_for(WaitFor::message_on_stdout("Starting:"))
+        .with_env_var("RUSTFS_ACCESS_KEY", RUSTFS_ACCESS_KEY)
+        .with_env_var("RUSTFS_SECRET_KEY", RUSTFS_SECRET_KEY)
+        .with_label(LABEL, "1")
+        .with_startup_timeout(Duration::from_secs(120))
+        .start()
+        .expect("could not start RustFS (is Docker or the Podman socket available?)")
+}
+
+/// The entrypoint prints `Starting:` before the server listens; wait for its health endpoint.
+fn wait_for_s3(endpoint: &Url) {
+    let health = endpoint.join("health").expect("health URL");
+    let runtime = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
+    runtime.block_on(async {
+        let client = dz_infra::storage::http_client(Duration::from_secs(2)).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(60);
+        loop {
+            match client.get(health.clone()).send().await {
+                Ok(response) if response.status().is_success() => return,
+                Ok(response) if Instant::now() > deadline => {
+                    panic!("S3 at {endpoint} is not healthy: {}", response.status())
+                }
+                Err(error) if Instant::now() > deadline => {
+                    panic!("S3 at {endpoint} never became ready: {error}")
+                }
+                _ => tokio::time::sleep(Duration::from_millis(250)).await,
+            }
+        }
+    });
 }
 
 /// The PostGIS image restarts the server after its init scripts; wait until the final

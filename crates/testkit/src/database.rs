@@ -8,7 +8,7 @@ use tokio::sync::OnceCell;
 use url::Url;
 use uuid::Uuid;
 
-use crate::backends;
+use crate::backends::{self, S3Backend};
 
 /// Session-level advisory lock serialising template creation across test processes.
 const TEMPLATE_LOCK: i64 = 0x647a_7465_7374;
@@ -22,6 +22,7 @@ pub struct TestDatabase {
     pub name: String,
     pub url: String,
     pub valkey_url: String,
+    pub(crate) s3: S3Backend,
     admin_url: String,
 }
 
@@ -41,6 +42,7 @@ impl TestDatabase {
             url: database_url(&backends.postgres_url, &name),
             name,
             valkey_url: backends.valkey_url.clone(),
+            s3: backends.s3.clone(),
             admin_url: backends.postgres_url.clone(),
         }
     }

@@ -42,6 +42,14 @@ http = "1.5.0"
 http-body-util = "0.1.5"
 bytes = "1.12.1"
 
+# Object storage: presigning is pure (rusty-s3); server-side requests use reqwest over rustls
+# with the ring provider (the same crypto stack as sqlx, lettre and the test kit).
+rusty-s3 = { version = "0.10.2", default-features = false, features = ["rustcrypto"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider"] }
+rustls = { version = "0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-platform-verifier = "0.7.1"
+jiff = { version = "0.2.37", default-features = false, features = ["std"] }
+
 # Persistence
 sqlx = { version = "0.9.0", default-features = false, features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json", "ipnet", "migrate", "macros", "derive"] }
 fred = { version = "10.1.0", default-features = false, features = ["i-std", "i-scripts", "sha-1", "i-pubsub", "subscriber-client", "i-geo", "i-sorted-sets", "i-hashes", "i-keys", "i-server", "transactions"] }

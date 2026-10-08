@@ -8,6 +8,7 @@ pub mod error;
 pub mod ids;
 pub mod lang;
 pub mod password;
+pub mod upload;
 pub mod user;
 
 pub use error::{ConflictKind, DenyReason, DomainError, FieldViolation, Violation, Violations};
