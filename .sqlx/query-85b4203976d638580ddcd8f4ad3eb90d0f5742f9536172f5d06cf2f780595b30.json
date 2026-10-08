@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO drivers (id, user_id, phone_number, id_card_number, id_card_photo_key,\n                                 driver_license_number, driver_license_photo_key,\n                                 years_of_experience, status, status_reason, status_changed_at,\n                                 is_available, created_at, updated_at)\n            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, '', $10, false, $10, $10)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int2",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "85b4203976d638580ddcd8f4ad3eb90d0f5742f9536172f5d06cf2f780595b30"
+}

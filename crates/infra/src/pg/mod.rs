@@ -2,6 +2,7 @@
 
 mod api_keys;
 mod audit;
+mod drivers;
 pub mod effects;
 mod network;
 mod resets;

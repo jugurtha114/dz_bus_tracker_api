@@ -21,6 +21,7 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
 
+pub mod drivers;
 pub mod network;
 
 /// Distinguishes an absent field (`None`) from an explicit `null` (`Some(None)`).

@@ -9,10 +9,13 @@ use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use dz_domain::Lang;
+use dz_domain::driver::DriverStatus;
+use dz_domain::ids::DriverId;
 use dz_domain::user::Email;
 use serde::{Deserialize, Serialize};
 
 use crate::auth::secrets;
+use crate::drivers::ports::DriverRepository;
 use crate::error::{AppError, AppResult};
 use crate::mail;
 use crate::ports::{
@@ -36,6 +39,12 @@ pub enum Job {
     StorageDeleteObject { key: String },
     /// Deletes expired pending uploads and their objects.
     PurgeExpiredUploads,
+    /// The status of a driver profile changed to `status`: the driver is told by e-mail, in
+    /// their language. Enqueued in the transaction of the change (outbox).
+    DriverStatusChanged { driver_id: DriverId, status: DriverStatus },
+    /// A driver profile waits for a review (application, re-application, new documents):
+    /// every active reviewer is told by e-mail. Enqueued in the transaction of the change.
+    DriverReviewRequested { driver_id: DriverId },
 }
 
 impl Job {
@@ -48,6 +57,8 @@ impl Job {
             Self::PurgeFinishedJobs => "purge_finished_jobs",
             Self::StorageDeleteObject { .. } => "storage_delete_object",
             Self::PurgeExpiredUploads => "purge_expired_uploads",
+            Self::DriverStatusChanged { .. } => "driver_status_changed",
+            Self::DriverReviewRequested { .. } => "driver_review_requested",
         }
     }
 }
@@ -102,6 +113,7 @@ pub struct JobRunner {
     pub sessions: Arc<dyn SessionRepository>,
     pub resets: Arc<dyn PasswordResetRepository>,
     pub uploads: Arc<dyn UploadRepository>,
+    pub drivers: Arc<dyn DriverRepository>,
     /// `None` when object storage is not configured.
     pub storage: Option<Arc<dyn ObjectStorage>>,
     pub mailer: Arc<dyn Mailer>,
@@ -129,7 +141,67 @@ impl JobRunner {
                 Ok(())
             }
             Job::PurgeExpiredUploads => self.purge_expired_uploads().await,
+            Job::DriverStatusChanged { driver_id, status } => {
+                self.notify_driver(*driver_id, *status).await
+            }
+            Job::DriverReviewRequested { driver_id } => self.notify_reviewers(*driver_id).await,
         }
+    }
+
+    /// E-mails the driver about their new status. A notification overtaken by a later change
+    /// is dropped: the job of that change tells the driver about the current status.
+    async fn notify_driver(&self, id: DriverId, status: DriverStatus) -> AppResult<()> {
+        let Some(record) = self.drivers.find(id).await? else {
+            tracing::warn!(driver_id = %id, "status notification for an unknown driver");
+            return Ok(());
+        };
+        if record.driver.status != status {
+            tracing::info!(driver_id = %id, %status, "status changed again; notification dropped");
+            return Ok(());
+        }
+        let user = &record.user;
+        let message = mail::driver_status_changed(
+            user.email.as_str(),
+            user.language,
+            user.first_name.as_str(),
+            status,
+            &record.driver.status_reason,
+        );
+        self.mailer.send(&message).await?;
+        tracing::info!(driver_id = %id, %status, "driver notified of a status change");
+        Ok(())
+    }
+
+    /// E-mails every active reviewer about a profile waiting for review, unless it was
+    /// reviewed meanwhile. A failure is retried for every reviewer (a reviewer may get the
+    /// e-mail twice; none misses it).
+    async fn notify_reviewers(&self, id: DriverId) -> AppResult<()> {
+        let Some(record) = self.drivers.find(id).await? else {
+            tracing::warn!(driver_id = %id, "review request for an unknown driver");
+            return Ok(());
+        };
+        if record.driver.status != DriverStatus::Pending {
+            tracing::info!(driver_id = %id, "driver reviewed meanwhile; request dropped");
+            return Ok(());
+        }
+        let user = &record.user;
+        let full_name = format!("{} {}", user.first_name.as_str(), user.last_name.as_str());
+        let applicant = match full_name.trim() {
+            "" => user.email.as_str(),
+            name => name,
+        };
+        let reviewers = self.drivers.reviewers().await?;
+        for reviewer in &reviewers {
+            let message = mail::driver_review_requested(
+                reviewer.email.as_str(),
+                reviewer.language,
+                applicant,
+                id,
+            );
+            self.mailer.send(&message).await?;
+        }
+        tracing::info!(driver_id = %id, reviewers = reviewers.len(), "review requested");
+        Ok(())
     }
 
     /// Deletes the objects of expired pending uploads, then the rows whose object is gone. A
@@ -238,6 +310,21 @@ mod tests {
         assert_eq!(json["payload"]["lang"], "ar");
         assert_eq!(serde_json::from_value::<Job>(json).unwrap(), job);
         assert_eq!(job.kind(), "password_reset_requested");
+    }
+
+    #[test]
+    fn driver_jobs_serialize_their_ids_and_status() {
+        let driver_id = DriverId::generate();
+        let job = Job::DriverStatusChanged { driver_id, status: DriverStatus::Suspended };
+        let json = serde_json::to_value(&job).unwrap();
+        assert_eq!(json["kind"], "driver_status_changed");
+        assert_eq!(json["payload"]["status"], "suspended");
+        assert_eq!(json["payload"]["driver_id"], driver_id.to_string());
+        assert_eq!(serde_json::from_value::<Job>(json).unwrap(), job);
+        let review = Job::DriverReviewRequested { driver_id };
+        assert_eq!(review.kind(), "driver_review_requested");
+        let json = serde_json::to_value(&review).unwrap();
+        assert_eq!(serde_json::from_value::<Job>(json).unwrap(), review);
     }
 
     #[test]

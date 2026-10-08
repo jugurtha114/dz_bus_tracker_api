@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE drivers SET\n                phone_number = COALESCE($2, phone_number),\n                years_of_experience = COALESCE($3, years_of_experience),\n                id_card_number = COALESCE($4, id_card_number),\n                id_card_photo_key = COALESCE($5, id_card_photo_key),\n                driver_license_number = COALESCE($6, driver_license_number),\n                driver_license_photo_key = COALESCE($7, driver_license_photo_key),\n                status = COALESCE($8, status),\n                status_reason = CASE WHEN $8::text IS NULL THEN status_reason ELSE $9 END,\n                status_changed_at = CASE WHEN $8::text IS NULL THEN status_changed_at ELSE $10 END,\n                is_available = is_available AND COALESCE($8, status) = 'approved',\n                updated_at = $10\n            WHERE id = $1 AND status = $11\n              AND id_card_photo_key = $12 AND driver_license_photo_key = $13\n            RETURNING user_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "user_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int2",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "82776b81d2c5dbdc914d65461110409d98477ec22eaab0b1ee5d1faaf811dfe4"
+}

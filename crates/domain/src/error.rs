@@ -207,6 +207,14 @@ pub enum ConflictKind {
     StopAlreadyOnLine,
     /// The schedule overlaps an active schedule of the same line on the same day.
     ScheduleOverlap,
+    /// The caller already has a driver profile (one per account).
+    DriverProfileExists,
+    /// Another driver profile has this national identity number.
+    IdCardTaken,
+    /// Another driver profile has this driving licence number.
+    LicenseTaken,
+    /// The driver state machine does not allow this action from the current status.
+    InvalidTransition,
 }
 
 impl ConflictKind {
@@ -223,6 +231,10 @@ impl ConflictKind {
             Self::LineInUse => "line_in_use",
             Self::StopAlreadyOnLine => "stop_already_on_line",
             Self::ScheduleOverlap => "schedule_overlap",
+            Self::DriverProfileExists => "driver_profile_exists",
+            Self::IdCardTaken => "id_card_taken",
+            Self::LicenseTaken => "license_taken",
+            Self::InvalidTransition => "invalid_transition",
         }
     }
 }
@@ -276,5 +288,9 @@ mod tests {
         assert_eq!(Violation::UnknownReference.code(), "unknown_reference");
         assert_eq!(ConflictKind::ScheduleOverlap.code(), "schedule_overlap");
         assert_eq!(ConflictKind::StopAlreadyOnLine.code(), "stop_already_on_line");
+        assert_eq!(ConflictKind::DriverProfileExists.code(), "driver_profile_exists");
+        assert_eq!(ConflictKind::IdCardTaken.code(), "id_card_taken");
+        assert_eq!(ConflictKind::LicenseTaken.code(), "license_taken");
+        assert_eq!(ConflictKind::InvalidTransition.code(), "invalid_transition");
     }
 }

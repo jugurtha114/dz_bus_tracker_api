@@ -4,7 +4,8 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
 
-use axum::extract::{FromRequest, FromRequestParts, Request};
+use axum::extract::rejection::BytesRejection;
+use axum::extract::{FromRequest, FromRequestParts, OptionalFromRequest, Request};
 use axum::http::StatusCode;
 use axum::http::header::{CONTENT_TYPE, USER_AGENT};
 use axum::http::request::Parts;
@@ -127,13 +128,7 @@ where
         if !is_json {
             return Err(ApiError::new(StatusCode::UNSUPPORTED_MEDIA_TYPE, "unsupported_media_type"));
         }
-        let bytes = Bytes::from_request(request, state).await.map_err(|rejection| {
-            if rejection.status() == StatusCode::PAYLOAD_TOO_LARGE {
-                ApiError::new(StatusCode::PAYLOAD_TOO_LARGE, "payload_too_large")
-            } else {
-                ApiError::new(StatusCode::BAD_REQUEST, "malformed_request")
-            }
-        })?;
+        let bytes = Bytes::from_request(request, state).await.map_err(unreadable_body)?;
         let mut deserializer = serde_json::Deserializer::from_slice(&bytes);
         let value: T = match serde_path_to_error::deserialize(&mut deserializer) {
             Ok(value) => value,
@@ -147,6 +142,38 @@ where
             .map_err(|_| ApiError::new(StatusCode::BAD_REQUEST, "malformed_request"))?;
         value.validate().map_err(|e| validation_problem(&e))?;
         Ok(Self(value))
+    }
+}
+
+/// An optional JSON body: `None` for a request without any body (no `Content-Type`, no
+/// content), so that an endpoint whose body used to be optional can report the fields it now
+/// requires (`422`) instead of `415`; any other request is extracted as a [`ValidatedJson`].
+impl<S, T> OptionalFromRequest<S> for ValidatedJson<T>
+where
+    S: Send + Sync,
+    T: DeserializeOwned + Validate,
+{
+    type Rejection = ApiError;
+
+    async fn from_request(request: Request, state: &S) -> Result<Option<Self>, Self::Rejection> {
+        if request.headers().contains_key(CONTENT_TYPE) {
+            return <Self as FromRequest<S>>::from_request(request, state).await.map(Some);
+        }
+        let bytes = Bytes::from_request(request, state).await.map_err(unreadable_body)?;
+        if bytes.is_empty() {
+            Ok(None)
+        } else {
+            Err(ApiError::new(StatusCode::UNSUPPORTED_MEDIA_TYPE, "unsupported_media_type"))
+        }
+    }
+}
+
+/// The problem of a request body that could not be read.
+fn unreadable_body(rejection: BytesRejection) -> ApiError {
+    if rejection.status() == StatusCode::PAYLOAD_TOO_LARGE {
+        ApiError::new(StatusCode::PAYLOAD_TOO_LARGE, "payload_too_large")
+    } else {
+        ApiError::new(StatusCode::BAD_REQUEST, "malformed_request")
     }
 }
 

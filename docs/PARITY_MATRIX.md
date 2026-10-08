@@ -59,7 +59,7 @@ clients and third-party integrators (see ADR-0002). Compared with Django/DRF:
 | — | `jobs` | Redesign | M1 | Replaces Celery broker/results (ADR-0006). |
 | `drivers.Driver` | `drivers` | Redesign | M1 schema / M2 logic | Explicit state machine (L-24); ID-card / licence photos become private object-storage keys (L-03); `rating`/`total_ratings` → `rating_sum`/`rating_count` maintained atomically (L-57). `is_active` folded into `status` (suspended). |
 | `drivers.DriverRating` | `driver_ratings` | Keep | M4 | One rating per (driver, user, Algiers calendar day); eligibility rules fixed (L-26). |
-| `drivers.DriverStatusLog` | `driver_status_log` | Keep | M2 | `changed_by` actually recorded (L-24); every transition logged incl. re-apply. |
+| `drivers.DriverStatusLog` | `driver_status_log` | Keep | M2 | `changed_by` actually recorded (L-24); every status change logged incl. re-apply; append-only (trigger), only real changes, reason required for rejections and suspensions. |
 | `buses.Bus` | `buses` | Redesign | M1 schema / M2 logic | `is_approved` → `approval_status` (`pending`/`approved`/`rejected`), operational `status` stays; drivers can no longer flip status/activation (L-05); `features` JSON → `text[]`; `photo` → `photo_key`. |
 | `lines.Stop` | `stops` | Redesign | M1 | `latitude`/`longitude` decimals → `location geography(Point,4326)` + GiST index. |
 | `lines.Line` | `lines` | Redesign | M1 | + `route geography(LineString,4326)` (replaces `RouteSegment`), color validated `#RRGGBB` (L-49). |
@@ -135,19 +135,19 @@ clients and third-party integrators (see ADR-0002). Compared with Django/DRF:
 
 | Django | Rust | Mark | M | Notes |
 |---|---|---|---|---|
-| `GET /drivers/drivers/` (any user, full PII) | `GET /api/v1/drivers` | Redesign | M2 | Admin only (L-03). Public views of drivers expose name + rating only. |
-| `POST /drivers/drivers/` (any user id) | `POST /api/v1/drivers/applications` | Redesign | M2 | A driver profile is always created for the caller (L-02). |
-| `GET /drivers/drivers/{id}/` | `GET /api/v1/drivers/{id}` | Redesign | M2 | Admin or the driver themself. |
+| `GET /drivers/drivers/` (any user, full PII) | `GET /api/v1/drivers` | Redesign | M2 | Admin only (L-03); filters `status`, `is_available`. No public driver endpoint in M2: public views (bus DTOs, M2 WP4) expose the first name only. |
+| `POST /drivers/drivers/` (any user id) | `POST /api/v1/drivers/applications` | Redesign | M2 | A driver profile is always created for the caller (L-02), with both document uploads, in one transaction (L-31). `409 driver_profile_exists` / `id_card_taken` / `license_taken`. |
+| `GET /drivers/drivers/{id}/` | `GET /api/v1/drivers/{id}` | Redesign | M2 | Admin or the driver themself; anyone else gets `404`. |
 | `GET /drivers/drivers/profile/` | `GET /api/v1/drivers/me` | Keep | M2 | |
-| `PATCH /drivers/drivers/{id}/` (any driver!) | `PATCH /api/v1/drivers/me` | Redesign | M2 | Own profile only (L-02); documents re-upload sends the application back to review. |
+| `PATCH /drivers/drivers/{id}/` (any driver!) | `PATCH /api/v1/drivers/me` | Redesign | M2 | Own profile only (L-02); a changed identity document (number or photo) sends an approved profile back to review and makes the driver unavailable; reviewers are notified while it is pending. |
 | `DELETE /drivers/drivers/{id}/` (any driver, cascades) | — | Drop | — | Replaced by suspension; history must not be destroyed (L-02). |
-| `POST /drivers/drivers/{id}/approve/` | `POST /api/v1/drivers/{id}/approve` | Redesign | M2 | Only from `pending`; the ignored `approve:false` flag is removed (L-24). Audited, notifies driver. |
+| `POST /drivers/drivers/{id}/approve/` | `POST /api/v1/drivers/{id}/approve` | Redesign | M2 | Only from `pending`; the ignored `approve:false` flag is removed (L-24). The body names the reviewed version, `{expected_updated_at}`: documents changed since the review are never approved (`409 stale_state`). Audited, notifies driver. A passenger account becomes `driver` in the same transaction (other roles are kept); never the reviewer's own profile. |
 | `POST /drivers/drivers/{id}/reject/` | `POST /api/v1/drivers/{id}/reject` | Redesign | M2 | `{reason}` required; from `pending`. |
-| `POST /drivers/drivers/{id}/suspend/` | `POST /api/v1/drivers/{id}/suspend` | Redesign | M2 | From `approved`; ends active trip, takes buses off duty (L-25). |
+| `POST /drivers/drivers/{id}/suspend/` | `POST /api/v1/drivers/{id}/suspend` | Redesign | M2 | From `approved`, `{reason}` required; takes the driver and all their buses off duty in the same transaction (L-25); ending the active trip arrives with trips (M3). |
 | — (approve was the only way back) | `POST /api/v1/drivers/{id}/reinstate` | *fix* | M2 | Explicit `suspended → approved` transition instead of overloading approve. |
 | `POST /drivers/drivers/{id}/reapply/` | `POST /api/v1/drivers/me/reapply` | Redesign | M2 | `rejected → pending`; logged; admins notified (L-24). |
 | `GET /drivers/drivers/{id}/status_history/` | `GET /api/v1/drivers/{id}/status-history` | Keep | M2 | With `changed_by`. |
-| `POST /drivers/drivers/{id}/update_availability/` | `PUT /api/v1/drivers/me/availability` | Keep | M2 | |
+| `POST /drivers/drivers/{id}/update_availability/` | `PUT /api/v1/drivers/me/availability` | Keep | M2 | Approved drivers only (`409 invalid_state`); leaving `approved` clears it (DB check). |
 | `GET /drivers/drivers/{id}/ratings/` | `GET /api/v1/drivers/{id}/ratings` | Keep | M4 | Rater identity reduced to first name (privacy). |
 | `POST /drivers/drivers/{id}/ratings/` | `POST /api/v1/drivers/{id}/ratings` | Redesign | M4 | Eligibility: same trip interaction within 48 h, not self, once per day (L-26). |
 

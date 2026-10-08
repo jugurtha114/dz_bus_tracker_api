@@ -131,6 +131,7 @@ async fn run(settings: Settings) -> anyhow::Result<()> {
         stops: services.stops,
         lines: services.lines,
         schedules: services.schedules,
+        drivers: services.drivers,
         admin_users: services.admin_users,
         api_keys: services.api_keys,
         audit: services.audit,

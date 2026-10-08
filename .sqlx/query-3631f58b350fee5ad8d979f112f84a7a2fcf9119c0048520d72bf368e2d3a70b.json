@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE buses SET status = 'inactive', updated_at = $2\n                WHERE driver_id = $1 AND status <> 'inactive'\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3631f58b350fee5ad8d979f112f84a7a2fcf9119c0048520d72bf368e2d3a70b"
+}

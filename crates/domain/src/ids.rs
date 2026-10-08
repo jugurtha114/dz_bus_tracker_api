@@ -74,6 +74,8 @@ typed_id!(
     AuditEntryId,
     /// Identifier of a driver profile.
     DriverId,
+    /// Identifier of an entry of a driver's status history.
+    DriverStatusChangeId,
     /// Identifier of a bus.
     BusId,
     /// Identifier of a bus line.

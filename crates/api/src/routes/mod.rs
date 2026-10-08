@@ -2,17 +2,32 @@
 
 pub mod admin;
 pub mod auth;
+pub mod drivers;
 pub mod me;
 pub mod network;
 pub mod ops;
 pub mod uploads;
 
+use axum::Json;
+use axum::http::header::LOCATION;
+use axum::http::{HeaderValue, StatusCode};
+use axum::response::{IntoResponse, Response};
+use serde::Serialize;
 use utoipa_axum::router::OpenApiRouter;
 use utoipa_axum::routes;
 
 use self::network::{lines, schedules, stops};
 
 use crate::state::AppState;
+
+/// `201 Created` with `Location` and the created resource.
+fn created(location: &str, body: impl Serialize) -> Response {
+    let mut response = (StatusCode::CREATED, Json(body)).into_response();
+    if let Ok(value) = HeaderValue::from_str(location) {
+        response.headers_mut().insert(LOCATION, value);
+    }
+    response
+}
 
 /// Credential endpoints; they get a stricter per-IP rate-limit tier.
 pub fn credentials() -> OpenApiRouter<AppState> {
@@ -53,6 +68,17 @@ pub fn api() -> OpenApiRouter<AppState> {
             schedules::update_schedule,
             schedules::delete_schedule
         ))
+        .routes(routes!(drivers::apply))
+        .routes(routes!(drivers::get_my_profile, drivers::update_my_profile))
+        .routes(routes!(drivers::set_my_availability))
+        .routes(routes!(drivers::reapply))
+        .routes(routes!(drivers::list_drivers))
+        .routes(routes!(drivers::get_driver))
+        .routes(routes!(drivers::status_history))
+        .routes(routes!(drivers::approve))
+        .routes(routes!(drivers::reject))
+        .routes(routes!(drivers::suspend))
+        .routes(routes!(drivers::reinstate))
         .routes(routes!(admin::list_users))
         .routes(routes!(admin::get_user, admin::update_user))
         .routes(routes!(admin::list_api_keys, admin::create_api_key))

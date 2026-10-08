@@ -7,6 +7,7 @@ use std::time::Duration;
 use dz_app::account::AccountService;
 use dz_app::admin::{AdminUserService, ApiKeyService, AuditService};
 use dz_app::auth::{AuthDeps, AuthService, AuthSettings};
+use dz_app::drivers::DriverService;
 use dz_app::jobs::{JobRunner, JobSettings};
 use dz_app::network::{LineService, ScheduleService, StopService};
 use dz_app::ports::{
@@ -50,6 +51,7 @@ pub struct Services {
     pub stops: StopService,
     pub lines: LineService,
     pub schedules: ScheduleService,
+    pub drivers: DriverService,
     pub admin_users: AdminUserService,
     pub api_keys: ApiKeyService,
     pub audit: AuditService,
@@ -176,6 +178,7 @@ impl Infrastructure {
                 self.store.clone(),
                 self.clock.clone(),
             ),
+            drivers: DriverService::new(self.store.clone(), uploads.clone(), self.clock.clone()),
             uploads,
             admin_users: AdminUserService::new(
                 self.store.clone(),
@@ -201,6 +204,7 @@ impl Infrastructure {
             sessions: self.store.clone(),
             resets: self.store.clone(),
             uploads: self.store.clone(),
+            drivers: self.store.clone(),
             storage: self.object_storage(),
             mailer: self.mailer.clone(),
             queue: self.queue.clone(),

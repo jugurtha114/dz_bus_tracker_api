@@ -257,6 +257,7 @@ fn runner(h: &Harness) -> JobRunner {
         sessions: h.fakes.store.clone(),
         resets: h.fakes.store.clone(),
         uploads: h.fakes.store.clone(),
+        drivers: h.fakes.store.clone(),
         storage: Some(h.fakes.storage.clone()),
         mailer: h.fakes.mailer.clone(),
         queue: h.fakes.queue.clone(),

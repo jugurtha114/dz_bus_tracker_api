@@ -32,6 +32,7 @@ use crate::ports::{
 };
 use crate::uploads::UploadService;
 
+mod drivers;
 mod network;
 
 /// A clock that only moves when told to.
@@ -97,6 +98,7 @@ struct State {
     /// Jobs persisted by writes (transactional outbox), in order.
     outbox: Vec<OutboxJob>,
     network: network::NetworkState,
+    drivers: drivers::DriversState,
 }
 
 impl State {

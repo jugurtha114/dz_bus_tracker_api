@@ -26,6 +26,7 @@ use crate::error::{ProblemDocument, ProblemFieldError};
         (name = "stops", description = "Bus stops: catalogue, nearby search, administration"),
         (name = "lines", description = "Bus lines with their ordered stops and route"),
         (name = "schedules", description = "Weekly service windows of the lines"),
+        (name = "drivers", description = "Driver applications, profiles, reviews and history"),
         (name = "admin", description = "Administration (users, API keys, audit log)"),
         (name = "ops", description = "Health probes and signing keys"),
     ),

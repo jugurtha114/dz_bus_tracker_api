@@ -90,6 +90,14 @@ and reproduction steps; expect an acknowledgement within three working days.
   top of the per-IP tier — mail bombing an address is not possible
   (`reset_requests_are_deduplicated_per_address`).
 * Registration and login share the strict credential tier; registration cannot choose a role.
+* Driver approvals are bound to the reviewed version of the identity documents:
+  `POST /drivers/{id}/approve` carries the `updated_at` the reviewer read
+  (`expected_updated_at`), and the approval's compare-and-set requires both the status and
+  that version (`UPDATE drivers … WHERE status = 'pending' AND updated_at = $expected`).
+  Documents swapped between the review and the decision — even while the profile stays
+  pending — are never approved: `409 stale_state`, nothing written
+  (`approvals_apply_only_to_the_reviewed_documents`,
+  `the_database_only_approves_the_reviewed_version`).
 * Flows of later milestones (ratings, reports, rewards) get eligibility rules in their own
   milestone (see `docs/PARITY_MATRIX.md` §9).
 

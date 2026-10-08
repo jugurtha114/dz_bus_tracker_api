@@ -7,6 +7,7 @@ pub mod account;
 pub mod admin;
 pub mod audit;
 pub mod auth;
+pub mod drivers;
 pub mod error;
 pub mod jobs;
 pub mod mail;

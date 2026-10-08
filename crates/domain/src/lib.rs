@@ -4,6 +4,7 @@
 //! objects with their invariants, domain errors and the central authorization policy.
 
 pub mod authz;
+pub mod driver;
 pub mod error;
 pub mod geo;
 pub mod ids;

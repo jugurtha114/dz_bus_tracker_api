@@ -68,6 +68,7 @@ fn runner(f: &Fakes) -> JobRunner {
         sessions: f.store.clone(),
         resets: f.store.clone(),
         uploads: f.store.clone(),
+        drivers: f.store.clone(),
         storage: Some(f.storage.clone()),
         mailer: f.mailer.clone(),
         queue: f.queue.clone(),

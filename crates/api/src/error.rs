@@ -324,6 +324,17 @@ mod tests {
                 "line_in_use",
             ),
             (
+                AppError::Conflict(dz_domain::ConflictKind::InvalidTransition),
+                StatusCode::CONFLICT,
+                "invalid_transition",
+            ),
+            (
+                AppError::Conflict(dz_domain::ConflictKind::DriverProfileExists),
+                StatusCode::CONFLICT,
+                "driver_profile_exists",
+            ),
+            (AppError::InvalidState("driver"), StatusCode::CONFLICT, "invalid_state"),
+            (
                 AppError::Internal(anyhow::anyhow!("boom")),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_error",

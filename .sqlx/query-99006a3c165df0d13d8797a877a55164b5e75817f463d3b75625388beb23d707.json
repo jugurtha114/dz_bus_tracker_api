@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE drivers SET is_available = $2, updated_at = $3\n            WHERE id = $1 AND status = 'approved'\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "99006a3c165df0d13d8797a877a55164b5e75817f463d3b75625388beb23d707"
+}

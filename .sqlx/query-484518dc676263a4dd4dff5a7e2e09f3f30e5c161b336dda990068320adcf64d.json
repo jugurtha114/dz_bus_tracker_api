@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE drivers SET\n                status = $3,\n                status_reason = $4,\n                status_changed_at = $5,\n                is_available = is_available AND $3 = 'approved',\n                updated_at = $5\n            WHERE id = $1 AND status = $2\n              AND ($6::timestamptz IS NULL OR updated_at = $6)\n            RETURNING user_id\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "user_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "484518dc676263a4dd4dff5a7e2e09f3f30e5c161b336dda990068320adcf64d"
+}

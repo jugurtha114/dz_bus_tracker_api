@@ -5,6 +5,7 @@ use std::sync::Arc;
 use dz_app::account::AccountService;
 use dz_app::admin::{AdminUserService, ApiKeyService, AuditService};
 use dz_app::auth::AuthService;
+use dz_app::drivers::DriverService;
 use dz_app::network::{LineService, ScheduleService, StopService};
 use dz_app::ports::{IdempotencyStore, RateLimiter, ReadinessProbe};
 use dz_app::uploads::UploadService;
@@ -23,6 +24,7 @@ pub struct AppServices {
     pub stops: StopService,
     pub lines: LineService,
     pub schedules: ScheduleService,
+    pub drivers: DriverService,
     pub admin_users: AdminUserService,
     pub api_keys: ApiKeyService,
     pub audit: AuditService,

@@ -1,0 +1,256 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT d.id, d.user_id, d.phone_number, d.id_card_number, d.id_card_photo_key,\n               d.driver_license_number, d.driver_license_photo_key, d.years_of_experience,\n               d.status, d.status_reason, d.status_changed_at, d.is_available, d.rating_sum,\n               d.rating_count, d.created_at, d.updated_at,\n               u.email, u.first_name, u.last_name, p.language\n        FROM drivers d\n        JOIN users u ON u.id = d.user_id\n        JOIN profiles p ON p.user_id = d.user_id\n        WHERE d.id = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "user_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "phone_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "phone_number"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "id_card_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "id_card_number"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "id_card_photo_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "id_card_photo_key"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "driver_license_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "driver_license_number"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "driver_license_photo_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "driver_license_photo_key"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "years_of_experience",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "years_of_experience"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "status_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "status_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "status_changed_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "status_changed_at"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "is_available",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "is_available"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "rating_sum",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "rating_sum"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "rating_count",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "rating_count"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "drivers",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "first_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "last_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "users",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "language",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "profiles",
+            "name": "language"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "138568f6a22bfde61b6d192b285d81f98b58f3b2a0fd213013fbc8a58f91bcab"
+}

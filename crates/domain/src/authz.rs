@@ -395,6 +395,17 @@ pub enum Action {
     /// Attach an upload of the actor as a stop photo. Uploads belong to human accounts, so API
     /// keys are refused whatever their scopes (they may still remove a photo).
     AttachStopPhoto,
+    /// Apply (or re-apply) to become a driver. The profile is the actor's own, so it needs a
+    /// human account.
+    ApplyAsDriver,
+    /// Read the driver profile (with its identity documents) and status history of `owner`:
+    /// the driver themself or a holder of `driver:read`.
+    ReadDriver { owner: UserId },
+    /// List every driver profile.
+    ListDrivers,
+    /// Approve, reject, suspend or reinstate the driver profile of `owner`. Nobody reviews
+    /// their own profile (an applicant promoted to administrator meanwhile included).
+    ReviewDriver { owner: UserId },
 }
 
 /// Resource-level authorization rules.
@@ -447,6 +458,24 @@ impl Policy {
             Action::AttachStopPhoto => {
                 actor.require(Permission::StopWrite)?;
                 actor.user_id().map(|_| ()).ok_or(DenyReason::MissingPermission)
+            }
+            Action::ApplyAsDriver => {
+                actor.require(Permission::DriverApply)?;
+                actor.user_id().map(|_| ()).ok_or(DenyReason::MissingPermission)
+            }
+            Action::ReadDriver { owner } => {
+                if actor.user_id() == Some(*owner) && actor.has(Permission::AccountSelfManage) {
+                    return Ok(());
+                }
+                actor.require(Permission::DriverRead)
+            }
+            Action::ListDrivers => actor.require(Permission::DriverRead),
+            Action::ReviewDriver { owner } => {
+                actor.require(Permission::DriverReview)?;
+                if actor.user_id() == Some(*owner) {
+                    return Err(DenyReason::InvalidState);
+                }
+                Ok(())
             }
         }
     }
@@ -619,6 +648,54 @@ mod tests {
             ("stop key attaches photo",     &stops,     Action::AttachStopPhoto, deny_perm),
             ("driver attaches stop photo",  &driver,    Action::AttachStopPhoto, deny_perm),
             ("anon attaches stop photo",    &anon,      Action::AttachStopPhoto, deny_auth),
+        ];
+        for (name, actor, action, expected) in cases {
+            assert_eq!(Policy::authorize(actor, &action), expected, "{name}");
+        }
+    }
+
+    /// The driver programme: applications, profile reads and reviews (actor × action).
+    #[test]
+    fn driver_decisions() {
+        let admin = user(Role::Admin);
+        let admin_id = admin.user_id().unwrap();
+        let passenger = user(Role::Passenger);
+        let passenger_id = passenger.user_id().unwrap();
+        let driver = user(Role::Driver);
+        let driver_id = driver.user_id().unwrap();
+        let other = UserId::generate();
+        let key = service(Permission::ALL);
+        let anon = Actor::Anonymous;
+        let ok = Ok(());
+        let deny_perm = Err(DenyReason::MissingPermission);
+        let deny_auth = Err(DenyReason::AuthenticationRequired);
+        let deny_state = Err(DenyReason::InvalidState);
+        let read = |owner| Action::ReadDriver { owner };
+        let review = |owner| Action::ReviewDriver { owner };
+        #[rustfmt::skip]
+        let cases: Vec<(&str, &Actor, Action, Result<(), DenyReason>)> = vec![
+            ("passenger applies",           &passenger, Action::ApplyAsDriver,  ok),
+            ("driver re-applies",           &driver,    Action::ApplyAsDriver,  ok),
+            ("admin applies",               &admin,     Action::ApplyAsDriver,  deny_perm),
+            ("key applies",                 &key,       Action::ApplyAsDriver,  deny_perm),
+            ("anon applies",                &anon,      Action::ApplyAsDriver,  deny_auth),
+            ("passenger reads own profile", &passenger, read(passenger_id),     ok),
+            ("driver reads own profile",    &driver,    read(driver_id),        ok),
+            ("driver reads another",        &driver,    read(other),            deny_perm),
+            ("passenger reads another",     &passenger, read(driver_id),        deny_perm),
+            ("admin reads any",             &admin,     read(driver_id),        ok),
+            ("key reads a driver",          &key,       read(driver_id),        deny_perm),
+            ("anon reads a driver",         &anon,      read(driver_id),        deny_auth),
+            ("admin lists",                 &admin,     Action::ListDrivers,    ok),
+            ("driver lists",                &driver,    Action::ListDrivers,    deny_perm),
+            ("key lists",                   &key,       Action::ListDrivers,    deny_perm),
+            ("anon lists",                  &anon,      Action::ListDrivers,    deny_auth),
+            ("admin reviews",               &admin,     review(driver_id),      ok),
+            ("admin reviews self",          &admin,     review(admin_id),       deny_state),
+            ("driver reviews",              &driver,    review(other),          deny_perm),
+            ("driver reviews self",         &driver,    review(driver_id),      deny_perm),
+            ("key reviews",                 &key,       review(driver_id),      deny_perm),
+            ("anon reviews",                &anon,      review(driver_id),      deny_auth),
         ];
         for (name, actor, action, expected) in cases {
             assert_eq!(Policy::authorize(actor, &action), expected, "{name}");

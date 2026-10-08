@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE users SET role = 'driver', updated_at = $2\n                WHERE id = $1 AND role = 'passenger'\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "abfb052fb10ad326d7b13c75f6529ef440d6c5ac6dfb1e57c656a92c57401d23"
+}

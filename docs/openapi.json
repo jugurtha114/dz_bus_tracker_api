@@ -944,6 +944,1038 @@
         ]
       }
     },
+    "/api/v1/drivers": {
+      "get": {
+        "tags": [
+          "drivers"
+        ],
+        "summary": "Every driver profile, newest first (reviewers).",
+        "operationId": "list_drivers",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DriverStatusDto"
+            }
+          },
+          {
+            "name": "is_available",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor from a previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size (1–100, default 20).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of profiles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated_DriverDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `driver:read`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid filters",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/drivers/applications": {
+      "post": {
+        "tags": [
+          "drivers"
+        ],
+        "summary": "Apply to become a driver. The profile is created for the caller with both identity\ndocuments, in one step; reviewers are notified. Upload the documents first.",
+        "operationId": "apply",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverApplicationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Application submitted (`Location` points to the profile)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `driver:apply` (e.g. administrators, API keys)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The caller already has a profile (`driver_profile_exists`), the identity card or licence number belongs to another profile (`id_card_taken`, `license_taken`), or an upload was attached concurrently (`upload_already_used`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid fields, or unusable uploads (`invalid_upload`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is not available (`storage_unavailable`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/drivers/me": {
+      "get": {
+        "tags": [
+          "drivers"
+        ],
+        "summary": "The caller's driver profile.",
+        "operationId": "get_my_profile",
+        "responses": {
+          "200": {
+            "description": "The caller's profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "API keys have no driver profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The caller has no driver profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "drivers"
+        ],
+        "summary": "Update the caller's driver profile. A new identity document (number or photo) sends an\napproved profile back to review and makes the driver unavailable; replaced photos are\ndeleted in the background.",
+        "operationId": "update_my_profile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDriverRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "API keys have no driver profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The caller has no driver profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Number of another profile (`id_card_taken`, `license_taken`), upload attached concurrently (`upload_already_used`), or profile changed concurrently (`stale_state`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid fields, or unusable uploads (`invalid_upload`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is not available (`storage_unavailable`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/drivers/me/availability": {
+      "put": {
+        "tags": [
+          "drivers"
+        ],
+        "summary": "Set the caller's availability for service (approved drivers only).",
+        "operationId": "set_my_availability",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AvailabilityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "API keys have no driver profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The caller has no driver profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The driver is not approved (`invalid_state`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid body",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/drivers/me/reapply": {
+      "post": {
+        "tags": [
+          "drivers"
+        ],
+        "summary": "Apply again after a rejection (`rejected → pending`); reviewers are notified.",
+        "operationId": "reapply",
+        "responses": {
+          "200": {
+            "description": "The profile, pending again",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `driver:apply`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The caller has no driver profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The profile is not rejected (`invalid_transition`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/drivers/{id}": {
+      "get": {
+        "tags": [
+          "drivers"
+        ],
+        "summary": "One driver profile: the caller's own, or any for reviewers (`driver:read`).",
+        "operationId": "get_driver",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Driver id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "API keys cannot read driver profiles",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such profile, or someone else's",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/drivers/{id}/approve": {
+      "post": {
+        "tags": [
+          "drivers"
+        ],
+        "summary": "Approve a pending application (audited). The applicant gets the `driver` role, effective at\ntheir next token refresh, and is notified. The approval is bound to the version of the\nprofile the reviewer examined (`expected_updated_at`): if the profile changed since, e.g.\nthe applicant replaced a document, nothing changes and the profile must be reviewed again.",
+        "operationId": "approve",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Driver id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveDriverRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The approved profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `driver:review`, or the caller's own profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The profile is not pending (`invalid_transition`), or it changed since the reviewer read it (`stale_state`: read it again and review the current documents)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Missing or invalid `expected_updated_at`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/drivers/{id}/reinstate": {
+      "post": {
+        "tags": [
+          "drivers"
+        ],
+        "summary": "Reinstate a suspended driver (audited); the driver is notified.",
+        "operationId": "reinstate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Driver id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The approved profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `driver:review`, or the caller's own profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The driver is not suspended (`invalid_transition`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/drivers/{id}/reject": {
+      "post": {
+        "tags": [
+          "drivers"
+        ],
+        "summary": "Reject a pending application with a reason (audited); the applicant is notified and may\nre-apply.",
+        "operationId": "reject",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Driver id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The rejected profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `driver:review`, or the caller's own profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The profile is not pending (`invalid_transition`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Missing or too long `reason`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/drivers/{id}/status-history": {
+      "get": {
+        "tags": [
+          "drivers"
+        ],
+        "summary": "The status history of a profile, newest first, with the author and reason of each change\n(same visibility as the profile).",
+        "operationId": "status_history",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Driver id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "Opaque cursor from a previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size (1–100, default 20).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of status changes",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated_DriverStatusChangeDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "API keys cannot read driver profiles",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such profile, or someone else's",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid cursor or limit",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/drivers/{id}/suspend": {
+      "post": {
+        "tags": [
+          "drivers"
+        ],
+        "summary": "Suspend an approved driver with a reason (audited). In the same transaction the driver\nbecomes unavailable and all their buses are taken off duty; the driver is notified and\nkeeps the `driver` role (to follow their status).",
+        "operationId": "suspend",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Driver id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewReasonRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The suspended profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `driver:review`, or the caller's own profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such profile",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The driver is not approved (`invalid_transition`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Missing or too long `reason`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      }
+    },
     "/api/v1/lines": {
       "get": {
         "tags": [
@@ -3635,6 +4667,22 @@
           }
         }
       },
+      "ApproveDriverRequest": {
+        "type": "object",
+        "description": "The version of the profile the reviewer examined. An approval only applies to the documents\nthat were reviewed: if the profile changed since (e.g. the applicant replaced a document),\nit is refused with `409 stale_state` and the profile must be reviewed again.",
+        "required": [
+          "expected_updated_at"
+        ],
+        "properties": {
+          "expected_updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "`updated_at` of the profile as read by the reviewer (RFC 3339, as returned by\n`GET /drivers/{id}`, microsecond precision).",
+            "example": "2026-10-08T09:41:27.512947Z"
+          }
+        },
+        "additionalProperties": false
+      },
       "AuditEntryDto": {
         "type": "object",
         "required": [
@@ -3709,6 +4757,19 @@
             "$ref": "#/components/schemas/UserDto"
           }
         }
+      },
+      "AvailabilityRequest": {
+        "type": "object",
+        "description": "Availability of an approved driver.",
+        "required": [
+          "is_available"
+        ],
+        "properties": {
+          "is_available": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
       },
       "ChangePasswordRequest": {
         "type": "object",
@@ -3985,6 +5046,231 @@
             "$ref": "#/components/schemas/ApiKeyDto"
           },
           "secret": {
+            "type": "string"
+          }
+        }
+      },
+      "DriverApplicationRequest": {
+        "type": "object",
+        "description": "An application to become a driver. The profile is always the caller's. Upload both\ndocuments first (`POST /uploads`, purposes `driver_id_card` and `driver_license`).",
+        "required": [
+          "phone_number",
+          "id_card_number",
+          "id_card_photo_upload_id",
+          "driver_license_number",
+          "driver_license_photo_upload_id",
+          "years_of_experience"
+        ],
+        "properties": {
+          "driver_license_number": {
+            "type": "string",
+            "description": "Driving licence number: 1–20 characters `[A-Za-z0-9-]`.",
+            "example": "DZ-16-123456"
+          },
+          "driver_license_photo_upload_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Upload of the driving licence (purpose `driver_license`)."
+          },
+          "id_card_number": {
+            "type": "string",
+            "description": "National identity number: 18 digits (spaces ignored).",
+            "example": "109850123456789012"
+          },
+          "id_card_photo_upload_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Upload of the identity card (purpose `driver_id_card`)."
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "Algerian mobile number (`05…`, `06…`, `07…`, `+213…`).",
+            "example": "0555123456"
+          },
+          "years_of_experience": {
+            "type": "integer",
+            "format": "int64",
+            "description": "0–60."
+          }
+        },
+        "additionalProperties": false
+      },
+      "DriverDto": {
+        "type": "object",
+        "description": "A driver profile, for the driver themself and for reviewers only.",
+        "required": [
+          "id",
+          "user",
+          "phone_number",
+          "id_card_number",
+          "driver_license_number",
+          "years_of_experience",
+          "status",
+          "status_changed_at",
+          "is_available",
+          "rating_count",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "driver_license_number": {
+            "type": "string",
+            "description": "Driving licence number (upper-case)."
+          },
+          "driver_license_photo_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Presigned download URL of the driving licence; `null` when file storage is not\navailable."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id_card_number": {
+            "type": "string",
+            "description": "National identity number (18 digits)."
+          },
+          "id_card_photo_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Presigned download URL of the identity card (stable for an hour); `null` when file\nstorage is not available."
+          },
+          "is_available": {
+            "type": "boolean",
+            "description": "Whether the driver is available for service (approved drivers only)."
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "E.164 (`+2135XXXXXXXX`)."
+          },
+          "rating": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Average rating (1–5) rounded to two decimals; `null` before the first rating."
+          },
+          "rating_count": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "status": {
+            "$ref": "#/components/schemas/DriverStatusDto"
+          },
+          "status_changed_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status_reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Reason of the rejection or suspension; `null` in the other statuses."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user": {
+            "$ref": "#/components/schemas/DriverUserDto"
+          },
+          "years_of_experience": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "DriverStatusChangeDto": {
+        "type": "object",
+        "description": "One entry of a driver's status history.",
+        "required": [
+          "id",
+          "to_status",
+          "created_at"
+        ],
+        "properties": {
+          "changed_by": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "The user who made the change (the driver or a reviewer); `null` for the system."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "from_status": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DriverStatusDto",
+                "description": "`null` for the application itself."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Reason of a rejection or suspension; `null` otherwise."
+          },
+          "to_status": {
+            "$ref": "#/components/schemas/DriverStatusDto"
+          }
+        }
+      },
+      "DriverStatusDto": {
+        "type": "string",
+        "description": "Review status of a driver profile.",
+        "enum": [
+          "pending",
+          "approved",
+          "rejected",
+          "suspended"
+        ]
+      },
+      "DriverUserDto": {
+        "type": "object",
+        "description": "The account behind a driver profile.",
+        "required": [
+          "id",
+          "email",
+          "first_name",
+          "last_name"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "last_name": {
             "type": "string"
           }
         }
@@ -4636,6 +5922,187 @@
           }
         }
       },
+      "Paginated_DriverDto": {
+        "type": "object",
+        "description": "A page of results. Pass `next_cursor` as `cursor` to fetch the next page.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "A driver profile, for the driver themself and for reviewers only.",
+              "required": [
+                "id",
+                "user",
+                "phone_number",
+                "id_card_number",
+                "driver_license_number",
+                "years_of_experience",
+                "status",
+                "status_changed_at",
+                "is_available",
+                "rating_count",
+                "created_at",
+                "updated_at"
+              ],
+              "properties": {
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "driver_license_number": {
+                  "type": "string",
+                  "description": "Driving licence number (upper-case)."
+                },
+                "driver_license_photo_url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Presigned download URL of the driving licence; `null` when file storage is not\navailable."
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "id_card_number": {
+                  "type": "string",
+                  "description": "National identity number (18 digits)."
+                },
+                "id_card_photo_url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Presigned download URL of the identity card (stable for an hour); `null` when file\nstorage is not available."
+                },
+                "is_available": {
+                  "type": "boolean",
+                  "description": "Whether the driver is available for service (approved drivers only)."
+                },
+                "phone_number": {
+                  "type": "string",
+                  "description": "E.164 (`+2135XXXXXXXX`)."
+                },
+                "rating": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "format": "double",
+                  "description": "Average rating (1–5) rounded to two decimals; `null` before the first rating."
+                },
+                "rating_count": {
+                  "type": "integer",
+                  "format": "int32",
+                  "minimum": 0
+                },
+                "status": {
+                  "$ref": "#/components/schemas/DriverStatusDto"
+                },
+                "status_changed_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "status_reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Reason of the rejection or suspension; `null` in the other statuses."
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "user": {
+                  "$ref": "#/components/schemas/DriverUserDto"
+                },
+                "years_of_experience": {
+                  "type": "integer",
+                  "format": "int32",
+                  "minimum": 0
+                }
+              }
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Paginated_DriverStatusChangeDto": {
+        "type": "object",
+        "description": "A page of results. Pass `next_cursor` as `cursor` to fetch the next page.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "One entry of a driver's status history.",
+              "required": [
+                "id",
+                "to_status",
+                "created_at"
+              ],
+              "properties": {
+                "changed_by": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "uuid",
+                  "description": "The user who made the change (the driver or a reviewer); `null` for the system."
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "from_status": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/DriverStatusDto",
+                      "description": "`null` for the application itself."
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Reason of a rejection or suspension; `null` otherwise."
+                },
+                "to_status": {
+                  "$ref": "#/components/schemas/DriverStatusDto"
+                }
+              }
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "Paginated_LineDto": {
         "type": "object",
         "description": "A page of results. Pass `next_cursor` as `cursor` to fetch the next page.",
@@ -5151,6 +6618,21 @@
         },
         "additionalProperties": false
       },
+      "ReviewReasonRequest": {
+        "type": "object",
+        "description": "The reason of a rejection or suspension, shown to the driver.",
+        "required": [
+          "reason"
+        ],
+        "properties": {
+          "reason": {
+            "type": "string",
+            "description": "1–1000 characters.",
+            "example": "The identity card scan is unreadable."
+          }
+        },
+        "additionalProperties": false
+      },
       "RouteDto": {
         "type": "object",
         "description": "A GeoJSON `LineString`: 2–10 000 positions `[lng, lat]` (no altitude), no two\nconsecutive positions equal.",
@@ -5454,6 +6936,55 @@
             "example": "Bearer"
           }
         }
+      },
+      "UpdateDriverRequest": {
+        "type": "object",
+        "description": "Changes to the caller's driver profile. A new identity document (number or photo) sends an\napproved profile back to review.",
+        "properties": {
+          "driver_license_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "driver_license_photo_upload_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "A new upload of the driving licence (purpose `driver_license`)."
+          },
+          "id_card_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id_card_photo_upload_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid",
+            "description": "A new upload of the identity card (purpose `driver_id_card`)."
+          },
+          "phone_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "years_of_experience": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "0–60."
+          }
+        },
+        "additionalProperties": false
       },
       "UpdateLineRequest": {
         "type": "object",
@@ -5881,6 +7412,10 @@
     {
       "name": "schedules",
       "description": "Weekly service windows of the lines"
+    },
+    {
+      "name": "drivers",
+      "description": "Driver applications, profiles, reviews and history"
     },
     {
       "name": "admin",

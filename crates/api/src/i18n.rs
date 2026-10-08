@@ -124,6 +124,22 @@ pub fn problem(code: &str, lang: Lang) -> ProblemText {
         ("schedule_overlap", Ar) => t("تداخل في المواقيت", "يوجد توقيت نشط لهذا الخط يغطي هذه الفترة في نفس اليوم."),
         ("schedule_overlap", En) => t("Overlapping schedules", "An active schedule of this line already covers this time window on that day."),
 
+        ("driver_profile_exists", Fr) => t("Profil de conducteur existant", "Vous avez déjà un profil de conducteur ; modifiez-le ou soumettez à nouveau votre demande."),
+        ("driver_profile_exists", Ar) => t("ملف السائق موجود", "لديك ملف سائق بالفعل؛ عدّله أو أعد تقديم طلبك."),
+        ("driver_profile_exists", En) => t("Driver profile exists", "You already have a driver profile; update it or apply again."),
+
+        ("id_card_taken", Fr) => t("Carte d'identité déjà utilisée", "Ce numéro de carte d'identité est associé à un autre profil de conducteur."),
+        ("id_card_taken", Ar) => t("بطاقة التعريف مستعملة", "رقم بطاقة التعريف هذا مرتبط بملف سائق آخر."),
+        ("id_card_taken", En) => t("Identity card already used", "This identity card number belongs to another driver profile."),
+
+        ("license_taken", Fr) => t("Permis déjà utilisé", "Ce numéro de permis de conduire est associé à un autre profil de conducteur."),
+        ("license_taken", Ar) => t("رخصة السياقة مستعملة", "رقم رخصة السياقة هذا مرتبط بملف سائق آخر."),
+        ("license_taken", En) => t("Licence already used", "This driving licence number belongs to another driver profile."),
+
+        ("invalid_transition", Fr) => t("Changement de statut impossible", "Le statut actuel du profil de conducteur ne permet pas cette action."),
+        ("invalid_transition", Ar) => t("تغيير الحالة غير ممكن", "الحالة الحالية لملف السائق لا تسمح بهذا الإجراء."),
+        ("invalid_transition", En) => t("Status change not allowed", "The current status of the driver profile does not allow this action."),
+
         ("invalid_state", Fr) => t("Action impossible", "L'état actuel de la ressource ne permet pas cette action."),
         ("invalid_state", Ar) => t("إجراء غير ممكن", "الحالة الحالية للمورد لا تسمح بهذا الإجراء."),
         ("invalid_state", En) => t("Action not possible", "The current state of the resource does not allow this action."),
@@ -262,6 +278,10 @@ mod tests {
             "line_in_use",
             "stop_already_on_line",
             "schedule_overlap",
+            "driver_profile_exists",
+            "id_card_taken",
+            "license_taken",
+            "invalid_transition",
             "invalid_state",
             "idempotency_in_progress",
             "idempotency_key_reused",
