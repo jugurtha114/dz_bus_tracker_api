@@ -312,6 +312,20 @@ impl<S: Send + Sync> FromRequestParts<S> for PathId {
     }
 }
 
+/// Two UUID path segments (e.g. `/lines/{id}/stops/{stop_id}`); malformed ids are a 404.
+pub struct PathIds(pub uuid::Uuid, pub uuid::Uuid);
+
+impl<S: Send + Sync> FromRequestParts<S> for PathIds {
+    type Rejection = ApiError;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        axum::extract::Path::<(uuid::Uuid, uuid::Uuid)>::from_request_parts(parts, state)
+            .await
+            .map(|axum::extract::Path((a, b))| Self(a, b))
+            .map_err(|_| ApiError::not_found())
+    }
+}
+
 /// The caller's language: the saved preference of a signed-in user, else `Accept-Language`,
 /// else French.
 pub struct ClientLang(pub dz_domain::Lang);

@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT ST_Y(dp.geom) AS \"lat!\", ST_X(dp.geom) AS \"lng!\"\n            FROM lines l, ST_DumpPoints(l.route::geometry) AS dp\n            WHERE l.id = $1 AND l.route IS NOT NULL\n            ORDER BY dp.path[1]\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "lat!",
+        "type_info": "Float8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "lng!",
+        "type_info": "Float8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "63fc24d2467a17cd8cb1ab9f724b13d2712e06f0dc0c487dee612c7759281886"
+}

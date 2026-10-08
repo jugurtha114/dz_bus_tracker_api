@@ -104,6 +104,26 @@ pub fn problem(code: &str, lang: Lang) -> ProblemText {
         ("upload_already_used", Ar) => t("الملف مستخدم", "هذا الملف المرفوع مرتبط بمورد آخر بالفعل؛ ارفعه من جديد."),
         ("upload_already_used", En) => t("Upload already used", "This upload is already attached to a resource; upload the file again."),
 
+        ("stop_in_use", Fr) => t("Arrêt utilisé", "Cet arrêt est desservi par au moins une ligne ; retirez-le d'abord des lignes."),
+        ("stop_in_use", Ar) => t("المحطة مستعملة", "هذه المحطة تخدمها خطوط؛ أزلها من الخطوط أولًا."),
+        ("stop_in_use", En) => t("Stop in use", "A line still serves this stop; remove it from its lines first."),
+
+        ("line_code_taken", Fr) => t("Code déjà utilisé", "Une autre ligne porte déjà ce code."),
+        ("line_code_taken", Ar) => t("الرمز مستعمل", "يوجد خط آخر بهذا الرمز."),
+        ("line_code_taken", En) => t("Code already used", "Another line already has this code."),
+
+        ("line_in_use", Fr) => t("Ligne utilisée", "Des bus sont affectés à cette ligne ; désaffectez-les d'abord."),
+        ("line_in_use", Ar) => t("الخط مستعمل", "توجد حافلات مخصصة لهذا الخط؛ ألغِ تخصيصها أولًا."),
+        ("line_in_use", En) => t("Line in use", "Buses are assigned to this line; unassign them first."),
+
+        ("stop_already_on_line", Fr) => t("Arrêt déjà sur la ligne", "Cet arrêt fait déjà partie de la ligne."),
+        ("stop_already_on_line", Ar) => t("المحطة موجودة في الخط", "هذه المحطة جزء من الخط بالفعل."),
+        ("stop_already_on_line", En) => t("Stop already on the line", "This stop is already on the line."),
+
+        ("schedule_overlap", Fr) => t("Horaires qui se chevauchent", "Un horaire actif de cette ligne couvre déjà ce créneau ce jour-là."),
+        ("schedule_overlap", Ar) => t("تداخل في المواقيت", "يوجد توقيت نشط لهذا الخط يغطي هذه الفترة في نفس اليوم."),
+        ("schedule_overlap", En) => t("Overlapping schedules", "An active schedule of this line already covers this time window on that day."),
+
         ("invalid_state", Fr) => t("Action impossible", "L'état actuel de la ressource ne permet pas cette action."),
         ("invalid_state", Ar) => t("إجراء غير ممكن", "الحالة الحالية للمورد لا تسمح بهذا الإجراء."),
         ("invalid_state", En) => t("Action not possible", "The current state of the resource does not allow this action."),
@@ -194,6 +214,18 @@ pub fn violation(v: &Violation, lang: Lang) -> String {
         (Violation::InvalidUpload, Fr) => "Fichier téléversé introuvable, expiré, déjà utilisé ou non conforme à sa déclaration.".into(),
         (Violation::InvalidUpload, Ar) => "الملف المرفوع غير موجود أو منتهي الصلاحية أو مستخدم أو لا يطابق ما تم التصريح به.".into(),
         (Violation::InvalidUpload, En) => "The upload is unknown, expired, already used or does not match its declaration.".into(),
+        (Violation::Duplicate, Fr) => "Valeur répétée.".into(),
+        (Violation::Duplicate, Ar) => "قيمة مكررة.".into(),
+        (Violation::Duplicate, En) => "Repeated value.".into(),
+        (Violation::UnknownReference, Fr) => "Ressource introuvable.".into(),
+        (Violation::UnknownReference, Ar) => "المورد غير موجود.".into(),
+        (Violation::UnknownReference, En) => "No such resource.".into(),
+        (Violation::MustBeAfter { field }, Fr) => format!("Doit être postérieur à « {field} »."),
+        (Violation::MustBeAfter { field }, Ar) => format!("يجب أن يكون بعد « {field} »."),
+        (Violation::MustBeAfter { field }, En) => format!("Must be after \"{field}\"."),
+        (Violation::NotAllowed, Fr) => "Ce champ ne peut pas être renseigné ici.".into(),
+        (Violation::NotAllowed, Ar) => "لا يمكن تحديد هذا الحقل هنا.".into(),
+        (Violation::NotAllowed, En) => "This field cannot be set here.".into(),
     }
 }
 
@@ -225,6 +257,11 @@ mod tests {
             "already_exists",
             "stale_state",
             "upload_already_used",
+            "stop_in_use",
+            "line_code_taken",
+            "line_in_use",
+            "stop_already_on_line",
+            "schedule_overlap",
             "invalid_state",
             "idempotency_in_progress",
             "idempotency_key_reused",

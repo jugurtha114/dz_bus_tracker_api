@@ -944,6 +944,1087 @@
         ]
       }
     },
+    "/api/v1/lines": {
+      "get": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "List lines (newest first). Active lines only, unless the caller administers lines.",
+        "operationId": "list_lines",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Part of the code or name (2–100 characters, case-insensitive).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "stop_id",
+            "in": "query",
+            "description": "Only lines serving this stop.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "description": "Activity filter, for line administrators only (`403` otherwise).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of lines",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated_LineDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "401": {
+            "description": "`is_active` filter without being signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`is_active` filter without `line:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid filters (e.g. `q` shorter than 2 characters)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Create a line (audited).",
+        "operationId": "create_line",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Line created (`Location` points to it)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `line:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Another line has this code (`line_code_taken`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid fields",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lines/{id}": {
+      "get": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "One line, with its number of stops and whether it has a route.",
+        "operationId": "get_line",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Line id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The line",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "404": {
+            "description": "No such (visible) line",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Delete a line with its stop list and schedules (audited); refused while buses are assigned\nto it.",
+        "operationId": "delete_line",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Line id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `line:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such line",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Buses are assigned to the line (`line_in_use`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Update a line partially (audited). The code cannot change; `is_active` activates or\ndeactivates the line.",
+        "operationId": "update_line",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Line id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated line",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LineDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `line:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such line",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid fields (`code` is `unknown_field`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lines/{id}/route": {
+      "get": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "The route of a line as a GeoJSON `LineString`.",
+        "operationId": "get_line_route",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Line id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The route",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "404": {
+            "description": "No such (visible) line, or no route set",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Set the route of a line (audited). Replaces the legacy route segments, which any user could\nwrite (L-04).",
+        "operationId": "set_line_route",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Line id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The stored route",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `line:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such line",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not a valid `LineString`: 2–10 000 positions in range, no repeated consecutive position",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Remove the route of a line (idempotent, audited).",
+        "operationId": "delete_line_route",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Line id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The line has no route any more"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `line:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such line",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lines/{id}/schedules": {
+      "get": {
+        "tags": [
+          "schedules"
+        ],
+        "summary": "The schedules of a line by day and start time (not paginated). Active schedules only,\nunless the caller administers schedules.",
+        "operationId": "list_line_schedules",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Line id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The schedules of the line",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemList_ScheduleDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "404": {
+            "description": "No such (visible) line",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "schedules"
+        ],
+        "summary": "Add a schedule to a line (audited). This is the only way to create a schedule.",
+        "operationId": "create_schedule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Line id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateScheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Schedule created (`Location` points to it)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `schedule:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such line",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Overlaps an active schedule of the line on that day (`schedule_overlap`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid fields (e.g. `end_time` not after `start_time`: `must_be_after`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lines/{id}/stops": {
+      "get": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "The stops of a line by position (not paginated: at most 200). Inactive stops are listed\nwith `is_active: false`.",
+        "operationId": "line_stops",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Line id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The ordered stops",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemList_LineStopDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "404": {
+            "description": "No such (visible) line",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Replace the whole ordered stop list atomically (audited). Distances from the previous stop\nare recomputed.",
+        "operationId": "replace_line_stops",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Line id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceLineStopsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The new ordered stops",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemList_LineStopDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `line:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such line",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "More than 200 stops, a repeated (`duplicate`) or unknown (`unknown_reference`) stop, or a segment time on the first stop (`not_allowed`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Insert one stop into a line (audited); later stops shift by one.",
+        "operationId": "add_line_stop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Line id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddLineStopRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "The new ordered stops",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemList_LineStopDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `line:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such line",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The stop is already on the line (`stop_already_on_line`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unknown stop, position past the end, line full, or a segment time at position 0",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/lines/{id}/stops/{stop_id}": {
+      "delete": {
+        "tags": [
+          "lines"
+        ],
+        "summary": "Remove a stop from a line (audited); later stops shift back and the distance of the next\nstop is recomputed.",
+        "operationId": "remove_line_stop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Line id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "stop_id",
+            "in": "path",
+            "description": "Stop id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `line:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such line, or the stop is not on it",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/me": {
       "get": {
         "tags": [
@@ -1273,6 +2354,974 @@
         ]
       }
     },
+    "/api/v1/schedules/{id}": {
+      "get": {
+        "tags": [
+          "schedules"
+        ],
+        "summary": "One schedule. Inactive schedules, and schedules of inactive lines, are only visible to\nschedule administrators.",
+        "operationId": "get_schedule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Schedule id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "404": {
+            "description": "No such (visible) schedule",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "schedules"
+        ],
+        "summary": "Delete a schedule (audited).",
+        "operationId": "delete_schedule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Schedule id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `schedule:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such schedule",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "schedules"
+        ],
+        "summary": "Update a schedule partially (audited), with the same validation and overlap rules as\ncreation.",
+        "operationId": "update_schedule",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Schedule id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateScheduleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `schedule:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such schedule",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Would overlap an active schedule (`schedule_overlap`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid fields",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/stops": {
+      "get": {
+        "tags": [
+          "stops"
+        ],
+        "summary": "List stops (newest first). Active stops only, unless the caller administers stops.",
+        "operationId": "list_stops",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Part of the name (2–100 characters, case-insensitive).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "wilaya",
+            "in": "query",
+            "description": "Wilaya (exact, case-insensitive).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "commune",
+            "in": "query",
+            "description": "Commune (exact, case-insensitive).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "line_id",
+            "in": "query",
+            "description": "Only stops served by this line.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "is_active",
+            "in": "query",
+            "description": "Activity filter, for stop administrators only (`403` otherwise).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "minimum": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of stops",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Paginated_StopDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "401": {
+            "description": "`is_active` filter without being signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`is_active` filter without `stop:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid filters (e.g. `q` shorter than 2 characters)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "stops"
+        ],
+        "summary": "Create a stop (audited).",
+        "operationId": "create_stop",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStopRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Stop created (`Location` points to it)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `stop:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid fields",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/stops/nearby": {
+      "get": {
+        "tags": [
+          "stops"
+        ],
+        "summary": "Active stops around a point, nearest first (not paginated).",
+        "operationId": "nearby_stops",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "description": "Latitude of the point (degrees).",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "description": "Longitude of the point (degrees).",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "radius_m",
+            "in": "query",
+            "description": "Search radius in metres (10–5000, default 500).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Number of stops (1–50, default 20).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stops within the radius, with their distance",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemList_NearbyStopDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "422": {
+            "description": "Missing or out-of-range coordinates, radius or limit",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/stops/{id}": {
+      "get": {
+        "tags": [
+          "stops"
+        ],
+        "summary": "One stop. Inactive stops are only visible to stop administrators.",
+        "operationId": "get_stop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Stop id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The stop",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "404": {
+            "description": "No such (visible) stop",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "stops"
+        ],
+        "summary": "Delete a stop that no line serves (audited). Its photo is deleted in the background.",
+        "operationId": "delete_stop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Stop id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `stop:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such stop",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A line still serves the stop (`stop_in_use`), or its photo changed concurrently (`stale_state`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "stops"
+        ],
+        "summary": "Update a stop partially (audited). Moving a stop recomputes the distances of its lines.",
+        "operationId": "update_stop",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Stop id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStopRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The updated stop",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `stop:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such stop",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Lines kept gaining the moved stop concurrently (`stale_state`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid fields",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/stops/{id}/lines": {
+      "get": {
+        "tags": [
+          "stops"
+        ],
+        "summary": "Lines serving a stop, ordered by code (inactive lines for line administrators only).",
+        "operationId": "stop_lines",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Stop id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The lines serving the stop",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItemList_LineDto"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified (If-None-Match)"
+          },
+          "404": {
+            "description": "No such (visible) stop",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
+    "/api/v1/stops/{id}/photo": {
+      "put": {
+        "tags": [
+          "stops"
+        ],
+        "summary": "Set the photo of a stop to a completed upload (purpose `stop_photo`, audited). The previous\nphoto is deleted in the background. Uploads belong to a signed-in user: API keys cannot\nattach photos.",
+        "operationId": "set_stop_photo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Stop id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPhotoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The stop with its `photo_url`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StopDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `stop:write`, or an API key",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such stop",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The upload was attached concurrently (`upload_already_used`), or the photo changed concurrently (`stale_state`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`upload_id` is not a usable `stop_photo` upload of the caller (`invalid_upload`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is not available (`storage_unavailable`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "stops"
+        ],
+        "summary": "Remove the photo of a stop (idempotent, audited). The file is deleted in the background.",
+        "operationId": "delete_stop_photo",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Stop id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "The stop has no photo any more"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Missing `stop:write`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such stop",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The photo changed concurrently (`stale_state`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "File storage is not available (`storage_unavailable`)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDocument"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "api_key": []
+          }
+        ]
+      }
+    },
     "/api/v1/uploads": {
       "post": {
         "tags": [
@@ -1472,6 +3521,36 @@
   },
   "components": {
     "schemas": {
+      "AddLineStopRequest": {
+        "type": "object",
+        "description": "Inserts one stop into a line.",
+        "required": [
+          "stop_id"
+        ],
+        "properties": {
+          "position": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "0-based position; later stops shift by one. Default: after the last stop."
+          },
+          "stop_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "time_from_previous_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Travel time from the previous stop (0–86400 s); not allowed at position 0."
+          }
+        },
+        "additionalProperties": false
+      },
       "AdminUpdateUserRequest": {
         "type": "object",
         "description": "Administrative account changes. Deactivation or a role change signs the user out.",
@@ -1704,6 +3783,169 @@
         },
         "additionalProperties": false
       },
+      "CreateLineRequest": {
+        "type": "object",
+        "description": "A new line.",
+        "required": [
+          "code",
+          "name"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "1–20 characters `[A-Za-z0-9-]`, stored upper-case, unique, immutable.",
+            "example": "L1"
+          },
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`#RRGGBB` (default `#000000`)."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "At most 2000 characters."
+          },
+          "fare_dza": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Dinars, `>= 0`."
+          },
+          "frequency_minutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "1–1440 minutes."
+          },
+          "is_active": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Default `true`."
+          },
+          "name": {
+            "type": "string",
+            "description": "1–100 characters."
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateScheduleRequest": {
+        "type": "object",
+        "description": "A new schedule.",
+        "required": [
+          "day_of_week",
+          "start_time",
+          "end_time",
+          "frequency_minutes"
+        ],
+        "properties": {
+          "day_of_week": {
+            "type": "integer",
+            "format": "int64",
+            "description": "ISO 8601: 1 = Monday … 7 = Sunday.",
+            "example": 1
+          },
+          "end_time": {
+            "type": "string",
+            "description": "`HH:MM`, after `start_time`.",
+            "example": "21:30"
+          },
+          "frequency_minutes": {
+            "type": "integer",
+            "format": "int64",
+            "description": "1–1440 minutes.",
+            "example": 15
+          },
+          "is_active": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Default `true`."
+          },
+          "start_time": {
+            "type": "string",
+            "description": "`HH:MM` (24-hour clock).",
+            "example": "06:00"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateStopRequest": {
+        "type": "object",
+        "description": "A new stop.",
+        "required": [
+          "name",
+          "location"
+        ],
+        "properties": {
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "At most 255 characters."
+          },
+          "commune": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "At most 100 characters."
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "At most 2000 characters."
+          },
+          "features": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "At most 20 tags of 1–40 characters `[a-z0-9_]` (lower-cased)."
+          },
+          "is_active": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "Default `true`."
+          },
+          "location": {
+            "$ref": "#/components/schemas/LatLng"
+          },
+          "name": {
+            "type": "string",
+            "description": "1–100 characters.",
+            "example": "Place des Martyrs"
+          },
+          "wilaya": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "At most 100 characters."
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateUploadRequest": {
         "type": "object",
         "description": "Declares a file to upload. Its type and exact size are signed into the upload URL.",
@@ -1747,6 +3989,13 @@
           }
         }
       },
+      "GeoJsonLineStringType": {
+        "type": "string",
+        "description": "GeoJSON geometry type of a line route.",
+        "enum": [
+          "LineString"
+        ]
+      },
       "HealthDto": {
         "type": "object",
         "required": [
@@ -1765,6 +4014,249 @@
           }
         }
       },
+      "ItemList_LineDto": {
+        "type": "object",
+        "description": "A bounded list that is not paginated (e.g. the stops of a line).",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "A bus line.",
+              "required": [
+                "id",
+                "code",
+                "name",
+                "description",
+                "color",
+                "is_active",
+                "stops_count",
+                "has_route",
+                "created_at",
+                "updated_at"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "description": "Upper-case public code, immutable.",
+                  "example": "L1"
+                },
+                "color": {
+                  "type": "string",
+                  "description": "`#RRGGBB`.",
+                  "example": "#1E88E5"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "fare_dza": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "int32",
+                  "description": "Fare in Algerian dinars.",
+                  "minimum": 0
+                },
+                "frequency_minutes": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "int32",
+                  "description": "Announced headway in minutes, when the line runs at a fixed frequency.",
+                  "minimum": 0
+                },
+                "has_route": {
+                  "type": "boolean",
+                  "description": "Whether `GET /lines/{id}/route` has a geometry."
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "is_active": {
+                  "type": "boolean",
+                  "description": "Inactive lines are only visible to line administrators."
+                },
+                "name": {
+                  "type": "string"
+                },
+                "stops_count": {
+                  "type": "integer",
+                  "format": "int32",
+                  "minimum": 0
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ItemList_LineStopDto": {
+        "type": "object",
+        "description": "A bounded list that is not paginated (e.g. the stops of a line).",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "A stop at its position on a line.",
+              "required": [
+                "position",
+                "stop"
+              ],
+              "properties": {
+                "distance_from_previous_m": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "format": "double",
+                  "description": "Geodesic distance from the previous stop in metres; `null` for the first stop."
+                },
+                "position": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "0-based position along the line.",
+                  "minimum": 0
+                },
+                "stop": {
+                  "$ref": "#/components/schemas/StopSummaryDto"
+                },
+                "time_from_previous_s": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "int32",
+                  "description": "Scheduled travel time from the previous stop in seconds, when known.",
+                  "minimum": 0
+                }
+              }
+            }
+          }
+        }
+      },
+      "ItemList_NearbyStopDto": {
+        "type": "object",
+        "description": "A bounded list that is not paginated (e.g. the stops of a line).",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/StopDto"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "distance_m"
+                  ],
+                  "properties": {
+                    "distance_m": {
+                      "type": "number",
+                      "format": "double",
+                      "description": "Distance from the searched point, in metres.",
+                      "example": 182.4
+                    }
+                  }
+                }
+              ],
+              "description": "A stop found around a point."
+            }
+          }
+        }
+      },
+      "ItemList_ScheduleDto": {
+        "type": "object",
+        "description": "A bounded list that is not paginated (e.g. the stops of a line).",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "A weekly service window of a line.",
+              "required": [
+                "id",
+                "line_id",
+                "day_of_week",
+                "start_time",
+                "end_time",
+                "frequency_minutes",
+                "is_active",
+                "created_at",
+                "updated_at"
+              ],
+              "properties": {
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "day_of_week": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "ISO 8601: 1 = Monday … 7 = Sunday.",
+                  "example": 1,
+                  "minimum": 0
+                },
+                "end_time": {
+                  "type": "string",
+                  "description": "`HH:MM`, after `start_time`.",
+                  "example": "21:30"
+                },
+                "frequency_minutes": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "Minutes between departures (1–1440).",
+                  "minimum": 0
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "is_active": {
+                  "type": "boolean",
+                  "description": "Only active schedules are public; they may not overlap on the same day."
+                },
+                "line_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "start_time": {
+                  "type": "string",
+                  "description": "`HH:MM`.",
+                  "example": "06:00"
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          }
+        }
+      },
       "Language": {
         "type": "string",
         "description": "Preferred language for messages and notifications.",
@@ -1773,6 +4265,162 @@
           "ar",
           "en"
         ]
+      },
+      "LatLng": {
+        "type": "object",
+        "description": "A position in degrees (WGS 84): `lat` in [-90, 90], `lng` in [-180, 180].",
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "properties": {
+          "lat": {
+            "type": "number",
+            "format": "double",
+            "example": 36.7538
+          },
+          "lng": {
+            "type": "number",
+            "format": "double",
+            "example": 3.0588
+          }
+        },
+        "additionalProperties": false
+      },
+      "LineDto": {
+        "type": "object",
+        "description": "A bus line.",
+        "required": [
+          "id",
+          "code",
+          "name",
+          "description",
+          "color",
+          "is_active",
+          "stops_count",
+          "has_route",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "Upper-case public code, immutable.",
+            "example": "L1"
+          },
+          "color": {
+            "type": "string",
+            "description": "`#RRGGBB`.",
+            "example": "#1E88E5"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "fare_dza": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Fare in Algerian dinars.",
+            "minimum": 0
+          },
+          "frequency_minutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Announced headway in minutes, when the line runs at a fixed frequency.",
+            "minimum": 0
+          },
+          "has_route": {
+            "type": "boolean",
+            "description": "Whether `GET /lines/{id}/route` has a geometry."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Inactive lines are only visible to line administrators."
+          },
+          "name": {
+            "type": "string"
+          },
+          "stops_count": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LineStopDto": {
+        "type": "object",
+        "description": "A stop at its position on a line.",
+        "required": [
+          "position",
+          "stop"
+        ],
+        "properties": {
+          "distance_from_previous_m": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Geodesic distance from the previous stop in metres; `null` for the first stop."
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32",
+            "description": "0-based position along the line.",
+            "minimum": 0
+          },
+          "stop": {
+            "$ref": "#/components/schemas/StopSummaryDto"
+          },
+          "time_from_previous_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Scheduled travel time from the previous stop in seconds, when known.",
+            "minimum": 0
+          }
+        }
+      },
+      "LineStopEntryRequest": {
+        "type": "object",
+        "description": "One stop of a line's ordered list.",
+        "required": [
+          "stop_id"
+        ],
+        "properties": {
+          "stop_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "time_from_previous_s": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Travel time from the previous stop (0–86400 s); not allowed on the first stop."
+          }
+        },
+        "additionalProperties": false
       },
       "LoginRequest": {
         "type": "object",
@@ -1809,6 +4457,28 @@
           }
         ],
         "description": "The caller's account with its profile."
+      },
+      "NearbyStopDto": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/StopDto"
+          },
+          {
+            "type": "object",
+            "required": [
+              "distance_m"
+            ],
+            "properties": {
+              "distance_m": {
+                "type": "number",
+                "format": "double",
+                "description": "Distance from the searched point, in metres.",
+                "example": 182.4
+              }
+            }
+          }
+        ],
+        "description": "A stop found around a point."
       },
       "Paginated_ApiKeyDto": {
         "type": "object",
@@ -1953,6 +4623,186 @@
                   ]
                 },
                 "resource_type": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Paginated_LineDto": {
+        "type": "object",
+        "description": "A page of results. Pass `next_cursor` as `cursor` to fetch the next page.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "A bus line.",
+              "required": [
+                "id",
+                "code",
+                "name",
+                "description",
+                "color",
+                "is_active",
+                "stops_count",
+                "has_route",
+                "created_at",
+                "updated_at"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "description": "Upper-case public code, immutable.",
+                  "example": "L1"
+                },
+                "color": {
+                  "type": "string",
+                  "description": "`#RRGGBB`.",
+                  "example": "#1E88E5"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "fare_dza": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "int32",
+                  "description": "Fare in Algerian dinars.",
+                  "minimum": 0
+                },
+                "frequency_minutes": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "int32",
+                  "description": "Announced headway in minutes, when the line runs at a fixed frequency.",
+                  "minimum": 0
+                },
+                "has_route": {
+                  "type": "boolean",
+                  "description": "Whether `GET /lines/{id}/route` has a geometry."
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "is_active": {
+                  "type": "boolean",
+                  "description": "Inactive lines are only visible to line administrators."
+                },
+                "name": {
+                  "type": "string"
+                },
+                "stops_count": {
+                  "type": "integer",
+                  "format": "int32",
+                  "minimum": 0
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "next_cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Paginated_StopDto": {
+        "type": "object",
+        "description": "A page of results. Pass `next_cursor` as `cursor` to fetch the next page.",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "A bus stop.",
+              "required": [
+                "id",
+                "name",
+                "location",
+                "address",
+                "wilaya",
+                "commune",
+                "description",
+                "features",
+                "is_active",
+                "created_at",
+                "updated_at"
+              ],
+              "properties": {
+                "address": {
+                  "type": "string"
+                },
+                "commune": {
+                  "type": "string"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "features": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Tags such as `shelter`, `bench`, `wheelchair_access`."
+                },
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "is_active": {
+                  "type": "boolean",
+                  "description": "Inactive stops are only visible to stop administrators."
+                },
+                "location": {
+                  "$ref": "#/components/schemas/LatLng"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "photo_url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Presigned download URL of the photo (stable for an hour); `null` without photo or when\nfile storage is not available."
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "wilaya": {
                   "type": "string"
                 }
               }
@@ -2285,6 +5135,116 @@
         },
         "additionalProperties": false
       },
+      "ReplaceLineStopsRequest": {
+        "type": "object",
+        "description": "The whole ordered stop list of a line (0–200 distinct, existing stops).",
+        "required": [
+          "stops"
+        ],
+        "properties": {
+          "stops": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LineStopEntryRequest"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "RouteDto": {
+        "type": "object",
+        "description": "A GeoJSON `LineString`: 2–10 000 positions `[lng, lat]` (no altitude), no two\nconsecutive positions equal.",
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "properties": {
+          "coordinates": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              }
+            },
+            "example": [
+              [
+                3.0603,
+                36.7856
+              ],
+              [
+                3.0588,
+                36.7731
+              ]
+            ]
+          },
+          "type": {
+            "$ref": "#/components/schemas/GeoJsonLineStringType"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ScheduleDto": {
+        "type": "object",
+        "description": "A weekly service window of a line.",
+        "required": [
+          "id",
+          "line_id",
+          "day_of_week",
+          "start_time",
+          "end_time",
+          "frequency_minutes",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "day_of_week": {
+            "type": "integer",
+            "format": "int32",
+            "description": "ISO 8601: 1 = Monday … 7 = Sunday.",
+            "example": 1,
+            "minimum": 0
+          },
+          "end_time": {
+            "type": "string",
+            "description": "`HH:MM`, after `start_time`.",
+            "example": "21:30"
+          },
+          "frequency_minutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Minutes between departures (1–1440).",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Only active schedules are public; they may not overlap on the same day."
+          },
+          "line_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start_time": {
+            "type": "string",
+            "description": "`HH:MM`.",
+            "example": "06:00"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "SessionDto": {
         "type": "object",
         "description": "An active session of the caller.",
@@ -2345,6 +5305,114 @@
         },
         "additionalProperties": false
       },
+      "SetPhotoRequest": {
+        "type": "object",
+        "description": "Attaches a completed upload as a photo.",
+        "required": [
+          "upload_id"
+        ],
+        "properties": {
+          "upload_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Id returned by `POST /uploads` (purpose `stop_photo`), after the file was uploaded."
+          }
+        },
+        "additionalProperties": false
+      },
+      "StopDto": {
+        "type": "object",
+        "description": "A bus stop.",
+        "required": [
+          "id",
+          "name",
+          "location",
+          "address",
+          "wilaya",
+          "commune",
+          "description",
+          "features",
+          "is_active",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "address": {
+            "type": "string"
+          },
+          "commune": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "description": {
+            "type": "string"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Tags such as `shelter`, `bench`, `wheelchair_access`."
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Inactive stops are only visible to stop administrators."
+          },
+          "location": {
+            "$ref": "#/components/schemas/LatLng"
+          },
+          "name": {
+            "type": "string"
+          },
+          "photo_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Presigned download URL of the photo (stable for an hour); `null` without photo or when\nfile storage is not available."
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "wilaya": {
+            "type": "string"
+          }
+        }
+      },
+      "StopSummaryDto": {
+        "type": "object",
+        "description": "The essentials of a stop, as listed on a line.",
+        "required": [
+          "id",
+          "name",
+          "location",
+          "is_active"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "is_active": {
+            "type": "boolean",
+            "description": "Inactive stops stay on their lines (buses pass them) but cannot be boarded."
+          },
+          "location": {
+            "$ref": "#/components/schemas/LatLng"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
       "TokenPairDto": {
         "type": "object",
         "description": "Bearer token pair. Clients must serialise refresh calls: presenting a spent refresh token\nrevokes the whole session.",
@@ -2386,6 +5454,51 @@
             "example": "Bearer"
           }
         }
+      },
+      "UpdateLineRequest": {
+        "type": "object",
+        "description": "Changes to a line (`code` is immutable). `null` clears `frequency_minutes` and `fare_dza`;\n`is_active` replaces the legacy activate/deactivate actions.",
+        "properties": {
+          "color": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "fare_dza": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "frequency_minutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "is_active": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
       },
       "UpdateMeRequest": {
         "type": "object",
@@ -2447,6 +5560,108 @@
           "sms_notifications_enabled": {
             "type": [
               "boolean",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateScheduleRequest": {
+        "type": "object",
+        "description": "Changes to a schedule (same rules as creation).",
+        "properties": {
+          "day_of_week": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "end_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "frequency_minutes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "is_active": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "start_time": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateStopRequest": {
+        "type": "object",
+        "description": "Changes to a stop; absent fields are unchanged and an empty text clears a text field.",
+        "properties": {
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "commune": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "features": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Replaces the whole list."
+          },
+          "is_active": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "location": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/LatLng"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "wilaya": {
+            "type": [
+              "string",
               "null"
             ]
           }
@@ -2654,6 +5869,18 @@
     {
       "name": "uploads",
       "description": "Presigned uploads of photos and documents"
+    },
+    {
+      "name": "stops",
+      "description": "Bus stops: catalogue, nearby search, administration"
+    },
+    {
+      "name": "lines",
+      "description": "Bus lines with their ordered stops and route"
+    },
+    {
+      "name": "schedules",
+      "description": "Weekly service windows of the lines"
     },
     {
       "name": "admin",

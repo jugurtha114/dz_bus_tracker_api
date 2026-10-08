@@ -21,6 +21,8 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
 
+pub mod network;
+
 /// Distinguishes an absent field (`None`) from an explicit `null` (`Some(None)`).
 fn double_option<'de, D, T>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
 where
@@ -489,6 +491,18 @@ impl<T: ToSchema> Paginated<T> {
             next_cursor: page.next_cursor.map(|c| c.encode()),
             items: page.items.into_iter().map(map).collect(),
         }
+    }
+}
+
+/// A bounded list that is not paginated (e.g. the stops of a line).
+#[derive(Debug, Serialize, ToSchema)]
+pub struct ItemList<T: ToSchema> {
+    pub items: Vec<T>,
+}
+
+impl<T: ToSchema> ItemList<T> {
+    pub fn from_items<U>(items: Vec<U>, map: impl FnMut(U) -> T) -> Self {
+        Self { items: items.into_iter().map(map).collect() }
     }
 }
 

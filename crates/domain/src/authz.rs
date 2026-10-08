@@ -349,6 +349,27 @@ impl Actor {
     }
 }
 
+/// A kind of catalogue resource with its own write permission.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum CatalogResource {
+    Stop,
+    Line,
+    Schedule,
+}
+
+impl CatalogResource {
+    /// The permission to create, change and delete this kind of resource, which also reveals
+    /// its inactive rows.
+    #[must_use]
+    pub const fn write_permission(self) -> Permission {
+        match self {
+            Self::Stop => Permission::StopWrite,
+            Self::Line => Permission::LineWrite,
+            Self::Schedule => Permission::ScheduleWrite,
+        }
+    }
+}
+
 /// An action on a resource, carrying the facts the resource rules need.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
@@ -365,6 +386,15 @@ pub enum Action {
     /// Request a presigned upload for `purpose`. Uploads are owned by a human account, so API
     /// keys are refused whatever their scopes.
     RequestUpload { purpose: UploadPurpose },
+    /// Read the public catalogue (active stops, lines and schedules).
+    ReadCatalog,
+    /// See inactive rows of `resource` and filter on activity (catalogue writers).
+    ReadInactive { resource: CatalogResource },
+    /// Create, change or delete a catalogue resource.
+    WriteCatalog { resource: CatalogResource },
+    /// Attach an upload of the actor as a stop photo. Uploads belong to human accounts, so API
+    /// keys are refused whatever their scopes (they may still remove a photo).
+    AttachStopPhoto,
 }
 
 /// Resource-level authorization rules.
@@ -408,6 +438,14 @@ impl Policy {
                     UploadPurpose::StopPhoto => actor.require(Permission::StopWrite),
                 };
                 allowed?;
+                actor.user_id().map(|_| ()).ok_or(DenyReason::MissingPermission)
+            }
+            Action::ReadCatalog => actor.require(Permission::CatalogRead),
+            Action::ReadInactive { resource } | Action::WriteCatalog { resource } => {
+                actor.require(resource.write_permission())
+            }
+            Action::AttachStopPhoto => {
+                actor.require(Permission::StopWrite)?;
                 actor.user_id().map(|_| ()).ok_or(DenyReason::MissingPermission)
             }
         }
@@ -538,6 +576,49 @@ mod tests {
             ("admin reads audit", &admin, Action::ReadAuditLog, Ok(())),
             ("scoped service reads audit", &svc, Action::ReadAuditLog, Ok(())),
             ("driver reads audit", &driver, Action::ReadAuditLog, deny_perm),
+        ];
+        for (name, actor, action, expected) in cases {
+            assert_eq!(Policy::authorize(actor, &action), expected, "{name}");
+        }
+    }
+
+    /// Catalogue reads, writes and visibility of inactive rows (actor × action).
+    #[test]
+    fn catalogue_decisions() {
+        use CatalogResource as R;
+        let admin = user(Role::Admin);
+        let passenger = user(Role::Passenger);
+        let driver = user(Role::Driver);
+        let stops = service(&[Permission::StopWrite]);
+        let reader = service(&[Permission::CatalogRead]);
+        let anon = Actor::Anonymous;
+        let ok = Ok(());
+        let deny_perm = Err(DenyReason::MissingPermission);
+        let deny_auth = Err(DenyReason::AuthenticationRequired);
+        let write = |resource| Action::WriteCatalog { resource };
+        let inactive = |resource| Action::ReadInactive { resource };
+        #[rustfmt::skip]
+        let cases: Vec<(&str, &Actor, Action, Result<(), DenyReason>)> = vec![
+            ("anon reads",                  &anon,      Action::ReadCatalog, ok),
+            ("passenger reads",             &passenger, Action::ReadCatalog, ok),
+            ("service reads",               &reader,    Action::ReadCatalog, ok),
+            ("admin writes stops",          &admin,     write(R::Stop),      ok),
+            ("admin writes lines",          &admin,     write(R::Line),      ok),
+            ("admin writes schedules",      &admin,     write(R::Schedule),  ok),
+            ("stop key writes stops",       &stops,     write(R::Stop),      ok),
+            ("stop key writes lines",       &stops,     write(R::Line),      deny_perm),
+            ("driver writes stops",         &driver,    write(R::Stop),      deny_perm),
+            ("passenger writes schedules",  &passenger, write(R::Schedule),  deny_perm),
+            ("anon writes lines",           &anon,      write(R::Line),      deny_auth),
+            ("admin sees inactive lines",   &admin,     inactive(R::Line),   ok),
+            ("stop key, inactive stops",    &stops,     inactive(R::Stop),   ok),
+            ("stop key, inactive lines",    &stops,     inactive(R::Line),   deny_perm),
+            ("passenger, inactive stops",   &passenger, inactive(R::Stop),   deny_perm),
+            ("anon, inactive schedules",    &anon,      inactive(R::Schedule), deny_auth),
+            ("admin attaches stop photo",   &admin,     Action::AttachStopPhoto, ok),
+            ("stop key attaches photo",     &stops,     Action::AttachStopPhoto, deny_perm),
+            ("driver attaches stop photo",  &driver,    Action::AttachStopPhoto, deny_perm),
+            ("anon attaches stop photo",    &anon,      Action::AttachStopPhoto, deny_auth),
         ];
         for (name, actor, action, expected) in cases {
             assert_eq!(Policy::authorize(actor, &action), expected, "{name}");

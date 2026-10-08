@@ -8,6 +8,7 @@ use dz_app::account::AccountService;
 use dz_app::admin::{AdminUserService, ApiKeyService, AuditService};
 use dz_app::auth::{AuthDeps, AuthService, AuthSettings};
 use dz_app::jobs::{JobRunner, JobSettings};
+use dz_app::network::{LineService, ScheduleService, StopService};
 use dz_app::ports::{
     Clock, IdempotencyStore, LockoutPolicy, Mailer, ObjectStorage, Quota, RateLimiter,
     ReadinessProbe, SystemClock,
@@ -46,6 +47,9 @@ pub struct Services {
     pub auth: AuthService,
     pub accounts: AccountService,
     pub uploads: Arc<UploadService>,
+    pub stops: StopService,
+    pub lines: LineService,
+    pub schedules: ScheduleService,
     pub admin_users: AdminUserService,
     pub api_keys: ApiKeyService,
     pub audit: AuditService,
@@ -165,6 +169,13 @@ impl Infrastructure {
         Services {
             auth: AuthService::new(deps, auth_settings),
             accounts: AccountService::new(self.store.clone(), uploads.clone(), self.clock.clone()),
+            stops: StopService::new(self.store.clone(), uploads.clone(), self.clock.clone()),
+            lines: LineService::new(self.store.clone(), self.store.clone(), self.clock.clone()),
+            schedules: ScheduleService::new(
+                self.store.clone(),
+                self.store.clone(),
+                self.clock.clone(),
+            ),
             uploads,
             admin_users: AdminUserService::new(
                 self.store.clone(),

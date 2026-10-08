@@ -95,7 +95,7 @@ impl UploadService {
         };
 
         let id = UploadId::generate();
-        let key = object_key(purpose, owner, id);
+        let key = object_key(purpose, id);
         let now = self.clock.now();
         let presigned = storage.presign_put(&key, content_type, u64::from(size), self.upload_ttl);
         let upload = self

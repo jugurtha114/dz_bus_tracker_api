@@ -31,6 +31,14 @@ pub enum Violation {
     /// The referenced upload cannot be used: unknown, someone else's, for another purpose,
     /// already used or expired, or its object is missing or differs from the declaration.
     InvalidUpload,
+    /// The value appears more than once in a list that must not repeat it.
+    Duplicate,
+    /// The value refers to a resource that does not exist (e.g. an unknown stop id).
+    UnknownReference,
+    /// The value must be after the value of `field` (e.g. an end after its start).
+    MustBeAfter { field: Cow<'static, str> },
+    /// The field cannot be set in this context (e.g. the segment time of a line's first stop).
+    NotAllowed,
 }
 
 impl Violation {
@@ -55,6 +63,10 @@ impl Violation {
             Self::Incorrect => "incorrect",
             Self::UnknownField => "unknown_field",
             Self::InvalidUpload => "invalid_upload",
+            Self::Duplicate => "duplicate",
+            Self::UnknownReference => "unknown_reference",
+            Self::MustBeAfter { .. } => "must_be_after",
+            Self::NotAllowed => "not_allowed",
         }
     }
 }
@@ -100,6 +112,36 @@ impl Violations {
 
     pub fn extend(&mut self, other: Self) {
         self.0.extend(other.0);
+    }
+
+    /// Records the violations of a nested value under `prefix`: `lat` becomes `location.lat`,
+    /// `[2]` becomes `features[2]` and the empty field (the value itself) becomes `prefix`.
+    /// An empty prefix keeps the fields as they are.
+    pub fn extend_nested(&mut self, prefix: &str, other: Self) {
+        for FieldViolation { field, violation } in other.0 {
+            let field = if prefix.is_empty() {
+                field.into_owned()
+            } else if field.is_empty() {
+                prefix.to_owned()
+            } else if field.starts_with('[') {
+                format!("{prefix}{field}")
+            } else {
+                format!("{prefix}.{field}")
+            };
+            self.push(field, violation);
+        }
+    }
+
+    /// Like [`Self::check`] for a value validated as a whole (several fields), nested under
+    /// `prefix`.
+    pub fn check_nested<T>(&mut self, prefix: &str, result: Result<T, Self>) -> Option<T> {
+        match result {
+            Ok(value) => Some(value),
+            Err(violations) => {
+                self.extend_nested(prefix, violations);
+                None
+            }
+        }
     }
 
     #[must_use]
@@ -155,6 +197,16 @@ pub enum ConflictKind {
     StaleState,
     /// The upload was attached by a concurrent request.
     UploadAlreadyUsed,
+    /// The stop cannot be deleted while a line serves it.
+    StopInUse,
+    /// Another line already has this code.
+    LineCodeTaken,
+    /// The line cannot be deleted while buses are assigned to it.
+    LineInUse,
+    /// The stop is already on the line (a stop appears at most once per line).
+    StopAlreadyOnLine,
+    /// The schedule overlaps an active schedule of the same line on the same day.
+    ScheduleOverlap,
 }
 
 impl ConflictKind {
@@ -166,6 +218,11 @@ impl ConflictKind {
             Self::AlreadyExists => "already_exists",
             Self::StaleState => "stale_state",
             Self::UploadAlreadyUsed => "upload_already_used",
+            Self::StopInUse => "stop_in_use",
+            Self::LineCodeTaken => "line_code_taken",
+            Self::LineInUse => "line_in_use",
+            Self::StopAlreadyOnLine => "stop_already_on_line",
+            Self::ScheduleOverlap => "schedule_overlap",
         }
     }
 }
@@ -188,5 +245,36 @@ pub enum DomainError {
 impl From<Violations> for DomainError {
     fn from(v: Violations) -> Self {
         Self::Validation(v)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nested_violations_get_prefixed_paths() {
+        let mut inner = Violations::new();
+        inner.push("", Violation::Required);
+        inner.push("lat", Violation::InvalidFormat);
+        inner.push("[2]", Violation::Duplicate);
+        let mut outer = Violations::new();
+        outer.extend_nested("location", inner.clone());
+        outer.extend_nested("", inner);
+        let fields: Vec<_> = outer.iter().map(|f| f.field.to_string()).collect();
+        assert_eq!(fields, ["location", "location.lat", "location[2]", "", "lat", "[2]"]);
+        let mut v = Violations::new();
+        assert_eq!(v.check_nested("x", Ok::<_, Violations>(1)), Some(1));
+        let nested = Err(Violations::single("y", Violation::NotAllowed));
+        assert_eq!(v.check_nested::<u8>("x", nested), None);
+        assert_eq!(v.iter().next().map(|f| f.field.as_ref()), Some("x.y"));
+    }
+
+    #[test]
+    fn new_codes_are_stable() {
+        assert_eq!(Violation::MustBeAfter { field: "start_time".into() }.code(), "must_be_after");
+        assert_eq!(Violation::UnknownReference.code(), "unknown_reference");
+        assert_eq!(ConflictKind::ScheduleOverlap.code(), "schedule_overlap");
+        assert_eq!(ConflictKind::StopAlreadyOnLine.code(), "stop_already_on_line");
     }
 }

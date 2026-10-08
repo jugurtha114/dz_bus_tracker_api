@@ -314,6 +314,16 @@ mod tests {
                 "upload_already_used",
             ),
             (
+                AppError::Conflict(dz_domain::ConflictKind::ScheduleOverlap),
+                StatusCode::CONFLICT,
+                "schedule_overlap",
+            ),
+            (
+                AppError::Conflict(dz_domain::ConflictKind::LineInUse),
+                StatusCode::CONFLICT,
+                "line_in_use",
+            ),
+            (
                 AppError::Internal(anyhow::anyhow!("boom")),
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_error",

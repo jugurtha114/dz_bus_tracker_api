@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM line_stops WHERE line_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a50dae5ebb2bac24373c37dcde2d5b750b047f5b43e2ea30beaa0d9f352400b0"
+}

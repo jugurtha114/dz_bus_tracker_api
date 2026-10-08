@@ -1,0 +1,172 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                UPDATE stops SET\n                    name = COALESCE($2, name),\n                    location = COALESCE(\n                        ST_SetSRID(ST_MakePoint($3::float8, $4::float8), 4326)::geography,\n                        location\n                    ),\n                    address = COALESCE($5, address),\n                    wilaya = COALESCE($6, wilaya),\n                    commune = COALESCE($7, commune),\n                    description = COALESCE($8, description),\n                    features = COALESCE($9, features),\n                    is_active = COALESCE($10, is_active),\n                    updated_at = $11\n                WHERE id = $1\n                RETURNING id, name, ST_Y(location::geometry) AS \"lat!\",\n                          ST_X(location::geometry) AS \"lng!\", address, wilaya, commune,\n                          description, features, is_active, photo_key, created_at, updated_at\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "lat!",
+        "type_info": "Float8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "lng!",
+        "type_info": "Float8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "address",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "address"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "wilaya",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "wilaya"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "commune",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "commune"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "description",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "description"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "features",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "features"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "is_active",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "is_active"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "photo_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "photo_key"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Float8",
+        "Float8",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "TextArray",
+        "Bool",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "43f13cf5291dd44df7d84951eb32eb1035fb39e760e7dcc755912be081ac3b7d"
+}

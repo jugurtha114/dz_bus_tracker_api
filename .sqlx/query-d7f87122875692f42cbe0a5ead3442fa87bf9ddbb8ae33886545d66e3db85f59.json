@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM stops WHERE id = $1 AND photo_key IS NOT DISTINCT FROM $2::text",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d7f87122875692f42cbe0a5ead3442fa87bf9ddbb8ae33886545d66e3db85f59"
+}

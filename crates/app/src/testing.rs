@@ -32,6 +32,8 @@ use crate::ports::{
 };
 use crate::uploads::UploadService;
 
+mod network;
+
 /// A clock that only moves when told to.
 #[derive(Debug)]
 pub struct ManualClock(Mutex<DateTime<Utc>>);
@@ -94,6 +96,7 @@ struct State {
     uploads: HashMap<UploadId, Upload>,
     /// Jobs persisted by writes (transactional outbox), in order.
     outbox: Vec<OutboxJob>,
+    network: network::NetworkState,
 }
 
 impl State {

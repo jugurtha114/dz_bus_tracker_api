@@ -1,0 +1,154 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE lines l SET\n                route = CASE WHEN $2 THEN ST_SetSRID(ST_MakeLine(ARRAY(\n                            SELECT ST_MakePoint(p.lng, p.lat)\n                            FROM unnest($3::float8[], $4::float8[])\n                                 WITH ORDINALITY AS p(lng, lat, n)\n                            ORDER BY p.n\n                        )), 4326)::geography\n                        ELSE NULL END,\n                updated_at = $5\n            WHERE id = $1\n            RETURNING l.id, l.code, l.name, l.description, l.color, l.frequency_minutes,\n                      l.fare_dza, l.is_active, l.route IS NOT NULL AS \"has_route!\",\n                      (SELECT count(*) FROM line_stops c WHERE c.line_id = l.id)\n                          AS \"stops_count!\",\n                      l.created_at, l.updated_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "lines",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "code",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "lines",
+            "name": "code"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "lines",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "description",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "lines",
+            "name": "description"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "color",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "lines",
+            "name": "color"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "frequency_minutes",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "lines",
+            "name": "frequency_minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "fare_dza",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "lines",
+            "name": "fare_dza"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "is_active",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "lines",
+            "name": "is_active"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "has_route!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "stops_count!",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "lines",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "lines",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Bool",
+        "Float8Array",
+        "Float8Array",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      null,
+      null,
+      false,
+      false
+    ]
+  },
+  "hash": "70b635427065d4c8bb8116a5182d151f658c0c31fe82df544b4e3ff687fb6096"
+}

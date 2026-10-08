@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT line_id FROM line_stops WHERE stop_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "line_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "line_stops",
+            "name": "line_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0046a4ef075dcf25adba08101a8b97cc836ed7f6477d7e52a172a6eb4d1bbee5"
+}

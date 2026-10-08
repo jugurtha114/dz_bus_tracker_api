@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE line_stops ls\n        SET distance_from_previous_m = d.distance\n        FROM (\n            SELECT l.line_id, l.stop_id,\n                   ST_Distance(s.location, lag(s.location) OVER (\n                       PARTITION BY l.line_id ORDER BY l.position\n                   ))::real AS distance\n            FROM line_stops l\n            JOIN stops s ON s.id = l.stop_id\n            WHERE l.line_id = ANY($1)\n        ) d\n        WHERE ls.line_id = d.line_id AND ls.stop_id = d.stop_id\n          AND ls.distance_from_previous_m IS DISTINCT FROM d.distance\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "UuidArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3446436cf23e85e431f81be6fde9a4ae3a97bc72cee530c5dc1a15eb4ab7b289"
+}

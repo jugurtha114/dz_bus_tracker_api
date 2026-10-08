@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SET CONSTRAINTS line_stops_position_key DEFERRED",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "a64217436153e1cca1c177ef92707e26f2fff4bd17b3ebb7ccf1f378e5f9fdf2"
+}

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO line_stops (line_id, stop_id, position, time_from_previous_s)\n            SELECT $1, t.stop_id, (t.n - 1)::smallint, t.time_s\n            FROM unnest($2::uuid[], $3::int4[]) WITH ORDINALITY AS t(stop_id, time_s, n)\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray",
+        "Int4Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cee3e4ea38d48c2dbacf7dac6774ff3fa2ec287c2076325bedd6e98488c87e12"
+}

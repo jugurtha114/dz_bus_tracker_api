@@ -3,6 +3,7 @@
 mod api_keys;
 mod audit;
 pub mod effects;
+mod network;
 mod resets;
 mod sessions;
 mod uploads;
@@ -148,6 +149,12 @@ pub(crate) fn like_prefix(prefix: &str) -> String {
     out
 }
 
+/// Escapes `%`, `_` and `\` and wraps the text in `%` for a substring `ILIKE … ESCAPE '\'`.
+pub(crate) fn like_contains(text: &str) -> String {
+    let prefix = like_prefix(text);
+    format!("%{prefix}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -155,5 +162,6 @@ mod tests {
     #[test]
     fn like_prefix_escapes_wildcards() {
         assert_eq!(like_prefix("a_b%c\\"), "a\\_b\\%c\\\\%");
+        assert_eq!(like_contains("50%"), "%50\\%%");
     }
 }

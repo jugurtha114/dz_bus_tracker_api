@@ -111,7 +111,8 @@ async fn uploads_are_presigned_per_purpose_and_permission() {
         assert_eq!(body["upload"]["headers"]["content-type"], content_type);
         assert_eq!(body["upload"]["headers"]["content-length"], "1000");
         let key = object_key(&app, id).await;
-        assert_eq!(key, format!("{purpose}/{}/{id}", account.id), "server-generated key");
+        assert_eq!(key, format!("{purpose}/{id}"), "server-generated key");
+        assert!(!key.contains(&account.id.to_string()), "keys never reveal the uploader");
         let url = body["upload"]["url"].as_str().unwrap();
         assert!(url.contains(&key) && url.contains("X-Amz-Signature="), "{url}");
         let expires_at: chrono::DateTime<chrono::Utc> =

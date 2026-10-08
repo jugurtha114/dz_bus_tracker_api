@@ -1,0 +1,124 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, line_id, day_of_week, start_time, end_time, frequency_minutes, is_active,\n                   created_at, updated_at\n            FROM schedules WHERE id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "schedules",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "line_id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "schedules",
+            "name": "line_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "day_of_week",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "schedules",
+            "name": "day_of_week"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "start_time",
+        "type_info": "Time",
+        "origin": {
+          "Table": {
+            "table": "schedules",
+            "name": "start_time"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "end_time",
+        "type_info": "Time",
+        "origin": {
+          "Table": {
+            "table": "schedules",
+            "name": "end_time"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "frequency_minutes",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "schedules",
+            "name": "frequency_minutes"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "is_active",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "schedules",
+            "name": "is_active"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "schedules",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "schedules",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "d6f0f865ce61644d3e858d5e6ad59f92604eaff6dd6c9d968723463c8d3f9f32"
+}

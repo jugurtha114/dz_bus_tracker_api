@@ -89,7 +89,8 @@ async fn requesting_an_upload_presigns_a_server_generated_key() {
     let owner = actor.user_id().unwrap();
     let requested = f.uploads().request(&actor, UploadPurpose::Avatar, " Image/PNG", 1234).await;
     let RequestedUpload { upload, presigned } = requested.unwrap();
-    assert_eq!(upload.object_key, format!("avatar/{owner}/{}", upload.id));
+    assert_eq!(upload.object_key, format!("avatar/{}", upload.id));
+    assert_eq!(upload.owner_id, owner, "ownership is recorded in the row, not in the key");
     assert_eq!((upload.content_type.as_str(), upload.size_bytes), (PNG, 1234));
     assert_eq!(upload.status, UploadStatus::Pending);
     assert_eq!(upload.created_at, f.clock.now());

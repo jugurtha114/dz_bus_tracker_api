@@ -10,6 +10,7 @@ pub mod auth;
 pub mod error;
 pub mod jobs;
 pub mod mail;
+pub mod network;
 pub mod pagination;
 pub mod ports;
 pub mod uploads;

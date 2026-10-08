@@ -172,9 +172,10 @@ clients and third-party integrators (see ADR-0002). Compared with Django/DRF:
 
 | Django | Rust | Mark | M | Notes |
 |---|---|---|---|---|
-| `GET /lines/stops/` | `GET /api/v1/stops` | Keep | M2 | Public catalogue read (consistent public access, L-53). Filters: `q`, `wilaya`, `commune`, `line_id`, `is_active`. |
+| `GET /lines/stops/` | `GET /api/v1/stops` | Keep | M2 | Public catalogue read (consistent public access, L-53), active stops only; `stop:write` holders also see inactive ones. Filters: `q` (trigram `ILIKE`), `wilaya`, `commune`, `line_id`, `is_active` (writers only: `401`/`403` otherwise). Cursor pagination. |
 | `POST /lines/stops/` | `POST /api/v1/stops` | Keep | M2 | Admin; lat/lng range validated (L-49). |
-| `GET/PATCH/DELETE /lines/stops/{id}/` | `GET/PATCH/DELETE /api/v1/stops/{id}` | Keep | M2 | Delete refused while used by a line. |
+| `GET/PATCH/DELETE /lines/stops/{id}/` | `GET/PATCH/DELETE /api/v1/stops/{id}` | Keep | M2 | Delete refused while used by a line (`409 stop_in_use`). Moving a stop recomputes the distances of its lines. |
+| `lines.Stop.photo` (multipart field) | `PUT/DELETE /api/v1/stops/{id}/photo` `{upload_id}` | Redesign | M2 | Presigned upload (purpose `stop_photo`), private bucket, `photo_url` presigned GET; replaced/removed photos deleted through the outbox. API keys may remove but not attach (uploads belong to a human account). |
 | `GET /lines/stops/{id}/lines/` | `GET /api/v1/stops/{id}/lines` | Keep | M2 | |
 | `GET /lines/stops/nearby/` (Python scan) | `GET /api/v1/stops/nearby?lat=&lng=&radius_m=` | Redesign | M2 | PostGIS `ST_DWithin` + KNN `<->`; returns metres. |
 | `GET /lines/lines/` | `GET /api/v1/lines` | Keep | M2 | |
@@ -182,12 +183,12 @@ clients and third-party integrators (see ADR-0002). Compared with Django/DRF:
 | `POST /lines/lines/`, `GET/PATCH/DELETE /lines/lines/{id}/` | same under `/api/v1/lines` | Keep | M2 | `code` immutable as before. |
 | `POST /lines/lines/{id}/activate/`, `/deactivate/` | `PATCH /api/v1/lines/{id}` `{is_active}` | Redesign | M2 | No separate verbs needed. |
 | `GET /lines/lines/{id}/stops/` | `GET /api/v1/lines/{id}/stops` | Keep | M2 | Ordered by position (L-51). |
-| `POST /lines/lines/{id}/add_stop/`, `/remove_stop/`, `/update_stop_order/` | `PUT /api/v1/lines/{id}/stops` (whole ordered list), `POST /api/v1/lines/{id}/stops`, `DELETE /api/v1/lines/{id}/stops/{stop_id}` | Redesign | M2 | Re-ordering is atomic and actually works (L-22). |
+| `POST /lines/lines/{id}/add_stop/`, `/remove_stop/`, `/update_stop_order/` | `PUT /api/v1/lines/{id}/stops` (whole ordered list), `POST /api/v1/lines/{id}/stops`, `DELETE /api/v1/lines/{id}/stops/{stop_id}` | Redesign | M2 | Re-ordering is atomic and actually works (L-22): writes to a line are serialised by a lock on the line row, positions are 0-based and contiguous (`line_stops_position_key` deferred to the commit). `distance_from_previous_m` is computed with `ST_Distance`. `POST` answers `201` with the whole new list; the stop after an insertion loses its (now unknown) segment time, a removal merges the two segment times. |
 | `GET /lines/lines/{id}/schedules/`, `POST /lines/lines/{id}/add_schedule/` | `GET/POST /api/v1/lines/{id}/schedules` | Keep | M2 | |
 | `GET/POST /lines/schedules/`, `GET/PATCH/DELETE /lines/schedules/{id}/` | `GET/PATCH/DELETE /api/v1/schedules/{id}` | Redesign | M2 | Creation only under the line; validation can no longer be bypassed (L-23). |
 | `GET /lines/lines/journey/` | `GET /api/v1/journeys?from_stop_id=&to_stop_id=` | Redesign | M2 | Skips inactive lines/stops, considers transfers correctly, ETA covers both legs (L-52). |
 | `GET/POST /lines/disruptions/`, `GET/PATCH/DELETE /lines/disruptions/{id}/` | `GET/POST /api/v1/disruptions`, `GET/PATCH/DELETE /api/v1/disruptions/{id}` | Keep | M2 | Fan-out after commit to affected passengers + WS `line:{id}` (L-32). |
-| — | `PUT /api/v1/lines/{id}/route` | Redesign | M2 | Admin sets the line geometry (replaces route segments). |
+| — | `GET/PUT/DELETE /api/v1/lines/{id}/route` | Redesign | M2 | Admin sets the line geometry as a GeoJSON `LineString` (2–10 000 positions; replaces route segments). |
 
 ### 2.6 Tracking
 

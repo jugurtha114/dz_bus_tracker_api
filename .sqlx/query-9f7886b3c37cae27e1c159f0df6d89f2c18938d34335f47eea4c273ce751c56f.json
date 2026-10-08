@@ -1,0 +1,198 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT ls.position, ls.distance_from_previous_m, ls.time_from_previous_s,\n               s.id, s.name, ST_Y(s.location::geometry) AS \"lat!\",\n               ST_X(s.location::geometry) AS \"lng!\", s.address, s.wilaya, s.commune,\n               s.description, s.features, s.is_active, s.photo_key, s.created_at, s.updated_at\n        FROM line_stops ls\n        JOIN stops s ON s.id = ls.stop_id\n        WHERE ls.line_id = $1\n        ORDER BY ls.position\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "position",
+        "type_info": "Int2",
+        "origin": {
+          "Table": {
+            "table": "line_stops",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "distance_from_previous_m",
+        "type_info": "Float4",
+        "origin": {
+          "Table": {
+            "table": "line_stops",
+            "name": "distance_from_previous_m"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "time_from_previous_s",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "line_stops",
+            "name": "time_from_previous_s"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "id",
+        "type_info": "Uuid",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "lat!",
+        "type_info": "Float8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "lng!",
+        "type_info": "Float8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "address",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "address"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "wilaya",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "wilaya"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "commune",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "commune"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "description",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "description"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "features",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "features"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "is_active",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "is_active"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "photo_key",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "photo_key"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "stops",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      false,
+      null,
+      null,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "9f7886b3c37cae27e1c159f0df6d89f2c18938d34335f47eea4c273ce751c56f"
+}

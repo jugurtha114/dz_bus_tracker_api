@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE line_stops\n            SET position = position + 1,\n                time_from_previous_s = CASE WHEN position = $2 THEN NULL\n                                            ELSE time_from_previous_s END\n            WHERE line_id = $1 AND position >= $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int2"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cdf9c004980c5dfd76c2ab3871471b82163f4281c3fa11cfc201cec15fb4887d"
+}

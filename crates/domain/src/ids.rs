@@ -80,6 +80,8 @@ typed_id!(
     LineId,
     /// Identifier of a bus stop.
     StopId,
+    /// Identifier of a line schedule (a service window on one weekday).
+    ScheduleId,
     /// Identifier of an upload to object storage.
     UploadId,
 );
